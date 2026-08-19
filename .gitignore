@@ -1,0 +1,47 @@
+# Dependencies
+node_modules/
+
+# Environment variables (secrets)
+.env
+.env.*
+!.env.example
+
+# Build output
+dist/
+build/
+
+# ML service
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.joblib
+ml-service/models/*.joblib
+ml-service/data/*.csv
+ml-service/*.log
+
+# IDE / editor
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Test / coverage
+coverage/
+
+# Misc
+*.local

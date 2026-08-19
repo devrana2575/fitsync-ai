@@ -1,0 +1,14 @@
+{
+  "name": "fitsync-ai",
+  "version": "1.0.0",
+  "description": "FitSync AI - AI-Powered Gym Management System",
+  "scripts": {
+    "server": "cd server && npm run dev",
+    "client": "cd client && npm run dev",
+    "ml": "cd ml-service && venv/Scripts/python main.py",
+    "seed": "cd server && npm run seed",
+    "train-ml": "cd ml-service && venv/Scripts/python training/train_models.py",
+    "build": "cd client && npm run build",
+    "install-all": "cd server && npm install && cd ../client && npm install && cd ../ml-service && venv/Scripts/pip install -r requirements.txt"
+  }
+}
