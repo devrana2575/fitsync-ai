@@ -23,6 +23,10 @@ router.get('/my', auth, async (req, res) => {
 
 router.get('/member/:userId', auth, async (req, res) => {
   try {
+    const isSelf = req.params.userId === String(req.user._id);
+    if (!isSelf && req.user.role !== 'admin' && req.user.role !== 'trainer') {
+      return res.status(403).json({ message: 'Access denied. Insufficient permissions.' });
+    }
     const logs = await WorkoutLog.find({ user: req.params.userId })
       .populate('exercise', 'name category muscleGroup')
       .sort({ date: -1 })
