@@ -20,6 +20,7 @@ export default function Progress() {
     hips: '',
     biceps: '',
     thighs: '',
+    notes: '',
   });
 
   useEffect(() => {
@@ -46,18 +47,21 @@ export default function Progress() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setFormError('');
-    if (!form.weight && !form.height) {
-      return setFormError('Please enter at least weight or height');
+    if (!form.weight || !form.height) {
+      return setFormError('Weight and height are required');
+    }
+    if (Number(form.weight) <= 0 || Number(form.height) <= 0) {
+      return setFormError('Weight and height must be greater than zero');
     }
 
     try {
       setSubmitting(true);
       const payload = {};
       Object.entries(form).forEach(([key, val]) => {
-        if (val !== '') payload[key] = Number(val);
+        if (val !== '') payload[key] = key === 'notes' ? val : Number(val);
       });
       await api.post('/measurements', payload);
-      setForm({ weight: '', height: '', bodyFat: '', chest: '', waist: '', hips: '', biceps: '', thighs: '' });
+      setForm({ weight: '', height: '', bodyFat: '', chest: '', waist: '', hips: '', biceps: '', thighs: '', notes: '' });
       setShowForm(false);
       fetchMeasurements();
     } catch (err) {
@@ -104,12 +108,12 @@ export default function Progress() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Weight (kg)</label>
-                  <input type="number" name="weight" value={form.weight} onChange={handleChange} min="0" step="0.1" placeholder="e.g. 75" className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" />
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Weight (kg) *</label>
+                  <input type="number" name="weight" value={form.weight} onChange={handleChange} min="0.1" step="0.1" placeholder="e.g. 75" required className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Height (cm)</label>
-                  <input type="number" name="height" value={form.height} onChange={handleChange} min="0" step="0.1" placeholder="e.g. 175" className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" />
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Height (cm) *</label>
+                  <input type="number" name="height" value={form.height} onChange={handleChange} min="0.1" step="0.1" placeholder="e.g. 175" required className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Body Fat %</label>
@@ -135,6 +139,10 @@ export default function Progress() {
                   <label className="block text-sm font-medium text-slate-700 mb-1">Thighs (cm)</label>
                   <input type="number" name="thighs" value={form.thighs} onChange={handleChange} min="0" step="0.1" placeholder="e.g. 55" className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" />
                 </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
+                <textarea name="notes" value={form.notes} onChange={handleChange} rows={2} placeholder="Optional notes about this measurement..." className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" />
               </div>
               <div className="flex justify-end">
                 <button type="submit" disabled={submitting} className="px-6 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors disabled:opacity-50">

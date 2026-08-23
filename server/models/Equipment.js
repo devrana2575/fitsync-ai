@@ -6,6 +6,11 @@ const equipmentSchema = new mongoose.Schema({
     required: [true, 'Equipment name is required'],
     trim: true
   },
+  quantity: {
+    type: Number,
+    min: 0,
+    default: 0
+  },
   category: {
     type: String,
     required: true,

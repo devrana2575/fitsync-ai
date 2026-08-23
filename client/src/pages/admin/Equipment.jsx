@@ -6,7 +6,7 @@ import Modal from '../../components/common/Modal';
 import DataTable from '../../components/common/DataTable';
 import StatCard from '../../components/common/StatCard';
 
-const initialForm = { name: '', category: '', condition: 'good', lastMaintenance: '', nextMaintenance: '', status: 'available', description: '' };
+const initialForm = { name: '', quantity: '', category: '', condition: 'good', lastMaintenance: '', nextMaintenance: '', status: 'available', notes: '' };
 
 export default function Equipment() {
   const [equipment, setEquipment] = useState([]);
@@ -117,10 +117,11 @@ export default function Equipment() {
       {loading ? <LoadingSpinner size="lg" /> : filteredEquipment.length === 0 ? (
         <EmptyState icon="🏋️" message="No equipment found" />
       ) : (
-        <DataTable headers={['Name', 'Category', 'Condition', 'Last Maintenance', 'Next Maintenance', 'Status']}>
+        <DataTable headers={['Name', 'Quantity', 'Category', 'Condition', 'Last Maintenance', 'Next Maintenance', 'Status']}>
           {filteredEquipment.map((eq, i) => (
             <tr key={eq._id} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
               <td className="px-6 py-4 font-medium text-slate-900">{eq.name}</td>
+              <td className="px-6 py-4 text-slate-600">{eq.quantity ?? 0}</td>
               <td className="px-6 py-4 text-slate-600 capitalize">{eq.category || '—'}</td>
               <td className="px-6 py-4">
                 <span className={`px-2 py-1 rounded-full text-xs font-medium ${conditionColor(eq.condition)}`}>{eq.condition}</span>
@@ -140,6 +141,10 @@ export default function Equipment() {
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Name</label>
             <input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Quantity</label>
+            <input required type="number" min="0" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Category</label>
@@ -175,8 +180,8 @@ export default function Equipment() {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
-            <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={2} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+            <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
+            <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
           </div>
           <div className="flex justify-end gap-3 pt-2">
             <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 font-medium">Cancel</button>

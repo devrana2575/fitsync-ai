@@ -16,6 +16,14 @@ const workoutPlanSchema = new mongoose.Schema({
     required: [true, 'Plan name is required'],
     trim: true
   },
+  goal: {
+    type: String,
+    trim: true
+  },
+  duration: {
+    type: String,
+    trim: true
+  },
   description: {
     type: String,
     trim: true

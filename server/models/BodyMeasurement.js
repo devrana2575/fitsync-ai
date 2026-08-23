@@ -12,11 +12,17 @@ const bodyMeasurementSchema = new mongoose.Schema({
   },
   weight: {
     type: Number,
-    min: 0
+    required: [true, 'Weight is required'],
+    min: 0.1
   },
   height: {
     type: Number,
-    min: 0
+    required: [true, 'Height is required'],
+    min: 0.1
+  },
+  notes: {
+    type: String,
+    trim: true
   },
   bmi: {
     type: Number

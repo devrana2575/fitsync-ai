@@ -5,7 +5,7 @@ import EmptyState from '../../components/common/EmptyState';
 import Modal from '../../components/common/Modal';
 import DataTable from '../../components/common/DataTable';
 
-const initialForm = { name: '', email: '', password: '', phone: '', gender: '' };
+const initialForm = { name: '', email: '', password: '', phone: '', gender: '', dateOfBirth: '', address: '' };
 
 export default function Members() {
   const [members, setMembers] = useState([]);
@@ -34,7 +34,19 @@ export default function Members() {
   useEffect(() => { fetchMembers(); }, [page, search]);
 
   const openAdd = () => { setEditing(null); setForm(initialForm); setShowModal(true); };
-  const openEdit = (m) => { setEditing(m); setForm({ name: m.name, email: m.email, password: '', phone: m.profile?.phone || m.phone || '', gender: m.profile?.gender || m.gender || '' }); setShowModal(true); };
+  const openEdit = (m) => {
+    setEditing(m);
+    setForm({
+      name: m.name,
+      email: m.email,
+      password: '',
+      phone: m.profile?.phone || m.phone || '',
+      gender: m.profile?.gender || m.gender || '',
+      dateOfBirth: m.profile?.dateOfBirth ? String(m.profile.dateOfBirth).slice(0, 10) : '',
+      address: m.profile?.address || ''
+    });
+    setShowModal(true);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -141,7 +153,15 @@ export default function Members() {
           )}
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Phone</label>
-            <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+            <input required value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Date of Birth</label>
+            <input required={!editing} type="date" value={form.dateOfBirth} onChange={(e) => setForm({ ...form, dateOfBirth: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Address</label>
+            <textarea required={!editing} rows={2} value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Gender</label>

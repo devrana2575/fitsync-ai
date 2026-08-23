@@ -52,11 +52,21 @@ router.get('/:id', auth, async (req, res) => {
 
 router.post('/', auth, authorize('admin', 'trainer'), async (req, res) => {
   try {
-    const { member, name, description, exercises, startDate, endDate, dayOfWeek } = req.body;
+    const { member, name, goal, duration, description, exercises, startDate, endDate, dayOfWeek } = req.body;
+
+    if (!goal || !String(goal).trim()) {
+      return res.status(400).json({ message: 'Plan goal is required' });
+    }
+    if (!duration || !String(duration).trim()) {
+      return res.status(400).json({ message: 'Plan duration is required' });
+    }
+
     const plan = await WorkoutPlan.create({
       trainer: req.user._id,
       member,
       name,
+      goal: String(goal).trim(),
+      duration: String(duration).trim(),
       description,
       exercises: exercises || [],
       startDate: startDate || new Date(),

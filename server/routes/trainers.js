@@ -59,7 +59,17 @@ router.get('/:id', auth, async (req, res) => {
 router.post('/', auth, authorize('admin'), [
   body('name').trim().notEmpty().withMessage('Name is required'),
   body('email').isEmail().withMessage('Valid email is required'),
-  body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters')
+  body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
+  body('specializations')
+    .custom((value) => Array.isArray(value) || typeof value === 'string')
+    .withMessage('Specializations must be a list'),
+  body('specializations')
+    .custom((value) => (Array.isArray(value) ? value.length > 0 : String(value).trim().length > 0))
+    .withMessage('At least one specialization is required'),
+  body('experience')
+    .optional({ values: 'falsy' })
+    .isFloat({ min: 0 })
+    .withMessage('Experience must be a number greater than or equal to 0')
 ], async (req, res) => {
   try {
     const errors = validationResult(req);

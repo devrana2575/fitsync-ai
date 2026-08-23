@@ -16,6 +16,8 @@ export default function Workouts() {
 
   const [form, setForm] = useState({
     name: '',
+    goal: '',
+    duration: '',
     description: '',
     member: '',
     exercises: [{ ...emptyExercise }],
@@ -71,6 +73,8 @@ export default function Workouts() {
     setFormError('');
 
     if (!form.name.trim()) return setFormError('Plan name is required');
+    if (!form.goal) return setFormError('Please select a goal');
+    if (!form.duration.trim()) return setFormError('Plan duration is required (e.g. 4 weeks)');
     if (!form.member) return setFormError('Please select a member');
 
     const validExercises = form.exercises.filter((ex) => ex.exercise);
@@ -80,6 +84,8 @@ export default function Workouts() {
       setSubmitting(true);
       await api.post('/workouts', {
         name: form.name,
+        goal: form.goal,
+        duration: form.duration,
         description: form.description,
         member: form.member,
         exercises: validExercises.map((ex) => ({
@@ -91,7 +97,7 @@ export default function Workouts() {
           restTime: Number(ex.restTime) || 0,
         })),
       });
-      setForm({ name: '', description: '', member: '', exercises: [{ ...emptyExercise }] });
+      setForm({ name: '', goal: '', duration: '', description: '', member: '', exercises: [{ ...emptyExercise }] });
       setShowForm(false);
       fetchData();
     } catch (err) {
@@ -136,6 +142,34 @@ export default function Workouts() {
                     value={form.name}
                     onChange={handleChange}
                     placeholder="e.g. Strength Program Week 1"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Goal *</label>
+                  <select
+                    name="goal"
+                    value={form.goal}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  >
+                    <option value="">Select a goal</option>
+                    <option value="weight_loss">Weight Loss</option>
+                    <option value="muscle_gain">Muscle Gain</option>
+                    <option value="strength">Strength</option>
+                    <option value="endurance">Endurance</option>
+                    <option value="flexibility">Flexibility</option>
+                    <option value="general_fitness">General Fitness</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Duration *</label>
+                  <input
+                    type="text"
+                    name="duration"
+                    value={form.duration}
+                    onChange={handleChange}
+                    placeholder="e.g. 4 weeks"
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                   />
                 </div>
@@ -239,6 +273,8 @@ export default function Workouts() {
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Plan Name</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Member</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Goal</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Duration</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Exercises</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Created</th>
@@ -249,6 +285,8 @@ export default function Workouts() {
                     <tr key={plan._id || plan.id} className="hover:bg-slate-50 transition-colors">
                       <td className="px-6 py-4 text-sm font-medium text-slate-900">{plan.name}</td>
                       <td className="px-6 py-4 text-sm text-slate-500">{plan.member?.name || plan.memberName || '—'}</td>
+                      <td className="px-6 py-4 text-sm text-slate-500">{(plan.goal || '').replace(/_/g, ' ') || '—'}</td>
+                      <td className="px-6 py-4 text-sm text-slate-500">{plan.duration || '—'}</td>
                       <td className="px-6 py-4 text-sm text-slate-500">{plan.exercises?.length || 0}</td>
                        <td className="px-6 py-4">
                         <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${
