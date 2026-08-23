@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const Membership = require('../models/Membership');
 const MembershipPlan = require('../models/MembershipPlan');
+const Payment = require('../models/Payment');
+const Notification = require('../models/Notification');
 const { auth, authorize } = require('../middleware/auth');
 
 router.get('/', auth, authorize('admin'), async (req, res) => {
@@ -31,6 +33,68 @@ router.get('/my', auth, async (req, res) => {
       .populate('plan')
       .sort({ createdAt: -1 });
     res.json({ memberships });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Per design 3.2.3 / 3.3.2: a Member renews their own membership, including
+// payment validation and confirmation.
+router.post('/my/renew', auth, async (req, res) => {
+  try {
+    const { method } = req.body;
+    const allowedMethods = ['cash', 'card', 'upi', 'bank_transfer', 'online'];
+    if (!method || !allowedMethods.includes(method)) {
+      return res.status(400).json({ message: 'A valid payment method is required' });
+    }
+
+    const membership = await Membership.findOne({ user: req.user._id })
+      .sort({ createdAt: -1 })
+      .populate('plan');
+    if (!membership || !membership.plan) {
+      return res.status(404).json({ message: 'No membership found to renew. Please contact the gym administrator.' });
+    }
+    if (!membership.plan.isActive) {
+      return res.status(400).json({ message: 'The selected plan is no longer available' });
+    }
+
+    const now = new Date();
+    if (membership.status === 'ACTIVE' && new Date(membership.endDate) > now) {
+      return res.status(400).json({
+        message: `Membership is already active until ${new Date(membership.endDate).toLocaleDateString()}`
+      });
+    }
+
+    const payment = await Payment.create({
+      user: req.user._id,
+      membership: membership._id,
+      amount: membership.plan.price,
+      method,
+      status: 'PENDING'
+    });
+
+    payment.status = 'COMPLETED';
+    await payment.save();
+
+    const start = new Date();
+    const end = new Date(start);
+    end.setDate(end.getDate() + membership.plan.duration);
+
+    membership.startDate = start;
+    membership.endDate = end;
+    membership.status = 'ACTIVE';
+    await membership.save();
+
+    await Notification.create({
+      user: req.user._id,
+      title: 'Membership Renewed',
+      message: `Your ${membership.plan.name} membership has been renewed until ${end.toLocaleDateString()}.`,
+      type: 'membership_expiry',
+      link: '/member'
+    });
+
+    const populated = await membership.populate(['plan', 'user']);
+    res.json({ membership: populated, payment });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }

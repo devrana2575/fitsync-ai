@@ -13,6 +13,10 @@ export default function MemberDashboard() {
   const [measurements, setMeasurements] = useState([]);
   const [insights, setInsights] = useState([]);
   const [goals, setGoals] = useState([]);
+  const [myMembership, setMyMembership] = useState(null);
+  const [renewing, setRenewing] = useState(false);
+  const [renewMsg, setRenewMsg] = useState(null);
+  const [payMethod, setPayMethod] = useState('upi');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -23,17 +27,20 @@ export default function MemberDashboard() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [dashRes, measRes, insRes, goalsRes] = await Promise.all([
+      const [dashRes, measRes, insRes, goalsRes, memRes] = await Promise.all([
         api.get('/analytics/member/dashboard').catch(() => ({ data: {} })),
         api.get('/measurements/my').catch(() => ({ data: {} })),
         api.get('/ml/insights').catch(() => ({ data: {} })),
         api.get('/goals/my').catch(() => ({ data: {} })),
+        api.get('/memberships/my').catch(() => ({ data: {} })),
       ]);
       setDashboard(dashRes.data);
       const measData = measRes.data?.measurements || measRes.data || [];
       setMeasurements(Array.isArray(measData) ? measData.slice(-10) : []);
       setInsights(insRes.data?.insights || insRes.data || []);
       setGoals(goalsRes.data?.goals || goalsRes.data || []);
+      const memberships = memRes.data?.memberships || [];
+      setMyMembership(Array.isArray(memberships) && memberships.length > 0 ? memberships[0] : null);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -50,6 +57,20 @@ export default function MemberDashboard() {
     }
   };
 
+  const handleRenew = async () => {
+    setRenewing(true);
+    setRenewMsg(null);
+    try {
+      await api.post('/memberships/my/renew', { method: payMethod });
+      setRenewMsg({ type: 'ok', text: 'Membership renewed successfully!' });
+      await fetchData();
+    } catch (err) {
+      setRenewMsg({ type: 'err', text: err.response?.data?.message || 'Renewal failed. Please try again.' });
+    } finally {
+      setRenewing(false);
+    }
+  };
+
   if (loading) return <LoadingSpinner />;
   if (error) return <div className="p-6 text-center text-red-600">{error}</div>;
 
@@ -58,10 +79,12 @@ export default function MemberDashboard() {
     totalWorkouts: dashboard?.totalWorkouts ?? 0,
     recentWorkouts: dashboard?.recentWorkouts ?? 0,
   };
+  const membershipSource = dashboard?.membership || myMembership;
   const membership = {
-    planName: dashboard?.membership?.plan?.name || '',
-    expiryDate: dashboard?.membership?.endDate || '',
-    status: dashboard?.membership?.status || '',
+    planName: membershipSource?.plan?.name || '',
+    expiryDate: membershipSource?.endDate || '',
+    status: membershipSource?.status || '',
+    isActive: (membershipSource?.status || '').toUpperCase() === 'ACTIVE' && membershipSource?.endDate && new Date(membershipSource.endDate) > new Date(),
   };
   const weightData = measurements.map((m) => ({
     date: new Date(m.createdAt || m.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
@@ -104,12 +127,41 @@ export default function MemberDashboard() {
               <div>
                 <p className="text-sm text-slate-500">Status</p>
                 <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                  membership.status?.toLowerCase() === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                  membership.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
                 }`}>
                   {membership.status || 'unknown'}
                 </span>
               </div>
             </div>
+
+            {!membership.isActive && (
+              <div className="mt-4 pt-4 border-t border-slate-100 flex flex-wrap items-center gap-3">
+                <label className="text-sm font-medium text-slate-700">Renew membership:</label>
+                <select
+                  value={payMethod}
+                  onChange={(e) => setPayMethod(e.target.value)}
+                  className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                >
+                  <option value="cash">Cash</option>
+                  <option value="card">Card</option>
+                  <option value="upi">UPI</option>
+                  <option value="bank_transfer">Bank Transfer</option>
+                  <option value="online">Online</option>
+                </select>
+                <button
+                  onClick={handleRenew}
+                  disabled={renewing}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white rounded-lg text-sm font-medium transition-colors"
+                >
+                  {renewing ? 'Processing payment...' : 'Renew Now'}
+                </button>
+                {renewMsg && (
+                  <span className={`text-sm ${renewMsg.type === 'ok' ? 'text-green-700' : 'text-red-600'}`}>
+                    {renewMsg.text}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
         )}
 
