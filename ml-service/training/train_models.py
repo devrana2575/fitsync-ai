@@ -17,7 +17,9 @@ warnings.filterwarnings('ignore')
 
 MONGODB_URI = os.getenv("MONGODB_URI", "mongodb://localhost:27017/fitsync-ai")
 MODELS_DIR = os.path.join(os.path.dirname(__file__), "..", "models")
+DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
 os.makedirs(MODELS_DIR, exist_ok=True)
+os.makedirs(DATA_DIR, exist_ok=True)
 
 
 def get_db():
@@ -170,7 +172,16 @@ def train_engagement_risk(df):
         print("Not enough data for train/test split. Training on full dataset.")
         X_train, X_test, y_train, y_test = X_scaled, X_scaled, y, y
     else:
-        X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42, stratify=y)
+        # stratify requires at least 2 samples per class; fall back to a plain
+        # split when any risk class is under-represented in the current data.
+        _, counts = np.unique(y, return_counts=True)
+        use_stratify = len(counts) > 1 and counts.min() >= 2
+        if not use_stratify:
+            print("Warning: some risk classes have fewer than 2 samples. "
+                  "Falling back to a non-stratified train/test split.")
+        X_train, X_test, y_train, y_test = train_test_split(
+            X_scaled, y, test_size=0.2, random_state=42, stratify=y if use_stratify else None
+        )
 
     model = RandomForestClassifier(
         n_estimators=100,
