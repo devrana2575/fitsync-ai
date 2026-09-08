@@ -1,15 +1,22 @@
 import { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { UserIcon } from '@heroicons/react/24/outline';
 import api from '../../services/api';
+import useDebounce from '../../hooks/useDebounce';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import EmptyState from '../../components/common/EmptyState';
+import ErrorState from '../../components/common/ErrorState';
 import Modal from '../../components/common/Modal';
 import DataTable from '../../components/common/DataTable';
 
 const initialForm = { name: '', email: '', password: '', phone: '', gender: '' };
 
 export default function Members() {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -17,23 +24,50 @@ export default function Members() {
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(initialForm);
   const [saving, setSaving] = useState(false);
+  const debouncedSearch = useDebounce(search, 300);
 
-  const fetchMembers = async () => {
+  const fetchMembers = async (cancelled = () => false) => {
+    setLoading(true);
+    setError(null);
     try {
-      setLoading(true);
-      const res = await api.get('/members', { params: { search, page, limit: 10 } });
-      setMembers(res.data.data || res.data.members || []);
-      setTotalPages(res.data.totalPages || res.data.totalPages || 1);
+      const res = await api.get('/members', { params: { search: debouncedSearch, page, limit: 10 } });
+      if (!cancelled()) {
+        setMembers(res.data.data || res.data.members || []);
+        setTotalPages(res.data.pages || 1);
+      }
     } catch (err) {
-      console.error(err);
+      if (!cancelled()) setError(err.message || 'Failed to load members');
     } finally {
-      setLoading(false);
+      if (!cancelled()) setLoading(false);
     }
   };
 
-  useEffect(() => { fetchMembers(); }, [page, search]);
+  useEffect(() => {
+    let cancelled = false;
+    fetchMembers(() => cancelled);
+    return () => { cancelled = true; };
+  }, [page, debouncedSearch]);
+
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        fetchMembers(() => false);
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, debouncedSearch]);
 
   const openAdd = () => { setEditing(null); setForm(initialForm); setShowModal(true); };
+
+  useEffect(() => {
+    if (location.state?.openCreate) {
+      openAdd();
+      navigate('.', { replace: true, state: {} });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const openEdit = (m) => { setEditing(m); setForm({ name: m.name, email: m.email, password: '', phone: m.profile?.phone || m.phone || '', gender: m.profile?.gender || m.gender || '' }); setShowModal(true); };
 
   const handleSubmit = async (e) => {
@@ -57,8 +91,12 @@ export default function Members() {
   };
 
   const toggleDeactivate = async (m) => {
+    if (m.isActive) {
+      const proceed = confirm(`Deactivate ${m.name}? They will not be able to log in until reactivated.`);
+      if (!proceed) return;
+    }
     try {
-      await api.put(`/users/${m._id}/deactivate`);
+      await api.put(`/users/${m._id}/${m.isActive ? 'deactivate' : 'activate'}`);
       fetchMembers();
     } catch (err) {
       alert(err.message || 'Failed');
@@ -82,25 +120,46 @@ export default function Members() {
         className="w-full md:w-96 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
       />
 
-      {loading ? <LoadingSpinner size="lg" /> : members.length === 0 ? (
-        <EmptyState icon="👤" message="No members found" />
+      {error ? (
+        <div className="bg-white rounded-xl border border-slate-200">
+          <ErrorState message={error} onRetry={() => fetchMembers()} />
+        </div>
+      ) : loading ? <LoadingSpinner size="lg" /> : members.length === 0 ? (
+        <EmptyState icon={UserIcon} message="No members found" />
       ) : (
         <>
-          <DataTable headers={['Name', 'Email', 'Phone', 'Trainer', 'Join Date', 'Status', 'Actions']}>
+          <DataTable headers={['Name', 'Email', 'Membership', 'Status', 'Trainer', 'Phone', 'Actions']}>
             {members.map((m, i) => (
               <tr key={m._id} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
                 <td className="px-6 py-4 font-medium text-slate-900">{m.name}</td>
                 <td className="px-6 py-4 text-slate-600">{m.email}</td>
-                <td className="px-6 py-4 text-slate-600">{m.profile?.phone || m.phone || '—'}</td>
-                <td className="px-6 py-4 text-slate-600">{m.profile?.assignedTrainer?.name || '—'}</td>
-                <td className="px-6 py-4 text-slate-600">{m.createdAt ? new Date(m.createdAt).toLocaleDateString('en-IN') : '—'}</td>
                 <td className="px-6 py-4">
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${m.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                    {m.isActive ? 'Active' : 'Inactive'}
-                  </span>
+                  {m.membership ? (
+                    <div>
+                      <p className="text-sm font-medium text-slate-900">{m.membership.plan?.name || 'Membership'}</p>
+                      <p className="text-xs text-slate-500">Until {m.membership.endDate ? new Date(m.membership.endDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '—'}</p>
+                    </div>
+                  ) : (
+                    <span className="text-slate-400">No active plan</span>
+                  )}
                 </td>
                 <td className="px-6 py-4">
-                  <div className="flex gap-2">
+                  <div className="flex flex-col gap-1">
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium w-fit ${m.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                      {m.isActive ? 'Active' : 'Inactive'}
+                    </span>
+                    {m.membership && (
+                      <span className="px-2 py-0.5 rounded-full text-xs font-medium w-fit bg-indigo-50 text-indigo-700 capitalize">
+                        {m.membership.status.toLowerCase()}
+                      </span>
+                    )}
+                  </div>
+                </td>
+                <td className="px-6 py-4 text-slate-600">{m.profile?.assignedTrainer?.name || '—'}</td>
+                <td className="px-6 py-4 text-slate-600">{m.profile?.phone || m.phone || '—'}</td>
+                <td className="px-6 py-4">
+                  <div className="flex gap-3">
+                    <button onClick={() => navigate(`/admin/members/${m._id}`)} className="text-slate-600 hover:text-slate-900 font-medium text-sm">View</button>
                     <button onClick={() => openEdit(m)} className="text-indigo-600 hover:text-indigo-800 font-medium text-sm">Edit</button>
                     <button onClick={() => toggleDeactivate(m)} className={`font-medium text-sm ${m.isActive ? 'text-red-600 hover:text-red-800' : 'text-green-600 hover:text-green-800'}`}>
                       {m.isActive ? 'Deactivate' : 'Activate'}

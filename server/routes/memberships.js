@@ -3,10 +3,12 @@ const router = express.Router();
 const Membership = require('../models/Membership');
 const MembershipPlan = require('../models/MembershipPlan');
 const { auth, authorize } = require('../middleware/auth');
+const { parsePagination } = require('../utils/helpers');
 
 router.get('/', auth, authorize('admin'), async (req, res) => {
   try {
-    const { page = 1, limit = 20, status, userId } = req.query;
+    const { page, limit } = parsePagination(req.query.page, req.query.limit, 1, 20, 100);
+    const { status, userId } = req.query;
     const filter = {};
     if (status) filter.status = status;
     if (userId) filter.user = userId;
@@ -16,12 +18,12 @@ router.get('/', auth, authorize('admin'), async (req, res) => {
       .populate('user', 'name email')
       .populate('plan')
       .sort({ createdAt: -1 })
-      .skip((parseInt(page) - 1) * parseInt(limit))
-      .limit(parseInt(limit));
+      .skip((page - 1) * limit)
+      .limit(limit);
 
-    res.json({ memberships, total, page: parseInt(page), pages: Math.ceil(total / parseInt(limit)) });
+    res.json({ memberships, total, page, pages: Math.ceil(total / limit) });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
@@ -32,16 +34,16 @@ router.get('/my', auth, async (req, res) => {
       .sort({ createdAt: -1 });
     res.json({ memberships });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
-router.get('/active/:userId', auth, async (req, res) => {
+router.get('/active/:userId', auth, authorize('admin', 'trainer'), async (req, res) => {
   try {
     const membership = await Membership.findOne({ user: req.params.userId, status: 'ACTIVE' }).populate('plan');
     res.json({ membership });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
@@ -67,14 +69,14 @@ router.post('/', auth, authorize('admin'), async (req, res) => {
       plan: planId,
       startDate: start,
       endDate: end,
-      status: 'ACTIVE',
+      status: 'PENDING',
       autoRenew: autoRenew || false
     });
 
     const populated = await membership.populate(['plan', 'user']);
     res.status(201).json({ membership: populated });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
@@ -94,7 +96,7 @@ router.put('/:id/renew', auth, authorize('admin'), async (req, res) => {
 
     res.json({ membership });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
@@ -108,7 +110,7 @@ router.put('/:id/cancel', auth, authorize('admin'), async (req, res) => {
     if (!membership) return res.status(404).json({ message: 'Membership not found' });
     res.json({ membership });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
@@ -129,7 +131,7 @@ router.get('/stats', auth, authorize('admin'), async (req, res) => {
 
     res.json({ active, expired, pending, cancelled, expiringSoon });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 

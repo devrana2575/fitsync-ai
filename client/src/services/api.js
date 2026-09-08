@@ -28,7 +28,18 @@ api.interceptors.response.use(
         window.location.href = '/login';
       }
     }
-    const message = error.response?.data?.message || error.message || 'An error occurred';
+    const status = error.response?.status;
+    const serverMessage = error.response?.data?.message;
+    let message = serverMessage;
+    if (!message) {
+      if (status === 400) message = 'The request was invalid. Please check the details and try again.';
+      else if (status === 401) message = 'Your session has expired. Please log in again.';
+      else if (status === 403) message = 'You do not have permission to perform this action.';
+      else if (status === 404) message = 'The requested item was not found.';
+      else if (status === 429) message = 'Too many requests. Please wait a moment and try again.';
+      else if (status >= 500) message = 'Something went wrong on our end. Please try again in a moment.';
+      else message = error.message || 'An error occurred';
+    }
     return Promise.reject(new Error(message));
   }
 );

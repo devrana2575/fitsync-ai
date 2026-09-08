@@ -1,23 +1,23 @@
 const express = require('express');
 const router = express.Router();
 const BodyMeasurement = require('../models/BodyMeasurement');
-const { auth } = require('../middleware/auth');
+const { auth, authorize } = require('../middleware/auth');
 
 router.get('/my', auth, async (req, res) => {
   try {
     const measurements = await BodyMeasurement.find({ user: req.user._id }).sort({ date: -1 });
     res.json({ measurements });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
-router.get('/member/:userId', auth, async (req, res) => {
+router.get('/member/:userId', auth, authorize('admin', 'trainer'), async (req, res) => {
   try {
     const measurements = await BodyMeasurement.find({ user: req.params.userId }).sort({ date: -1 });
     res.json({ measurements });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
@@ -38,7 +38,7 @@ router.post('/', auth, async (req, res) => {
     });
     res.status(201).json({ measurement });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
@@ -47,7 +47,7 @@ router.get('/latest', auth, async (req, res) => {
     const measurement = await BodyMeasurement.findOne({ user: req.user._id }).sort({ date: -1 });
     res.json({ measurement });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 

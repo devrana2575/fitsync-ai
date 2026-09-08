@@ -68,9 +68,9 @@ export default function Members() {
                 <thead className="bg-slate-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Name</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Attention</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Email</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Phone</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Join Date</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Room</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>
                   </tr>
                 </thead>
@@ -89,13 +89,22 @@ export default function Members() {
                           <span className="text-sm font-medium text-slate-900">{member.user?.name || '—'}</span>
                         </div>
                       </td>
+                      <td className="px-6 py-4">
+                        {Array.isArray(member.attention) && member.attention.length > 0 ? (
+                          <div className="flex flex-col gap-1.5">
+                            {member.attention.includes('no_recent_attendance') && (
+                              <span className="inline-flex w-fit px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">No visit in 7+ days</span>
+                            )}
+                            {member.attention.includes('membership_expiring') && (
+                              <span className="inline-flex w-fit px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-700">Membership expiring</span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-sm text-slate-300">—</span>
+                        )}
+                      </td>
                       <td className="px-6 py-4 text-sm text-slate-500">{member.user?.email || '—'}</td>
                       <td className="px-6 py-4 text-sm text-slate-500">{member.phone || '—'}</td>
-                      <td className="px-6 py-4 text-sm text-slate-500">
-                        {member.joinDate
-                          ? new Date(member.joinDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-                          : '—'}
-                      </td>
                       <td className="px-6 py-4">
                         <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${
                           member.user?.isActive !== false ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'

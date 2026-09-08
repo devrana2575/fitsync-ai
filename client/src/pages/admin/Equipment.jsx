@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
+import { WrenchScrewdriverIcon, CogIcon, CheckCircleIcon, XCircleIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import api from '../../services/api';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import EmptyState from '../../components/common/EmptyState';
+import ErrorState from '../../components/common/ErrorState';
 import Modal from '../../components/common/Modal';
 import DataTable from '../../components/common/DataTable';
 import StatCard from '../../components/common/StatCard';
@@ -13,24 +15,27 @@ export default function Equipment() {
   const [maintenance, setMaintenance] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [showModal, setShowModal] = useState(false);
+  const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(initialForm);
   const [saving, setSaving] = useState(false);
   const [conditionFilter, setConditionFilter] = useState('all');
 
   const fetchAll = async () => {
+    setLoading(true);
+    setError(null);
     try {
-      setLoading(true);
       const [eqRes, mtRes, stRes] = await Promise.all([
         api.get('/equipment'),
         api.get('/equipment/maintenance'),
         api.get('/equipment/stats'),
       ]);
       setEquipment(eqRes.data.data || eqRes.data.equipment || []);
-      setMaintenance(mtRes.data.data || mtRes.data.alerts || []);
+      setMaintenance(mtRes.data.equipment || []);
       setStats(stRes.data.data || stRes.data);
     } catch (err) {
-      console.error(err);
+      setError(err.message || 'Failed to load equipment');
     } finally {
       setLoading(false);
     }
@@ -42,14 +47,47 @@ export default function Equipment() {
     e.preventDefault();
     setSaving(true);
     try {
-      await api.post('/equipment', form);
+      const payload = { ...form };
+      ['lastMaintenance', 'nextMaintenance'].forEach((k) => { if (!payload[k]) delete payload[k]; });
+      if (editing) {
+        await api.put(`/equipment/${editing._id}`, payload);
+      } else {
+        await api.post('/equipment', payload);
+      }
       setShowModal(false);
+      setEditing(null);
       setForm(initialForm);
       fetchAll();
     } catch (err) {
-      alert(err.message || 'Failed to add equipment');
+      alert(err.message || 'Failed to save equipment');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const openCreate = () => { setEditing(null); setForm(initialForm); setShowModal(true); };
+
+  const openEdit = (eq) => {
+    setEditing(eq);
+    setForm({
+      name: eq.name || '',
+      category: eq.category || '',
+      condition: eq.condition || 'good',
+      lastMaintenance: eq.lastMaintenance ? eq.lastMaintenance.slice(0, 10) : '',
+      nextMaintenance: eq.nextMaintenance ? eq.nextMaintenance.slice(0, 10) : '',
+      status: eq.status || 'available',
+      description: eq.description || '',
+    });
+    setShowModal(true);
+  };
+
+  const handleDelete = async (eq) => {
+    if (!window.confirm(`Delete "${eq.name}"?`)) return;
+    try {
+      await api.delete(`/equipment/${eq._id}`);
+      fetchAll();
+    } catch (err) {
+      alert(err.message || 'Failed to delete equipment');
     }
   };
 
@@ -71,23 +109,23 @@ export default function Equipment() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-slate-900">Equipment</h1>
-        <button onClick={() => { setForm(initialForm); setShowModal(true); }} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
+        <button onClick={openCreate} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
           + Add Equipment
         </button>
       </div>
 
       {stats && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard icon="🏋️" label="Total Equipment" value={stats.total || equipment.length} color="indigo" />
-          <StatCard icon="✅" label="Good Condition" value={stats.byCondition?.find(c => c._id === 'good')?.count || 0} color="green" />
-          <StatCard icon="🔧" label="Needs Maintenance" value={stats.needsMaintenance || 0} color="yellow" />
-          <StatCard icon="❌" label="Poor / Needs Repair" value={(stats.byCondition?.find(c => c._id === 'poor')?.count || 0) + (stats.byCondition?.find(c => c._id === 'needs_repair')?.count || 0)} color="red" />
+          <StatCard icon={CogIcon} label="Total Equipment" value={stats.total || equipment.length} color="indigo" />
+          <StatCard icon={CheckCircleIcon} label="Good Condition" value={stats.byCondition?.find(c => c._id === 'good')?.count || 0} color="green" />
+          <StatCard icon={WrenchScrewdriverIcon} label="Needs Maintenance" value={stats.needsMaintenance || 0} color="yellow" />
+          <StatCard icon={XCircleIcon} label="Poor / Needs Repair" value={(stats.byCondition?.find(c => c._id === 'poor')?.count || 0) + (stats.byCondition?.find(c => c._id === 'needs_repair')?.count || 0)} color="red" />
         </div>
       )}
 
       {maintenance.length > 0 && (
         <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-6">
-          <h2 className="text-lg font-semibold text-yellow-800 mb-3">⚠️ Maintenance Alerts</h2>
+          <h2 className="text-lg font-semibold text-yellow-800 mb-3 flex items-center gap-2"><ExclamationTriangleIcon className="h-5 w-5" aria-hidden="true" /> Maintenance Alerts</h2>
           <div className="space-y-2">
             {maintenance.map((a, i) => (
               <div key={a._id || i} className="flex items-center justify-between bg-white rounded-lg px-4 py-3 border border-yellow-100">
@@ -114,10 +152,14 @@ export default function Equipment() {
         </select>
       </div>
 
-      {loading ? <LoadingSpinner size="lg" /> : filteredEquipment.length === 0 ? (
-        <EmptyState icon="🏋️" message="No equipment found" />
+      {error ? (
+        <div className="bg-white rounded-xl border border-slate-200">
+          <ErrorState message={error} onRetry={fetchAll} />
+        </div>
+      ) : loading ? <LoadingSpinner size="lg" /> : filteredEquipment.length === 0 ? (
+        <EmptyState icon={CogIcon} message="No equipment found" />
       ) : (
-        <DataTable headers={['Name', 'Category', 'Condition', 'Last Maintenance', 'Next Maintenance', 'Status']}>
+        <DataTable headers={['Name', 'Category', 'Condition', 'Last Maintenance', 'Next Maintenance', 'Status', 'Actions']}>
           {filteredEquipment.map((eq, i) => (
             <tr key={eq._id} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
               <td className="px-6 py-4 font-medium text-slate-900">{eq.name}</td>
@@ -130,12 +172,18 @@ export default function Equipment() {
               <td className="px-6 py-4">
                 <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColor(eq.status)}`}>{eq.status?.replace('_', ' ')}</span>
               </td>
+              <td className="px-6 py-4">
+                <div className="flex gap-3">
+                  <button onClick={() => openEdit(eq)} className="text-indigo-600 hover:text-indigo-800 font-medium text-sm">Edit</button>
+                  <button onClick={() => handleDelete(eq)} className="text-red-600 hover:text-red-800 font-medium text-sm">Delete</button>
+                </div>
+              </td>
             </tr>
           ))}
         </DataTable>
       )}
 
-      <Modal isOpen={showModal} onClose={() => setShowModal(false)} title="Add Equipment">
+      <Modal isOpen={showModal} onClose={() => setShowModal(false)} title={editing ? 'Edit Equipment' : 'Add Equipment'}>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Name</label>
@@ -181,7 +229,7 @@ export default function Equipment() {
           <div className="flex justify-end gap-3 pt-2">
             <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 font-medium">Cancel</button>
             <button type="submit" disabled={saving} className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-medium disabled:opacity-50">
-              {saving ? 'Saving...' : 'Create'}
+              {saving ? 'Saving...' : editing ? 'Save Changes' : 'Create'}
             </button>
           </div>
         </form>

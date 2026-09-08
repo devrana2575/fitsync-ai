@@ -8,53 +8,88 @@ const WorkoutLog = require('../models/WorkoutLog');
 const BodyMeasurement = require('../models/BodyMeasurement');
 const MLPrediction = require('../models/MLPrediction');
 const { auth, authorize } = require('../middleware/auth');
+const { parsePagination } = require('../utils/helpers');
 
 router.get('/admin/revenue', auth, authorize('admin'), async (req, res) => {
   try {
+    const { page, limit } = parsePagination(req.query.page, req.query.limit, 1, 50, 200);
     const { startDate, endDate } = req.query;
     const filter = { status: 'COMPLETED' };
+    const aggMatch = { status: 'COMPLETED' };
     if (startDate || endDate) {
       filter.date = {};
-      if (startDate) filter.date.$gte = new Date(startDate);
-      if (endDate) filter.date.$lte = new Date(endDate);
+      aggMatch.date = {};
+      if (startDate) { filter.date.$gte = new Date(startDate); aggMatch.date.$gte = new Date(startDate); }
+      if (endDate) { filter.date.$lte = new Date(endDate); aggMatch.date.$lte = new Date(endDate); }
     }
-    const payments = await Payment.find(filter).populate('user', 'name email').sort({ date: -1 });
-    const total = payments.reduce((sum, p) => sum + p.amount, 0);
-    res.json({ report: 'Revenue Report', data: payments, total });
+    const total = await Payment.countDocuments(filter);
+    const payments = await Payment.find(filter).populate('user', 'name email').sort({ date: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit);
+    const totalResult = await Payment.aggregate([
+      { $match: aggMatch },
+      { $group: { _id: null, total: { $sum: '$amount' } } }
+    ]);
+    const totalAmount = totalResult[0]?.total || 0;
+    res.json({ report: 'Revenue Report', data: payments, total, totalAmount, page, pages: Math.ceil(total / limit) });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
 router.get('/admin/memberships', auth, authorize('admin'), async (req, res) => {
   try {
-    const memberships = await Membership.find().populate('user', 'name email').populate('plan').sort({ createdAt: -1 });
+    const { page, limit } = parsePagination(req.query.page, req.query.limit, 1, 50, 200);
+    const memberships = await Membership.find()
+      .populate('user', 'name email').populate('plan')
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit);
     const summary = {
-      active: memberships.filter(m => m.status === 'ACTIVE').length,
-      expired: memberships.filter(m => m.status === 'EXPIRED').length,
-      pending: memberships.filter(m => m.status === 'PENDING').length,
-      cancelled: memberships.filter(m => m.status === 'CANCELLED').length
+      active: 0,
+      expired: 0,
+      pending: 0,
+      cancelled: 0
     };
-    res.json({ report: 'Membership Report', data: memberships, summary });
+    const statusCounts = await Membership.aggregate([
+      { $group: { _id: '$status', count: { $sum: 1 } } }
+    ]);
+    for (const s of statusCounts) {
+      const key = String(s._id).toLowerCase();
+      if (key in summary) summary[key] = s.count;
+    }
+    const total = await Membership.countDocuments();
+    res.json({ report: 'Membership Report', data: memberships, summary, total, page, pages: Math.ceil(total / limit) });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
 router.get('/admin/attendance', auth, authorize('admin'), async (req, res) => {
   try {
+    const { page, limit } = parsePagination(req.query.page, req.query.limit, 1, 50, 200);
     const { startDate, endDate } = req.query;
     const filter = {};
+    const aggMatch = {};
     if (startDate || endDate) {
       filter.date = {};
-      if (startDate) filter.date.$gte = new Date(startDate);
-      if (endDate) filter.date.$lte = new Date(endDate);
+      aggMatch.date = {};
+      if (startDate) { filter.date.$gte = new Date(startDate); aggMatch.date.$gte = new Date(startDate); }
+      if (endDate) { filter.date.$lte = new Date(endDate); aggMatch.date.$lte = new Date(endDate); }
     }
-    const records = await Attendance.find(filter).populate('user', 'name email').sort({ date: -1 });
-    const uniqueMembers = [...new Set(records.map(r => r.user?._id?.toString()))].filter(Boolean);
-    res.json({ report: 'Attendance Report', data: records, totalRecords: records.length, uniqueMembers: uniqueMembers.length });
+    const total = await Attendance.countDocuments(filter);
+    const records = await Attendance.find(filter).populate('user', 'name email').sort({ date: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit);
+    const uniqueMembersResult = await Attendance.aggregate([
+      { $match: aggMatch },
+      { $group: { _id: '$user' } },
+      { $count: 'uniqueMembers' }
+    ]);
+    const uniqueMembers = uniqueMembersResult[0]?.uniqueMembers || 0;
+    res.json({ report: 'Attendance Report', data: records, total, page, pages: Math.ceil(total / limit), uniqueMembers });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
@@ -68,7 +103,7 @@ router.get('/admin/ml-risk', auth, authorize('admin'), async (req, res) => {
     const lowRisk = predictions.filter(p => p.riskLevel === 'LOW');
     res.json({ report: 'ML Risk Report', predictions, highRisk, mediumRisk, lowRisk });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
@@ -79,7 +114,7 @@ router.get('/member/progress', auth, async (req, res) => {
     const attendance = await Attendance.find({ user: req.user._id }).sort({ date: 1 });
     res.json({ report: 'Personal Progress', measurements, workouts, attendance });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
@@ -90,7 +125,7 @@ router.get('/trainer/member-progress/:memberId', auth, authorize('admin', 'train
     const attendance = await Attendance.find({ user: req.params.memberId }).sort({ date: -1 }).limit(30);
     res.json({ measurements, workouts, attendance });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 

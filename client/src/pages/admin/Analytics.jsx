@@ -1,7 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { ArrowPathIcon } from '@heroicons/react/24/outline';
 import api from '../../services/api';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
+import ErrorState from '../../components/common/ErrorState';
 
 const COLORS = ['#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
 
@@ -11,38 +13,72 @@ export default function Analytics() {
   const [peakHours, setPeakHours] = useState([]);
   const [membershipDist, setMembershipDist] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [errors, setErrors] = useState({});
+
+  const fetchAll = useCallback(async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true);
+
+    const [revResult, attResult, peakResult, memResult] = await Promise.allSettled([
+      api.get('/analytics/admin/revenue-trend'),
+      api.get('/analytics/admin/attendance-trend'),
+      api.get('/analytics/admin/peak-hours'),
+      api.get('/analytics/admin/membership-distribution'),
+    ]);
+
+    const newErrors = {};
+
+    if (revResult.status === 'fulfilled') {
+      const rawRevenue = revResult.value.data.trend || revResult.value.data.data || revResult.value.data || [];
+      setRevenue(rawRevenue.map((r) => ({
+        month: `${r._id?.year || ''}-${String(r._id?.month || 0).padStart(2, '0')}`,
+        revenue: r.total || 0,
+      })));
+    } else {
+      newErrors.revenue = revResult.reason?.message;
+    }
+
+    if (attResult.status === 'fulfilled') {
+      const rawAttendance = attResult.value.data.trend || attResult.value.data.data || attResult.value.data || [];
+      setAttendance(rawAttendance.map((a) => ({ day: a._id || '', count: a.count || 0 })));
+    } else {
+      newErrors.attendance = attResult.reason?.message;
+    }
+
+    if (peakResult.status === 'fulfilled') {
+      const rawPeak = peakResult.value.data.peakHours || peakResult.value.data.data || peakResult.value.data || [];
+      setPeakHours(rawPeak.map((p) => ({ hour: `${p._id ?? ''}:00`, count: p.count || 0 })));
+    } else {
+      newErrors.peakHours = peakResult.reason?.message;
+    }
+
+    if (memResult.status === 'fulfilled') {
+      const rawDist = memResult.value.data.distribution || memResult.value.data.data || memResult.value.data || [];
+      setMembershipDist(rawDist.map((d) => ({ plan: d._id || '', count: d.count || 0 })));
+    } else {
+      newErrors.membershipDist = memResult.reason?.message;
+    }
+
+    setErrors(newErrors);
+    setLoading(false);
+    setRefreshing(false);
+  }, []);
 
   useEffect(() => {
-    const fetchAll = async () => {
-      try {
-        const [revRes, attRes, peakRes, memRes] = await Promise.all([
-          api.get('/analytics/admin/revenue-trend'),
-          api.get('/analytics/admin/attendance-trend'),
-          api.get('/analytics/admin/peak-hours'),
-          api.get('/analytics/admin/membership-distribution'),
-        ]);
-        const rawRevenue = revRes.data.trend || revRes.data.data || revRes.data || [];
-        setRevenue(rawRevenue.map((r) => ({
-          month: `${r._id?.year || ''}-${String(r._id?.month || 0).padStart(2, '0')}`,
-          revenue: r.total || 0,
-        })));
+    fetchAll();
+  }, [fetchAll]);
 
-        const rawAttendance = attRes.data.trend || attRes.data.data || attRes.data || [];
-        setAttendance(rawAttendance.map((a) => ({ day: a._id || '', count: a.count || 0 })));
-
-        const rawPeak = peakRes.data.peakHours || peakRes.data.data || peakRes.data || [];
-        setPeakHours(rawPeak.map((p) => ({ hour: `${p._id ?? ''}:00`, count: p.count || 0 })));
-
-        const rawDist = memRes.data.distribution || memRes.data.data || memRes.data || [];
-        setMembershipDist(rawDist.map((d) => ({ plan: d._id || '', count: d.count || 0 })));
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        fetchAll(true);
       }
     };
-    fetchAll();
-  }, []);
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, [fetchAll]);
+
+  const handleRefresh = () => fetchAll(true);
 
   if (loading) return <LoadingSpinner size="lg" />;
 
@@ -50,12 +86,20 @@ export default function Analytics() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-slate-900">Advanced Analytics</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-slate-900">Advanced Analytics</h1>
+        <button onClick={handleRefresh} disabled={refreshing} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50">
+          <ArrowPathIcon className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} aria-hidden="true" />
+          Refresh
+        </button>
+      </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         <div className="bg-white rounded-xl border border-slate-200 p-6">
           <h2 className="text-lg font-semibold text-slate-900 mb-4">Revenue Trend</h2>
-          {revenue.length > 0 ? (
+          {errors.revenue ? (
+            <ErrorState message="Failed to load revenue data" onRetry={handleRefresh} />
+          ) : revenue.length > 0 ? (
             <ResponsiveContainer width="100%" height={400}>
               <LineChart data={revenue}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
@@ -71,7 +115,9 @@ export default function Analytics() {
 
         <div className="bg-white rounded-xl border border-slate-200 p-6">
           <h2 className="text-lg font-semibold text-slate-900 mb-4">Attendance Trend</h2>
-          {attendance.length > 0 ? (
+          {errors.attendance ? (
+            <ErrorState message="Failed to load attendance data" onRetry={handleRefresh} />
+          ) : attendance.length > 0 ? (
             <ResponsiveContainer width="100%" height={400}>
               <BarChart data={attendance}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
@@ -87,7 +133,9 @@ export default function Analytics() {
 
         <div className="bg-white rounded-xl border border-slate-200 p-6">
           <h2 className="text-lg font-semibold text-slate-900 mb-4">Peak Hours Analysis</h2>
-          {peakHours.length > 0 ? (
+          {errors.peakHours ? (
+            <ErrorState message="Failed to load peak hours data" onRetry={handleRefresh} />
+          ) : peakHours.length > 0 ? (
             <ResponsiveContainer width="100%" height={400}>
               <BarChart data={peakHours}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
@@ -103,7 +151,9 @@ export default function Analytics() {
 
         <div className="bg-white rounded-xl border border-slate-200 p-6">
           <h2 className="text-lg font-semibold text-slate-900 mb-4">Membership Distribution</h2>
-          {membershipDist.length > 0 ? (
+          {errors.membershipDist ? (
+            <ErrorState message="Failed to load membership data" onRetry={handleRefresh} />
+          ) : membershipDist.length > 0 ? (
             <ResponsiveContainer width="100%" height={400}>
               <PieChart>
                 <Pie

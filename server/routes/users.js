@@ -4,15 +4,18 @@ const User = require('../models/User');
 const MemberProfile = require('../models/MemberProfile');
 const TrainerProfile = require('../models/TrainerProfile');
 const { auth, authorize } = require('../middleware/auth');
+const { escapeRegex, parsePagination } = require('../utils/helpers');
 
 router.get('/', auth, authorize('admin'), async (req, res) => {
   try {
-    const { page = 1, limit = 10, search, role, status } = req.query;
+    const { page, limit } = parsePagination(req.query.page, req.query.limit, 1, 10, 100);
+    const { search, role, status } = req.query;
     const filter = {};
     if (search) {
+      const escaped = escapeRegex(search);
       filter.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { email: { $regex: search, $options: 'i' } }
+        { name: { $regex: escaped, $options: 'i' } },
+        { email: { $regex: escaped, $options: 'i' } }
       ];
     }
     if (role) filter.role = role;
@@ -22,17 +25,17 @@ router.get('/', auth, authorize('admin'), async (req, res) => {
     const total = await User.countDocuments(filter);
     const users = await User.find(filter)
       .sort({ createdAt: -1 })
-      .skip((parseInt(page) - 1) * parseInt(limit))
-      .limit(parseInt(limit));
+      .skip((page - 1) * limit)
+      .limit(limit);
 
     res.json({
       users,
       total,
-      page: parseInt(page),
-      pages: Math.ceil(total / parseInt(limit))
+      page,
+      pages: Math.ceil(total / limit)
     });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
@@ -46,7 +49,7 @@ router.put('/:id/activate', auth, authorize('admin'), async (req, res) => {
     if (!user) return res.status(404).json({ message: 'User not found' });
     res.json({ user });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
@@ -60,7 +63,7 @@ router.put('/:id/deactivate', auth, authorize('admin'), async (req, res) => {
     if (!user) return res.status(404).json({ message: 'User not found' });
     res.json({ user });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
@@ -72,7 +75,7 @@ router.delete('/:id', auth, authorize('admin'), async (req, res) => {
     await TrainerProfile.deleteOne({ user: req.params.id });
     res.json({ message: 'User deleted' });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 

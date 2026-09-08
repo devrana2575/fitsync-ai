@@ -110,10 +110,48 @@ const generateNotifications = async () => {
   }
 };
 
+const expireMemberships = async () => {
+  try {
+    const now = new Date();
+    const expired = await Membership.find({ status: 'ACTIVE', endDate: { $lt: now } })
+      .select('_id user endDate').lean();
+
+    if (expired.length === 0) return;
+
+    const ids = expired.map((m) => m._id);
+    await Membership.updateMany({ _id: { $in: ids } }, { $set: { status: 'EXPIRED' } });
+
+    let notified = 0;
+    for (const m of expired) {
+      if (!m.user) continue;
+      const existing = await Notification.findOne({
+        user: m.user._id,
+        type: 'membership_expiry',
+        title: 'Membership Expired',
+        createdAt: { $gte: new Date(now.getTime() - 24 * 60 * 60 * 1000) }
+      });
+      if (!existing) {
+        await Notification.create({
+          user: m.user._id,
+          title: 'Membership Expired',
+          message: 'Your membership has expired. Renew it to continue using the gym.',
+          type: 'membership_expiry'
+        });
+        notified += 1;
+      }
+    }
+
+    console.log(`[Cron] Expired ${ids.length} membership(s), ${notified} notification(s) sent`);
+  } catch (error) {
+    console.error('[Cron] Expiry error:', error.message);
+  }
+};
+
 const startCronJobs = () => {
   cron.schedule('0 8 * * *', generateNotifications);
   cron.schedule('0 12 * * 1', generateNotifications);
-  console.log('[Cron] Scheduled notification jobs');
+  cron.schedule('15 0 * * *', expireMemberships);
+  console.log('[Cron] Scheduled notification + membership expiry jobs');
 };
 
-module.exports = { startCronJobs, generateNotifications };
+module.exports = { startCronJobs, generateNotifications, expireMemberships };

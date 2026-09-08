@@ -24,4 +24,20 @@ const buildFilter = (filters) => {
   return filter;
 };
 
-module.exports = { generateToken, paginate, buildFilter };
+const escapeRegex = (text) => {
+  if (typeof text !== 'string') return text;
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+};
+
+const parsePagination = (page, limit, defaultPage = 1, defaultLimit = 20, maxLimit = 100) => {
+  const parsedPage = parseInt(page, 10);
+  const parsedLimit = parseInt(limit, 10);
+  return {
+    page: Number.isInteger(parsedPage) && parsedPage > 0 ? parsedPage : defaultPage,
+    limit: Number.isInteger(parsedLimit) && parsedLimit > 0
+      ? Math.min(parsedLimit, maxLimit)
+      : defaultLimit
+  };
+};
+
+module.exports = { generateToken, paginate, buildFilter, escapeRegex, parsePagination };

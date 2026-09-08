@@ -55,4 +55,6 @@ const equipmentSchema = new mongoose.Schema({
   timestamps: true
 });
 
+equipmentSchema.index({ nextMaintenance: 1, isActive: 1 });
+
 module.exports = mongoose.model('Equipment', equipmentSchema);

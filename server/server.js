@@ -1,8 +1,10 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const connectDB = require('./config/db');
-const { startCronJobs } = require('./utils/cron');
+const { startCronJobs, expireMemberships } = require('./utils/cron');
 
 dotenv.config();
 
@@ -10,13 +12,34 @@ connectDB();
 
 const app = express();
 
+app.use(helmet());
+
 app.use(cors({
   origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
   credentials: true
 }));
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 50,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Too many login attempts. Please try again later.' }
+});
+
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Too many requests. Please try again later.' }
+});
+
+app.use('/api/auth', authLimiter);
+app.use('/api', apiLimiter);
 
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/users', require('./routes/users'));
@@ -36,18 +59,39 @@ app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/analytics', require('./routes/analytics'));
 app.use('/api/ml', require('./routes/ml'));
 app.use('/api/reports', require('./routes/reports'));
+app.use('/api/settings', require('./routes/settings'));
 
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.json({ status: 'ok', timestamp: new Date().toISOString(), service: 'fitsync-ai-api' });
+});
+
+app.use((req, res, next) => {
+  res.status(404).json({ message: 'Not found' });
 });
 
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ message: 'Internal server error', error: err.message });
+  if (err.type === 'entity.parse.failed') {
+    return res.status(400).json({ message: 'Invalid request format' });
+  }
+  if (err.name === 'CastError') {
+    return res.status(400).json({ message: 'Invalid identifier' });
+  }
+  console.error(err.stack || err);
+  const status = err.status || err.statusCode || 500;
+  const safeStatus = status >= 400 && status < 600 ? status : 500;
+  res.status(safeStatus).json({ message: safeStatus >= 500 ? 'Internal server error' : 'Request failed' });
 });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`FitSync AI Server running on port ${PORT}`);
-  startCronJobs();
-});
+connectDB()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`FitSync AI Server running on port ${PORT}`);
+      startCronJobs();
+    });
+    expireMemberships().catch((err) => console.error('[Startup] Expiry sweep failed:', err.message));
+  })
+  .catch((err) => {
+    console.error(`[Startup] Failed to start: ${err.message}`);
+    process.exit(1);
+  });

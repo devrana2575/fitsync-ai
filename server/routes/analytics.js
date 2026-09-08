@@ -22,6 +22,15 @@ router.get('/admin/dashboard', auth, authorize('admin'), async (req, res) => {
       endDate: { $lte: thirtyDays, $gte: now }
     });
 
+    const expiringMembers = await Membership.find({
+      status: 'ACTIVE',
+      endDate: { $lte: thirtyDays, $gte: now }
+    })
+      .populate('user', 'name email')
+      .populate('plan', 'name')
+      .sort({ endDate: 1 })
+      .limit(5);
+
     const totalRevenue = await Payment.aggregate([
       { $match: { status: 'COMPLETED' } },
       { $group: { _id: null, total: { $sum: '$amount' } } }
@@ -58,6 +67,7 @@ router.get('/admin/dashboard', auth, authorize('admin'), async (req, res) => {
       totalTrainers,
       activeMemberships,
       expiringSoon,
+      expiringMembers,
       totalRevenue: totalRevenue[0]?.total || 0,
       pendingPayments: pendingPayments[0]?.total || 0,
       todayAttendance,
@@ -66,7 +76,7 @@ router.get('/admin/dashboard', auth, authorize('admin'), async (req, res) => {
       retentionRate: parseFloat(retentionRate)
     });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
@@ -86,7 +96,7 @@ router.get('/admin/revenue-trend', auth, authorize('admin'), async (req, res) =>
     ]);
     res.json({ trend });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
@@ -101,7 +111,7 @@ router.get('/admin/attendance-trend', auth, authorize('admin'), async (req, res)
     ]);
     res.json({ trend });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
@@ -112,7 +122,7 @@ router.get('/admin/membership-distribution', auth, authorize('admin'), async (re
     ]);
     res.json({ distribution });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
@@ -125,7 +135,7 @@ router.get('/admin/peak-hours', auth, authorize('admin'), async (req, res) => {
     ]);
     res.json({ peakHours });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
@@ -144,7 +154,7 @@ router.get('/admin/monthly-revenue', auth, authorize('admin'), async (req, res) 
     ]);
     res.json({ data });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
@@ -165,16 +175,39 @@ router.get('/member/dashboard', auth, async (req, res) => {
 
     const latestMeasurement = await require('../models/BodyMeasurement').findOne({ user: userId }).sort({ date: -1 });
 
+    // Today's attendance check
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const startOfTomorrow = new Date(startOfToday);
+    startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
+    const todayAttendance = await Attendance.findOne({
+      user: userId,
+      checkInTime: { $gte: startOfToday, $lt: startOfTomorrow }
+    });
+
+    // Today's workout plan
+    const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const todayName = dayNames[new Date().getDay()];
+    const WorkoutPlan = require('../models/WorkoutPlan');
+    const todayWorkout = await WorkoutPlan.findOne({
+      member: userId,
+      isActive: true,
+      dayOfWeek: todayName
+    }).populate('exercises.exercise').populate('trainer', 'name');
+
     res.json({
       membership,
       totalDays,
       attendancePercentage,
       totalWorkouts,
       recentWorkouts,
-      latestMeasurement
+      latestMeasurement,
+      todayCheckIn: todayAttendance ? true : false,
+      todayCheckOut: todayAttendance?.checkOutTime ? true : false,
+      todayWorkout: todayWorkout || null
     });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
@@ -194,6 +227,7 @@ router.get('/trainer/dashboard', auth, authorize('trainer'), async (req, res) =>
       user: { $in: memberIds },
       date: { $gte: today, $lt: tomorrow }
     });
+    const Membership = require('../models/Membership');
 
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -202,14 +236,55 @@ router.get('/trainer/dashboard', auth, authorize('trainer'), async (req, res) =>
       date: { $gte: thirtyDaysAgo }
     });
 
+    const lastVisitMap = new Map();
+    if (memberIds.length > 0) {
+      const lastVisits = await Attendance.aggregate([
+        { $match: { user: { $in: memberIds } } },
+        { $sort: { checkInTime: -1 } },
+        { $group: { _id: '$user', lastCheckIn: { $first: '$checkInTime' } } }
+      ]);
+      lastVisits.forEach(v => lastVisitMap.set(v._id.toString(), v.lastCheckIn));
+    }
+
+    // Attention thresholds deliberately match existing business rules documented in
+    // server/utils/cron.js (low_attendance = no visit for 7+ days) and the admin
+    // dashboard expiringSoon window (membership ending within 30 days).
+    const ATTENDANCE_STALE_DAYS = 7;
+    const EXPIRY_SOON_DAYS = 30;
+
+    let expiringMembershipMap = new Map();
+    if (memberIds.length > 0) {
+      const now = new Date();
+      const expiryCutoff = new Date();
+      expiryCutoff.setDate(expiryCutoff.getDate() + EXPIRY_SOON_DAYS);
+      const expiringMemberships = await Membership.find({
+        user: { $in: memberIds },
+        status: 'ACTIVE',
+        endDate: { $gte: now, $lte: expiryCutoff }
+      }).select('user endDate plan').populate('plan', 'name');
+      expiringMembershipMap = new Map(expiringMemberships.map(m => [m.user.toString(), m]));
+    }
+
+    const now = Date.now();
+    const members = assignedMembers.map(m => {
+      const lastVisit = lastVisitMap.get(m.user._id.toString()) || null;
+      const attention = [];
+      if (!lastVisit || (now - new Date(lastVisit).getTime()) > ATTENDANCE_STALE_DAYS * 24 * 60 * 60 * 1000) {
+        attention.push('no_recent_attendance');
+      }
+      const expiring = expiringMembershipMap.get(m.user._id.toString());
+      if (expiring) attention.push('membership_expiring');
+      return { ...m.toObject(), lastVisit, attention };
+    });
+
     res.json({
       totalAssigned: assignedMembers.length,
-      members: assignedMembers,
+      members,
       todayAttendance,
       recentWorkouts
     });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 

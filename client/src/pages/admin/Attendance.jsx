@@ -1,7 +1,14 @@
 import { useState, useEffect } from 'react';
+import {
+  ClipboardDocumentCheckIcon,
+  CalendarDaysIcon,
+  CheckCircleIcon,
+  MapPinIcon,
+} from '@heroicons/react/24/outline';
 import api from '../../services/api';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import EmptyState from '../../components/common/EmptyState';
+import ErrorState from '../../components/common/ErrorState';
 import DataTable from '../../components/common/DataTable';
 import StatCard from '../../components/common/StatCard';
 
@@ -10,13 +17,16 @@ export default function Attendance() {
   const [todayRecords, setTodayRecords] = useState([]);
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedMember, setSelectedMember] = useState('');
   const [checkInLoading, setCheckInLoading] = useState(false);
+  const [checkOutId, setCheckOutId] = useState('');
   const [todayStats, setTodayStats] = useState(null);
 
   const fetchAll = async () => {
     setLoading(true);
+    setError(null);
     try {
       const [todayRes, dateRes, memRes] = await Promise.all([
         api.get('/attendance/today'),
@@ -29,7 +39,7 @@ export default function Attendance() {
       setMembers(memRes.data.data || memRes.data.members || []);
       setTodayStats({ count: Array.isArray(todayData) ? todayData.length : 0 });
     } catch (err) {
-      console.error(err);
+      setError(err.message || 'Failed to load attendance');
     } finally {
       setLoading(false);
     }
@@ -60,14 +70,26 @@ export default function Attendance() {
     return `${hrs}h ${mins}m`;
   };
 
+  const handleCheckOut = async (id) => {
+    setCheckOutId(id);
+    try {
+      await api.post(`/attendance/checkout/${id}`);
+      fetchAll();
+    } catch (err) {
+      alert(err.message || 'Check-out failed');
+    } finally {
+      setCheckOutId('');
+    }
+  };
+
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-slate-900">Attendance</h1>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <StatCard icon="📍" label="Today's Count" value={todayStats?.count || todayRecords.length} color="indigo" />
-        <StatCard icon="📅" label="Date" value={date} color="blue" />
-        <StatCard icon="🏃" label="Checked Out" value={todayRecords.filter(r => r.checkOutTime).length} color="green" />
+        <StatCard icon={ClipboardDocumentCheckIcon} label="Today's Count" value={todayStats?.count || todayRecords.length} color="indigo" />
+        <StatCard icon={CalendarDaysIcon} label="Date" value={date} color="blue" />
+        <StatCard icon={CheckCircleIcon} label="Checked Out" value={todayRecords.filter(r => r.checkOutTime).length} color="green" />
       </div>
 
       <div className="bg-white rounded-xl border border-slate-200 p-6">
@@ -93,15 +115,23 @@ export default function Attendance() {
         <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
       </div>
 
-      {loading ? <LoadingSpinner size="lg" /> : records.length === 0 ? (
-        <EmptyState icon="📍" message={`No attendance records for ${date}`} />
+      {error ? (
+        <div className="bg-white rounded-xl border border-slate-200">
+          <ErrorState message={error} onRetry={fetchAll} />
+        </div>
+      ) : loading ? <LoadingSpinner size="lg" /> : records.length === 0 ? (
+        <EmptyState icon={MapPinIcon} message={`No attendance records for ${date}`} />
       ) : (
         <DataTable headers={['Member', 'Check-in', 'Check-out', 'Duration', 'Method', 'Date']}>
           {records.map((r, i) => (
             <tr key={r._id} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
               <td className="px-6 py-4 font-medium text-slate-900">{r.user?.name || r.member?.name || '—'}</td>
               <td className="px-6 py-4 text-slate-600">{r.checkInTime ? new Date(r.checkInTime).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '—'}</td>
-              <td className="px-6 py-4 text-slate-600">{r.checkOutTime ? new Date(r.checkOutTime).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : <span className="text-yellow-600 font-medium">Still in</span>}</td>
+              <td className="px-6 py-4 text-slate-600">{r.checkOutTime ? new Date(r.checkOutTime).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : (
+                <button onClick={() => handleCheckOut(r._id)} disabled={checkOutId === r._id} className="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-medium transition-colors disabled:opacity-50">
+                  {checkOutId === r._id ? 'Checking out...' : 'Check Out'}
+                </button>
+              )}</td>
               <td className="px-6 py-4 text-slate-600">{formatDuration(r.checkInTime, r.checkOutTime)}</td>
               <td className="px-6 py-4 text-slate-600 capitalize">{r.method || 'manual'}</td>
               <td className="px-6 py-4 text-slate-600">{r.checkInTime ? new Date(r.checkInTime).toLocaleDateString('en-IN') : '—'}</td>

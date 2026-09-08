@@ -30,21 +30,22 @@ export default function Workouts() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [plansRes, historyRes, statsRes, exercisesRes] = await Promise.all([
-        api.get('/workouts/my').catch(() => ({ data: {} })),
-        api.get('/workout-logs/my').catch(() => ({ data: {} })),
-        api.get('/workout-logs/stats').catch(() => ({ data: {} })),
-        api.get('/exercises').catch(() => ({ data: {} })),
+      setError(null);
+      const [plansRes, historyRes, statsRes, exercisesRes] = await Promise.allSettled([
+        api.get('/workouts/my'),
+        api.get('/workout-logs/my'),
+        api.get('/workout-logs/stats'),
+        api.get('/exercises'),
       ]);
-      const plansData = plansRes.data?.plans || plansRes.data || [];
+      const plansData = plansRes.status === 'fulfilled' ? (plansRes.value.data?.plans || plansRes.value.data || []) : [];
       setPlans(Array.isArray(plansData) ? plansData : []);
-      const historyData = historyRes.data?.logs || historyRes.data || [];
+      const historyData = historyRes.status === 'fulfilled' ? (historyRes.value.data?.logs || historyRes.value.data || []) : [];
       setHistory(Array.isArray(historyData) ? historyData : []);
-      setStats(statsRes.data);
-      const exercisesData = exercisesRes.data?.exercises || exercisesRes.data || [];
+      setStats(statsRes.status === 'fulfilled' ? statsRes.value.data : null);
+      const exercisesData = exercisesRes.status === 'fulfilled' ? (exercisesRes.value.data?.exercises || exercisesRes.value.data || []) : [];
       setExercises(Array.isArray(exercisesData) ? exercisesData : []);
-    } catch (err) {
-      setError(err.message);
+      const failed = [plansRes, historyRes, statsRes, exercisesRes].filter((r) => r.status === 'rejected');
+      if (failed.length > 0) setError(failed.map((r) => r.reason?.message).filter(Boolean).join('; '));
     } finally {
       setLoading(false);
     }
@@ -294,7 +295,7 @@ export default function Workouts() {
                       {history.map((log, idx) => (
                         <tr key={log._id || log.id || idx} className="hover:bg-slate-50 transition-colors">
                           <td className="px-6 py-4 text-sm text-slate-900">
-                            {new Date(log.createdAt || log.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                            {new Date(log.createdAt || log.date).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' })}
                           </td>
                           <td className="px-6 py-4 text-sm font-medium text-slate-900">
                             {log.exercise?.name || log.exerciseName || '—'}

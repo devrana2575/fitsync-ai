@@ -28,6 +28,7 @@ export default function Goals() {
     description: '',
     target: '',
     current: '',
+    start: '',
     unit: '',
     targetDate: '',
   });
@@ -68,10 +69,11 @@ export default function Goals() {
         description: form.description,
         target: Number(form.target),
         current: Number(form.current) || 0,
+        start: form.start !== '' ? Number(form.start) : undefined,
         unit: form.unit,
         targetDate: form.targetDate || undefined,
       });
-      setForm({ type: '', title: '', description: '', target: '', current: '', unit: '', targetDate: '' });
+      setForm({ type: '', title: '', description: '', target: '', current: '', start: '', unit: '', targetDate: '' });
       setShowForm(false);
       fetchGoals();
     } catch (err) {
@@ -94,9 +96,18 @@ export default function Goals() {
     }
   };
 
+  const isDownGoal = (type) => ['weight_loss'].includes((type || '').toLowerCase());
+
   const getProgress = (goal) => {
-    if (!goal.target || goal.target === 0) return 0;
-    const pct = (goal.current / goal.target) * 100;
+    const target = Number(goal.target);
+    const start = goal.start ? Number(goal.start) : null;
+    const current = Number(goal.current ?? 0) || start || 0;
+    if (!target) return 0;
+    if (target === start) return 100;
+    if (start == null) return Math.min(Math.max((current / target) * 100, 0), 100);
+    const pct = isDownGoal(goal.type)
+      ? ((start - current) / (start - target)) * 100
+      : ((current - start) / (target - start)) * 100;
     return Math.min(Math.max(pct, 0), 100);
   };
 
@@ -184,6 +195,19 @@ export default function Goals() {
                   />
                 </div>
                 <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Starting Value</label>
+                  <input
+                    type="number"
+                    name="start"
+                    value={form.start}
+                    onChange={handleChange}
+                    min="0"
+                    step="0.1"
+                    placeholder="e.g. 80"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  />
+                </div>
+                <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Current Value</label>
                   <input
                     type="number"
@@ -267,7 +291,7 @@ export default function Goals() {
                     </div>
                     {goal.targetDate && (
                       <span className="text-xs text-slate-400 whitespace-nowrap">
-                        Target: {new Date(goal.targetDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        Target: {new Date(goal.targetDate).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' })}
                       </span>
                     )}
                   </div>
@@ -275,7 +299,11 @@ export default function Goals() {
                   <div className="mb-3">
                     <div className="flex items-center justify-between text-sm mb-1">
                       <span className="text-slate-600">
+                        {goal.start != null && (
+                          <span className="text-slate-400">{goal.start} → </span>
+                        )}
                         {goal.current ?? 0} / {goal.target} {goal.unit || ''}
+                        {isDownGoal(goal.type) ? ' (lower is better)' : ''}
                       </span>
                       <span className="font-medium text-slate-900">{Math.round(progress)}%</span>
                     </div>

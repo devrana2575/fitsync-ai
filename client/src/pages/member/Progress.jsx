@@ -68,13 +68,16 @@ export default function Progress() {
   };
 
   const chartData = measurements.map((m) => ({
-    date: new Date(m.createdAt || m.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+    date: new Date(m.createdAt || m.date).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' }),
     weight: m.weight || null,
     bmi: m.bmi || (m.weight && m.height ? Math.round((m.weight / ((m.height / 100) ** 2)) * 10) / 10 : null),
     chest: m.chest || null,
     waist: m.waist || null,
     hips: m.hips || null,
   }));
+
+  const points = (key) => chartData.filter((d) => d[key] != null).length;
+  const enough = (key, min = 2) => points(key) >= min;
 
   if (loading) return <LoadingSpinner />;
   if (error) return <div className="p-6 text-center text-red-600">{error}</div>;
@@ -148,7 +151,7 @@ export default function Progress() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           <div className="bg-white rounded-xl border border-slate-200 p-6">
             <h2 className="text-lg font-semibold text-slate-900 mb-4">Weight Trend</h2>
-            {chartData.some((d) => d.weight) ? (
+            {enough('weight') ? (
               <ResponsiveContainer width="100%" height={250}>
                 <LineChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
@@ -158,6 +161,8 @@ export default function Progress() {
                   <Line type="monotone" dataKey="weight" stroke="#6366f1" strokeWidth={2} dot={{ fill: '#6366f1' }} name="Weight (kg)" />
                 </LineChart>
               </ResponsiveContainer>
+            ) : points('weight') === 1 ? (
+              <div className="h-[250px] flex items-center justify-center text-slate-500 text-sm">Not enough data to show a trend — record another measurement</div>
             ) : (
               <div className="h-[250px] flex items-center justify-center text-slate-400 text-sm">No weight data yet</div>
             )}
@@ -165,7 +170,7 @@ export default function Progress() {
 
           <div className="bg-white rounded-xl border border-slate-200 p-6">
             <h2 className="text-lg font-semibold text-slate-900 mb-4">BMI Trend</h2>
-            {chartData.some((d) => d.bmi) ? (
+            {enough('bmi') ? (
               <ResponsiveContainer width="100%" height={250}>
                 <LineChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
@@ -175,6 +180,8 @@ export default function Progress() {
                   <Line type="monotone" dataKey="bmi" stroke="#10b981" strokeWidth={2} dot={{ fill: '#10b981' }} name="BMI" />
                 </LineChart>
               </ResponsiveContainer>
+            ) : points('bmi') === 1 ? (
+              <div className="h-[250px] flex items-center justify-center text-slate-500 text-sm">Not enough data to show a trend — record another measurement</div>
             ) : (
               <div className="h-[250px] flex items-center justify-center text-slate-400 text-sm">No BMI data yet (need weight + height)</div>
             )}
@@ -183,7 +190,7 @@ export default function Progress() {
 
         <div className="bg-white rounded-xl border border-slate-200 p-6 mb-8">
           <h2 className="text-lg font-semibold text-slate-900 mb-4">Body Measurements Over Time</h2>
-          {chartData.some((d) => d.chest || d.waist || d.hips) ? (
+          {enough('chest') || enough('waist') || enough('hips') ? (
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
@@ -196,6 +203,8 @@ export default function Progress() {
                 <Line type="monotone" dataKey="hips" stroke="#10b981" strokeWidth={2} dot={{ fill: '#10b981' }} name="Hips (cm)" />
               </LineChart>
             </ResponsiveContainer>
+          ) : points('chest') + points('waist') + points('hips') > 0 ? (
+            <div className="h-[300px] flex items-center justify-center text-slate-500 text-sm">Not enough data to show a trend — record another measurement</div>
           ) : (
             <div className="h-[300px] flex items-center justify-center text-slate-400 text-sm">No body measurement data yet</div>
           )}
@@ -228,7 +237,7 @@ export default function Progress() {
                     return (
                       <tr key={m._id || m.id || idx} className="hover:bg-slate-50 transition-colors">
                         <td className="px-4 py-3 text-sm font-medium text-slate-900 whitespace-nowrap">
-                          {new Date(m.createdAt || m.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                          {new Date(m.createdAt || m.date).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' })}
                         </td>
                         <td className="px-4 py-3 text-sm text-slate-600">{m.weight ? `${m.weight} kg` : '—'}</td>
                         <td className="px-4 py-3 text-sm text-slate-600">{m.height ? `${m.height} cm` : '—'}</td>

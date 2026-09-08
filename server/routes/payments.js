@@ -2,13 +2,49 @@ const express = require('express');
 const router = express.Router();
 const Payment = require('../models/Payment');
 const Membership = require('../models/Membership');
+const Notification = require('../models/Notification');
 const { auth, authorize } = require('../middleware/auth');
+const { parsePagination } = require('../utils/helpers');
+
+// A completed payment activates its linked membership when the membership is
+// not already active. Expired/pending memberships get a fresh active window
+// computed from the plan duration; active memberships are left untouched
+// (renewals are handled by the dedicated renew endpoint).
+const activateMembershipFromPayment = async (membershipId) => {
+  if (!membershipId) return;
+  const membership = await Membership.findById(membershipId).populate('plan');
+  if (!membership || membership.status === 'ACTIVE' || membership.status === 'CANCELLED') return;
+
+  const now = new Date();
+  if (membership.status === 'EXPIRED' || !membership.endDate || membership.endDate <= now) {
+    const start = new Date();
+    const end = new Date(start);
+    if (membership.plan && membership.plan.duration) {
+      end.setDate(end.getDate() + membership.plan.duration);
+    }
+    membership.startDate = start;
+    membership.endDate = end;
+  }
+  membership.status = 'ACTIVE';
+  await membership.save();
+};
+
+const notifyPaymentReceived = async (userId, amount) => {
+  if (!userId) return;
+  await Notification.create({
+    user: userId,
+    title: 'Payment Received',
+    message: `We received a payment of ₹${Number(amount || 0).toLocaleString('en-IN')}. Thank you!`,
+    type: 'general'
+  });
+};
 
 router.get('/', auth, authorize('admin'), async (req, res) => {
   try {
-    const { page = 1, limit = 20, status, userId, startDate, endDate } = req.query;
+    const { page, limit } = parsePagination(req.query.page, req.query.limit, 1, 20, 100);
+    const { status, userId, startDate, endDate } = req.query;
     const filter = {};
-    if (status) filter.status = status;
+    if (status) filter.status = status.toUpperCase();
     if (userId) filter.user = userId;
     if (startDate || endDate) {
       filter.date = {};
@@ -21,28 +57,30 @@ router.get('/', auth, authorize('admin'), async (req, res) => {
       .populate('user', 'name email')
       .populate('membership')
       .sort({ date: -1 })
-      .skip((parseInt(page) - 1) * parseInt(limit))
-      .limit(parseInt(limit));
+      .skip((page - 1) * limit)
+      .limit(limit);
 
-    res.json({ payments, total, page: parseInt(page), pages: Math.ceil(total / parseInt(limit)) });
+    res.json({ payments, total, page, pages: Math.ceil(total / limit) });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
 router.get('/my', auth, async (req, res) => {
   try {
     const payments = await Payment.find({ user: req.user._id })
+      .populate({ path: 'membership', populate: { path: 'plan', select: 'name' } })
       .sort({ date: -1 });
     res.json({ payments });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
 router.post('/', auth, authorize('admin'), async (req, res) => {
   try {
     const { userId, membershipId, amount, method, transactionId, notes, status } = req.body;
+    const normalizedStatus = (status || 'COMPLETED').toUpperCase();
 
     const payment = await Payment.create({
       user: userId,
@@ -51,27 +89,44 @@ router.post('/', auth, authorize('admin'), async (req, res) => {
       method: method || 'cash',
       transactionId,
       notes,
-      status: status || 'COMPLETED',
+      status: normalizedStatus,
       date: new Date()
     });
 
-    if (payment.status === 'COMPLETED' && membershipId) {
-      await Membership.findByIdAndUpdate(membershipId, { status: 'ACTIVE' });
+    if (payment.status === 'COMPLETED') {
+      await activateMembershipFromPayment(membershipId);
+      await notifyPaymentReceived(userId, amount);
     }
 
     res.status(201).json({ payment });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
 router.put('/:id', auth, authorize('admin'), async (req, res) => {
   try {
-    const payment = await Payment.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    if (!payment) return res.status(404).json({ message: 'Payment not found' });
+    const { amount, method, transactionId, notes, status } = req.body;
+    const update = {};
+    if (amount !== undefined) update.amount = amount;
+    if (method !== undefined) update.method = method;
+    if (transactionId !== undefined) update.transactionId = transactionId;
+    if (notes !== undefined) update.notes = notes;
+    if (status !== undefined) update.status = status.toUpperCase();
+
+    const existing = await Payment.findById(req.params.id);
+    if (!existing) return res.status(404).json({ message: 'Payment not found' });
+
+    const payment = await Payment.findByIdAndUpdate(req.params.id, update, { new: true });
+
+    if (payment.status === 'COMPLETED') {
+      await activateMembershipFromPayment(payment.membership);
+      await notifyPaymentReceived(payment.user, payment.amount);
+    }
+
     res.json({ payment });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
@@ -114,7 +169,7 @@ router.get('/stats', auth, authorize('admin'), async (req, res) => {
       monthlyTrend
     });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 

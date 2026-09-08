@@ -4,17 +4,26 @@ const User = require('../models/User');
 const MemberProfile = require('../models/MemberProfile');
 const Membership = require('../models/Membership');
 const Attendance = require('../models/Attendance');
+const Payment = require('../models/Payment');
+const WorkoutPlan = require('../models/WorkoutPlan');
+const WorkoutLog = require('../models/WorkoutLog');
+const FitnessGoal = require('../models/FitnessGoal');
+const BodyMeasurement = require('../models/BodyMeasurement');
+const AIInsight = require('../models/AIInsight');
 const { auth, authorize } = require('../middleware/auth');
 const { body, validationResult } = require('express-validator');
+const { escapeRegex, parsePagination } = require('../utils/helpers');
 
 router.get('/', auth, authorize('admin', 'trainer'), async (req, res) => {
   try {
-    const { page = 1, limit = 20, search, status } = req.query;
+    const { page, limit } = parsePagination(req.query.page, req.query.limit, 1, 20, 100);
+    const { search, status } = req.query;
     const filter = { role: 'member' };
     if (search) {
+      const escaped = escapeRegex(search);
       filter.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { email: { $regex: search, $options: 'i' } }
+        { name: { $regex: escaped, $options: 'i' } },
+        { email: { $regex: escaped, $options: 'i' } }
       ];
     }
     if (status === 'active') filter.isActive = true;
@@ -23,47 +32,125 @@ router.get('/', auth, authorize('admin', 'trainer'), async (req, res) => {
     const total = await User.countDocuments(filter);
     const members = await User.find(filter)
       .sort({ createdAt: -1 })
-      .skip((parseInt(page) - 1) * parseInt(limit))
-      .limit(parseInt(limit));
+      .skip((page - 1) * limit)
+      .limit(limit);
 
-    const membersWithProfiles = await Promise.all(
-      members.map(async (m) => {
-        const profile = await MemberProfile.findOne({ user: m._id }).populate('assignedTrainer', 'name');
-        return { ...m.toObject(), profile };
-      })
-    );
+    const memberIds = members.map((m) => m._id);
+    const profiles = memberIds.length > 0
+      ? await MemberProfile.find({ user: { $in: memberIds } }).populate('assignedTrainer', 'name')
+      : [];
+    const profileMap = new Map(profiles.map((p) => [p.user.toString(), p]));
+
+    const activeMemberships = memberIds.length > 0
+      ? await Membership.find({ user: { $in: memberIds }, status: 'ACTIVE' })
+          .populate('plan', 'name')
+          .sort({ endDate: -1 })
+      : [];
+    const membershipMap = new Map();
+    for (const m of activeMemberships) {
+      const key = m.user.toString();
+      if (!membershipMap.has(key)) membershipMap.set(key, m);
+    }
+
+    const membersWithProfiles = members.map((m) => {
+      const profile = profileMap.get(m._id.toString()) || null;
+      const membership = membershipMap.get(m._id.toString()) || null;
+      return { ...m.toObject(), profile, membership };
+    });
 
     res.json({
       members: membersWithProfiles,
       total,
-      page: parseInt(page),
-      pages: Math.ceil(total / parseInt(limit))
+      page,
+      pages: Math.ceil(total / limit)
     });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
-router.get('/:id', auth, async (req, res) => {
+router.get('/:id', auth, authorize('admin', 'trainer'), async (req, res) => {
   try {
     const member = await User.findById(req.params.id);
     if (!member || member.role !== 'member') {
       return res.status(404).json({ message: 'Member not found' });
     }
-    const profile = await MemberProfile.findOne({ user: member._id }).populate('assignedTrainer', 'name email');
-    const membership = await Membership.findOne({ user: member._id, status: 'ACTIVE' }).populate('plan');
-    const attendance = await Attendance.find({ user: member._id }).sort({ date: -1 }).limit(30);
 
-    res.json({ member, profile, membership, attendance });
+    const profile = await MemberProfile.findOne({ user: member._id }).populate('assignedTrainer', 'name email');
+
+    // A trainer may only view members assigned to them.
+    if (req.user.role === 'trainer' && (!profile || !profile.assignedTrainer || profile.assignedTrainer._id.toString() !== req.user._id.toString())) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const [memberships, attendance, payments, workoutPlans, workoutLogs, goals, measurements, insights, expiringMembership, lastVisit] = await Promise.all([
+      Membership.find({ user: member._id }).populate('plan').sort({ endDate: -1 }).limit(5),
+      Attendance.find({ user: member._id }).sort({ date: -1 }).limit(30),
+      Payment.find({ user: member._id })
+        .populate({ path: 'membership', populate: { path: 'plan', select: 'name' } })
+        .sort({ date: -1 })
+        .limit(10),
+      WorkoutPlan.find({ member: member._id, isActive: true })
+        .populate('trainer', 'name')
+        .populate('exercises.exercise')
+        .sort({ createdAt: -1 })
+        .limit(10),
+      WorkoutLog.find({ user: member._id })
+        .populate('exercise', 'name category muscleGroup')
+        .sort({ date: -1 })
+        .limit(20),
+      FitnessGoal.find({ user: member._id }).sort({ createdAt: -1 }).limit(10),
+      BodyMeasurement.find({ user: member._id }).sort({ date: -1 }).limit(10),
+      AIInsight.find({ user: member._id, isActive: true }).sort({ createdAt: -1 }).limit(10),
+      // Thresholds mirror server/utils/cron.js (7-day low-attendance) and the admin
+      // dashboard (30-day expiring-soon window). Single query per member view.
+      (async () => {
+        const now = new Date();
+        const cutoff = new Date();
+        cutoff.setDate(cutoff.getDate() + 30);
+        return Membership.findOne({ user: member._id, status: 'ACTIVE', endDate: { $gte: now, $lte: cutoff } })
+          .populate('plan', 'name')
+          .select('user status endDate plan');
+      })(),
+      (async () => {
+        const last = await Attendance.findOne({ user: member._id }).sort({ checkInTime: -1 }).select('checkInTime');
+        return last ? last.checkInTime : null;
+      })()
+    ]);
+
+    const activeMembership = memberships.find((m) => m.status === 'ACTIVE') || null;
+
+    const attention = [];
+    if (!lastVisit || (Date.now() - new Date(lastVisit).getTime()) > 7 * 24 * 60 * 60 * 1000) {
+      attention.push('no_recent_attendance');
+    }
+    if (expiringMembership) attention.push('membership_expiring');
+
+    res.json({
+      member,
+      profile,
+      membership: activeMembership,
+      memberships,
+      attendance,
+      payments,
+      workoutPlans,
+      workoutLogs,
+      goals,
+      measurements,
+      insights,
+      lastVisit,
+      attention
+    });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
 router.post('/', auth, authorize('admin'), [
   body('name').trim().notEmpty().withMessage('Name is required'),
   body('email').isEmail().withMessage('Valid email is required'),
-  body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters')
+  body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters')
+    .matches(/^(?=.*[A-Za-z])(?=.*\d).+$/).withMessage('Password must contain both letters and numbers')
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -89,7 +176,7 @@ router.post('/', auth, authorize('admin'), [
 
     res.status(201).json({ member: user });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
@@ -112,7 +199,7 @@ router.put('/:id', auth, authorize('admin'), async (req, res) => {
 
     res.json({ member: user });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
@@ -127,7 +214,7 @@ router.post('/:id/assign-trainer', auth, authorize('admin'), async (req, res) =>
     if (!profile) return res.status(404).json({ message: 'Member profile not found' });
     res.json({ profile });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
@@ -136,7 +223,7 @@ router.get('/trainer/:trainerId', auth, authorize('admin', 'trainer'), async (re
     const profiles = await MemberProfile.find({ assignedTrainer: req.params.trainerId }).populate('user', 'name email isActive');
     res.json({ members: profiles });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 

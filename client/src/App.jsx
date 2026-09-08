@@ -17,11 +17,17 @@ import AdminMLInsights from './pages/admin/MLInsights';
 import TrainerDashboard from './pages/trainer/Dashboard';
 import TrainerMembers from './pages/trainer/Members';
 import TrainerWorkouts from './pages/trainer/Workouts';
+import TrainerAttendance from './pages/trainer/Attendance';
 import MemberDashboard from './pages/member/Dashboard';
 import MemberAttendance from './pages/member/Attendance';
 import MemberWorkouts from './pages/member/Workouts';
 import MemberGoals from './pages/member/Goals';
 import MemberProgress from './pages/member/Progress';
+import MemberMembership from './pages/member/Membership';
+import MemberPayments from './pages/member/Payments';
+import MemberProfile from './pages/member/Profile';
+import MemberNotifications from './pages/member/Notifications';
+import MemberDetail from './pages/common/MemberDetail';
 
 function RootRedirect() {
   const { user, loading } = useAuth();
@@ -58,6 +64,7 @@ export default function App() {
           >
             <Route index element={<AdminDashboard />} />
             <Route path="members" element={<AdminMembers />} />
+            <Route path="members/:id" element={<MemberDetail />} />
             <Route path="trainers" element={<AdminTrainers />} />
             <Route path="memberships" element={<AdminMemberships />} />
             <Route path="payments" element={<AdminPayments />} />
@@ -77,6 +84,8 @@ export default function App() {
           >
             <Route index element={<TrainerDashboard />} />
             <Route path="members" element={<TrainerMembers />} />
+            <Route path="members/:id" element={<MemberDetail />} />
+            <Route path="attendance" element={<TrainerAttendance />} />
             <Route path="workouts" element={<TrainerWorkouts />} />
           </Route>
 
@@ -93,6 +102,10 @@ export default function App() {
             <Route path="workouts" element={<MemberWorkouts />} />
             <Route path="goals" element={<MemberGoals />} />
             <Route path="progress" element={<MemberProgress />} />
+            <Route path="membership" element={<MemberMembership />} />
+            <Route path="payments" element={<MemberPayments />} />
+            <Route path="profile" element={<MemberProfile />} />
+            <Route path="notifications" element={<MemberNotifications />} />
           </Route>
 
           <Route path="/" element={<RootRedirect />} />

@@ -1,11 +1,11 @@
 import os
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import joblib
 import numpy as np
 import pandas as pd
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, List
@@ -14,15 +14,17 @@ from pymongo import MongoClient
 
 app = FastAPI(title="FitSync AI ML Service", version="1.0.0")
 
+CORS_ORIGINS = [o.strip() for o in os.getenv("ML_CORS_ORIGINS", "http://localhost:5173,http://localhost:5000").split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 MONGODB_URI = os.getenv("MONGODB_URI", "mongodb://localhost:27017/fitsync-ai")
+ML_API_TOKEN = os.getenv("ML_API_TOKEN", "")
 MODELS_DIR = os.path.join(os.path.dirname(__file__), "models")
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 os.makedirs(MODELS_DIR, exist_ok=True)
@@ -35,9 +37,45 @@ db = None
 def get_db():
     global client, db
     if client is None:
-        client = MongoClient(MONGODB_URI)
+        client = MongoClient(MONGODB_URI, serverSelectionTimeoutMS=3000)
         db = client.get_database()
     return db
+
+
+def require_token(
+    x_api_key: Optional[str] = Header(None),
+    authorization: Optional[str] = Header(None),
+):
+    """Optional shared-secret guard for the ML endpoints.
+
+    Enabled only when ML_API_TOKEN is set (recommended for production).
+    When unset, requests are accepted so the local dev stack keeps working.
+    """
+    if not ML_API_TOKEN:
+        return
+    provided = x_api_key or ""
+    if authorization and authorization.lower().startswith("bearer "):
+        provided = authorization[7:]
+    if provided != ML_API_TOKEN:
+        raise HTTPException(status_code=401, detail="Invalid or missing API token")
+
+
+_model_cache = {}
+
+
+def load_model(name):
+    """Load a joblib artifact once and reuse it for subsequent requests."""
+    if name in _model_cache:
+        return _model_cache[name]
+    model_path = os.path.join(MODELS_DIR, f"{name}.joblib")
+    if not os.path.exists(model_path):
+        raise FileNotFoundError(name)
+    _model_cache[name] = joblib.load(model_path)
+    return _model_cache[name]
+
+
+def clear_models():
+    _model_cache.clear()
 
 
 class SegmentRequest(BaseModel):
@@ -56,55 +94,131 @@ class AttendanceRequest(BaseModel):
     days: int = 30
 
 
+@app.post("/reload-models", dependencies=[Depends(require_token)])
+def reload_models():
+    clear_models()
+    return {"status": "ok", "message": "Model cache cleared"}
+
+
 @app.get("/health")
 def health_check():
     try:
-        db = get_db()
-        db.command("ping")
+        get_db().command("ping")
         return {"status": "healthy", "mongodb": "connected", "timestamp": datetime.now().isoformat()}
     except Exception as e:
-        return {"status": "unhealthy", "mongodb": "disconnected", "error": str(e)}
+        raise HTTPException(status_code=503, detail={
+            "status": "unhealthy",
+            "mongodb": "disconnected",
+            "error": str(e),
+        })
+
+
+SEGMENT_FEATURES = ["attendance_30d", "attendance_pct", "days_since_visit", "workout_30d",
+                    "workout_completion", "membership_days_left", "payments_completed",
+                    "payments_pending", "membership_duration", "weight_change"]
+
+ENGAGEMENT_FEATURES = ["attendance_30d", "attendance_pct", "days_since_visit", "workout_30d",
+                       "workout_completion", "membership_days_left", "payments_pending",
+                       "membership_duration"]
 
 
 def fetch_member_features():
+    """Build the member-feature dataframe.
+
+    Equivalent to the previous per-member query loop but batched with MongoDB
+    aggregations so feature extracton scales with the member count. Field
+    names, formulas and defaults are unchanged so training and inference keep
+    using identical feature definitions.
+    """
     db = get_db()
-    from bson import ObjectId
 
     users = list(db.users.find({"role": "member", "isActive": True}))
     if not users:
         return pd.DataFrame()
 
+    member_ids = [u["_id"] for u in users]
     now = datetime.now()
-    thirty_days_ago = now - pd.Timedelta(days=30)
-    ninety_days_ago = now - pd.Timedelta(days=90)
+    thirty_days_ago = now - timedelta(days=30)
+
+    att_by_user = {}
+    for row in db.attendances.aggregate([
+        {"$match": {"user": {"$in": member_ids}}},
+        {"$group": {
+            "_id": "$user",
+            "total": {"$sum": 1},
+            "recent": {"$sum": {"$cond": [{"$gte": ["$date", thirty_days_ago]}, 1, 0]}},
+            "lastDate": {"$max": "$date"},
+        }},
+    ]):
+        att_by_user[row["_id"]] = row
+
+    wk_by_user = {}
+    for row in db.workoutlogs.aggregate([
+        {"$match": {"user": {"$in": member_ids}}},
+        {"$group": {
+            "_id": "$user",
+            "total": {"$sum": 1},
+            "recent": {"$sum": {"$cond": [{"$gte": ["$date", thirty_days_ago]}, 1, 0]}},
+            "recentCompleted": {"$sum": {"$cond": [
+                {"$and": [{"$gte": ["$date", thirty_days_ago]}, {"$eq": ["$isCompleted", True]}]},
+                1, 0,
+            ]}},
+        }},
+    ]):
+        wk_by_user[row["_id"]] = row
+
+    active_memberships = list(db.memberships.find(
+        {"user": {"$in": member_ids}, "status": "ACTIVE"},
+        {"user": 1, "endDate": 1},
+    ))
+    mem_by_user = {m["user"]: m for m in active_memberships}
+
+    pay_by_user = {}
+    for row in db.payments.aggregate([
+        {"$match": {"user": {"$in": member_ids}, "status": {"$in": ["COMPLETED", "PENDING"]}}},
+        {"$group": {"_id": {"user": "$user", "status": "$status"}, "count": {"$sum": 1}}},
+    ]):
+        key = row["_id"]["user"]
+        entry = pay_by_user.setdefault(key, {"COMPLETED": 0, "PENDING": 0})
+        entry[row["_id"]["status"]] = row["count"]
+
+    meas_by_user = {}
+    for row in db.bodymeasurements.aggregate([
+        {"$match": {"user": {"$in": member_ids}}},
+        {"$sort": {"date": -1}},
+        {"$group": {"_id": "$user", "weights": {"$push": {"weight": "$weight"}}}},
+    ]):
+        meas_by_user[row["_id"]] = row["weights"]
 
     records = []
     for user in users:
         uid = user["_id"]
 
-        attendance_total = db.attendances.count_documents({"user": uid})
-        attendance_30d = db.attendances.count_documents({"user": uid, "date": {"$gte": thirty_days_ago}})
+        att = att_by_user.get(uid)
+        attendance_total = att["total"] if att else 0
+        attendance_30d = att["recent"] if att else 0
+        last_att = att["lastDate"] if att else None
+        days_since_visit = (now - last_att).days if last_att else 999
 
-        last_att = db.attendances.find_one({"user": uid}, sort=[("date", -1)])
-        days_since_visit = (now - last_att["date"]).days if last_att else 999
+        wk = wk_by_user.get(uid)
+        workout_total = wk["total"] if wk else 0
+        workout_30d = wk["recent"] if wk else 0
+        completed_30d = wk["recentCompleted"] if wk else 0
 
-        workout_total = db.workoutlogs.count_documents({"user": uid})
-        workout_30d = db.workoutlogs.count_documents({"user": uid, "date": {"$gte": thirty_days_ago}})
-        completed_30d = db.workoutlogs.count_documents({"user": uid, "date": {"$gte": thirty_days_ago}, "isCompleted": True})
-
-        membership = db.memberships.find_one({"user": uid, "status": "ACTIVE"})
+        membership = mem_by_user.get(uid)
         membership_active = 1 if membership else 0
         membership_days_left = 0
         if membership and "endDate" in membership:
             membership_days_left = max(0, (membership["endDate"] - now).days)
 
-        payments_completed = db.payments.count_documents({"user": uid, "status": "COMPLETED"})
-        payments_pending = db.payments.count_documents({"user": uid, "status": "PENDING"})
+        pay = pay_by_user.get(uid, {"COMPLETED": 0, "PENDING": 0})
+        payments_completed = pay["COMPLETED"]
+        payments_pending = pay["PENDING"]
 
-        measurements = list(db.bodymeasurements.find({"user": uid}).sort("date", -1).limit(5))
+        weights = [w.get("weight", 0) for w in meas_by_user.get(uid, [])][:5]
         weight_change = 0
-        if len(measurements) >= 2:
-            weight_change = measurements[0].get("weight", 0) - measurements[-1].get("weight", 0)
+        if len(weights) >= 2:
+            weight_change = weights[0] - weights[-1]
 
         join_date = user.get("createdAt", now)
         membership_duration = (now - join_date).days
@@ -133,33 +247,18 @@ def fetch_member_features():
     return pd.DataFrame(records)
 
 
-@app.post("/predict/segment")
-def predict_segment(req: SegmentRequest):
-    if not req.memberId:
-        raise HTTPException(status_code=400, detail="memberId is required")
-
-    df = fetch_member_features()
-    if df.empty:
-        raise HTTPException(status_code=404, detail="No member data available")
-
-    model_path = os.path.join(MODELS_DIR, "segmentation_model.joblib")
-    scaler_path = os.path.join(MODELS_DIR, "segmentation_scaler.joblib")
-
-    if not os.path.exists(model_path):
-        raise HTTPException(status_code=503, detail="Segmentation model not trained yet. Run training first.")
-
-    model = joblib.load(model_path)
-    scaler = joblib.load(scaler_path)
-
-    feature_cols = ["attendance_30d", "attendance_pct", "days_since_visit", "workout_30d",
-                    "workout_completion", "membership_days_left", "payments_completed",
-                    "payments_pending", "membership_duration", "weight_change"]
-
-    member_row = df[df["memberId"] == req.memberId]
+def _segment(df, req_member_id):
+    member_row = df[df["memberId"] == req_member_id]
     if member_row.empty:
         raise HTTPException(status_code=404, detail="Member not found in data")
 
-    X = member_row[feature_cols].values
+    try:
+        model = load_model("segmentation_model")
+        scaler = load_model("segmentation_scaler")
+    except FileNotFoundError:
+        raise HTTPException(status_code=503, detail="Segmentation model not trained yet. Run training first.")
+
+    X = member_row[SEGMENT_FEATURES].values
     X_scaled = scaler.transform(X)
     cluster = model.predict(X_scaled)[0]
 
@@ -179,36 +278,25 @@ def predict_segment(req: SegmentRequest):
         segment = "Inactive"
 
     return {
-        "memberId": req.memberId,
+        "memberId": req_member_id,
         "name": member_row.iloc[0]["name"],
         "segment": segment,
         "confidence": round(float(1.0 / (1.0 + min(model.transform(X_scaled)[0]))), 4),
-        "features": {col: float(member_row.iloc[0][col]) for col in feature_cols}
+        "features": {col: float(member_row.iloc[0][col]) for col in SEGMENT_FEATURES}
     }
 
 
-@app.post("/predict/segment-all")
-def predict_segment_all():
-    df = fetch_member_features()
-    if df.empty:
-        return {"predictions": [], "message": "No member data available"}
-
-    model_path = os.path.join(MODELS_DIR, "segmentation_model.joblib")
-    scaler_path = os.path.join(MODELS_DIR, "segmentation_scaler.joblib")
-
-    if not os.path.exists(model_path):
+def _segment_all(df):
+    try:
+        model = load_model("segmentation_model")
+        scaler = load_model("segmentation_scaler")
+    except FileNotFoundError:
         return {"predictions": [], "message": "Model not trained"}
 
-    model = joblib.load(model_path)
-    scaler = joblib.load(scaler_path)
-
-    feature_cols = ["attendance_30d", "attendance_pct", "days_since_visit", "workout_30d",
-                    "workout_completion", "membership_days_left", "payments_completed",
-                    "payments_pending", "membership_duration", "weight_change"]
-
-    X = df[feature_cols].values
+    X = df[SEGMENT_FEATURES].values
     X_scaled = scaler.transform(X)
     clusters = model.predict(X_scaled)
+    transformed = model.transform(X_scaled)
 
     predictions = []
     for i, (_, row) in enumerate(df.iterrows()):
@@ -228,40 +316,25 @@ def predict_segment_all():
             "memberId": row["memberId"],
             "name": row["name"],
             "segment": segment,
-            "confidence": round(float(1.0 / (1.0 + min(model.transform(X_scaled[i:i+1])[0]))), 4),
-            "features": {col: float(row[col]) for col in feature_cols}
+            "confidence": round(float(1.0 / (1.0 + min(transformed[i]))), 4),
+            "features": {col: float(row[col]) for col in SEGMENT_FEATURES}
         })
 
     return {"predictions": predictions, "total": len(predictions)}
 
 
-@app.post("/predict/engagement-risk")
-def predict_engagement_risk(req: EngagementRiskRequest):
-    if not req.memberId:
-        raise HTTPException(status_code=400, detail="memberId is required")
-
-    df = fetch_member_features()
-    if df.empty:
-        raise HTTPException(status_code=404, detail="No member data available")
-
-    model_path = os.path.join(MODELS_DIR, "engagement_model.joblib")
-    scaler_path = os.path.join(MODELS_DIR, "engagement_scaler.joblib")
-
-    if not os.path.exists(model_path):
-        raise HTTPException(status_code=503, detail="Engagement model not trained yet.")
-
-    model = joblib.load(model_path)
-    scaler = joblib.load(scaler_path)
-
-    feature_cols = ["attendance_30d", "attendance_pct", "days_since_visit", "workout_30d",
-                    "workout_completion", "membership_days_left", "payments_pending",
-                    "membership_duration"]
-
-    member_row = df[df["memberId"] == req.memberId]
+def _engagement_risk(df, req_member_id):
+    member_row = df[df["memberId"] == req_member_id]
     if member_row.empty:
         raise HTTPException(status_code=404, detail="Member not found")
 
-    X = member_row[feature_cols].values
+    try:
+        model = load_model("engagement_model")
+        scaler = load_model("engagement_scaler")
+    except FileNotFoundError:
+        raise HTTPException(status_code=503, detail="Engagement model not trained yet.")
+
+    X = member_row[ENGAGEMENT_FEATURES].values
     X_scaled = scaler.transform(X)
 
     risk_proba = model.predict_proba(X_scaled)[0]
@@ -282,38 +355,26 @@ def predict_engagement_risk(req: EngagementRiskRequest):
     if member["payments_pending"] > 0:
         reasons.append(f"Has {int(member['payments_pending'])} pending payment(s)")
 
-    reason = "; ".join(reasons) if reasons else f"Overall risk assessment based on behavioral patterns"
+    reason = "; ".join(reasons) if reasons else "Overall risk assessment based on behavioral patterns"
 
     return {
-        "memberId": req.memberId,
+        "memberId": req_member_id,
         "name": member["name"],
         "riskLevel": risk_level,
         "probability": round(probability, 4),
         "reason": reason,
-        "features": {col: float(member[col]) for col in feature_cols}
+        "features": {col: float(member[col]) for col in ENGAGEMENT_FEATURES}
     }
 
 
-@app.post("/predict/engagement-risk-all")
-def predict_engagement_risk_all():
-    df = fetch_member_features()
-    if df.empty:
-        return {"predictions": [], "message": "No data available"}
-
-    model_path = os.path.join(MODELS_DIR, "engagement_model.joblib")
-    scaler_path = os.path.join(MODELS_DIR, "engagement_scaler.joblib")
-
-    if not os.path.exists(model_path):
+def _engagement_risk_all(df):
+    try:
+        model = load_model("engagement_model")
+        scaler = load_model("engagement_scaler")
+    except FileNotFoundError:
         return {"predictions": [], "message": "Model not trained"}
 
-    model = joblib.load(model_path)
-    scaler = joblib.load(scaler_path)
-
-    feature_cols = ["attendance_30d", "attendance_pct", "days_since_visit", "workout_30d",
-                    "workout_completion", "membership_days_left", "payments_pending",
-                    "membership_duration"]
-
-    X = df[feature_cols].values
+    X = df[ENGAGEMENT_FEATURES].values
     X_scaled = scaler.transform(X)
     risk_probas = model.predict_proba(X_scaled)
     risk_classes = model.predict(X_scaled)
@@ -339,13 +400,55 @@ def predict_engagement_risk_all():
             "riskLevel": risk_level,
             "probability": round(probability, 4),
             "reason": "; ".join(reasons) if reasons else "Behavioral pattern assessment",
-            "features": {col: float(row[col]) for col in feature_cols}
+            "features": {col: float(row[col]) for col in ENGAGEMENT_FEATURES}
         })
 
     return {"predictions": predictions, "total": len(predictions)}
 
 
-@app.post("/predict/progress-anomaly")
+@app.post("/predict/segment", dependencies=[Depends(require_token)])
+def predict_segment(req: SegmentRequest):
+    if not req.memberId:
+        raise HTTPException(status_code=400, detail="memberId is required")
+
+    df = fetch_member_features()
+    if df.empty:
+        raise HTTPException(status_code=404, detail="No member data available")
+
+    return _segment(df, req.memberId)
+
+
+@app.post("/predict/segment-all", dependencies=[Depends(require_token)])
+def predict_segment_all():
+    df = fetch_member_features()
+    if df.empty:
+        return {"predictions": [], "message": "No member data available"}
+
+    return _segment_all(df)
+
+
+@app.post("/predict/engagement-risk", dependencies=[Depends(require_token)])
+def predict_engagement_risk(req: EngagementRiskRequest):
+    if not req.memberId:
+        raise HTTPException(status_code=400, detail="memberId is required")
+
+    df = fetch_member_features()
+    if df.empty:
+        raise HTTPException(status_code=404, detail="No member data available")
+
+    return _engagement_risk(df, req.memberId)
+
+
+@app.post("/predict/engagement-risk-all", dependencies=[Depends(require_token)])
+def predict_engagement_risk_all():
+    df = fetch_member_features()
+    if df.empty:
+        return {"predictions": [], "message": "No data available"}
+
+    return _engagement_risk_all(df)
+
+
+@app.post("/predict/progress-anomaly", dependencies=[Depends(require_token)])
 def predict_progress_anomaly(req: ProgressAnomalyRequest):
     db = get_db()
     from bson import ObjectId
@@ -431,10 +534,9 @@ def predict_progress_anomaly(req: ProgressAnomalyRequest):
     }
 
 
-@app.post("/predict/attendance")
+@app.post("/predict/attendance", dependencies=[Depends(require_token)])
 def predict_attendance(req: AttendanceRequest):
     db = get_db()
-    from datetime import timedelta
 
     days = req.days
     now = datetime.now()

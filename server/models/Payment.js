@@ -44,5 +44,6 @@ const paymentSchema = new mongoose.Schema({
 paymentSchema.index({ user: 1 });
 paymentSchema.index({ status: 1 });
 paymentSchema.index({ date: -1 });
+paymentSchema.index({ user: 1, date: -1 });
 
 module.exports = mongoose.model('Payment', paymentSchema);

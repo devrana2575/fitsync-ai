@@ -1,7 +1,11 @@
 import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
+import { BanknotesIcon, CalendarDaysIcon, CreditCardIcon, ClockIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 import api from '../../services/api';
+import useDebounce from '../../hooks/useDebounce';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import EmptyState from '../../components/common/EmptyState';
+import ErrorState from '../../components/common/ErrorState';
 import Modal from '../../components/common/Modal';
 import DataTable from '../../components/common/DataTable';
 import StatCard from '../../components/common/StatCard';
@@ -9,30 +13,108 @@ import StatCard from '../../components/common/StatCard';
 const initialForm = { userId: '', membershipId: '', amount: '', method: 'cash', status: 'completed', notes: '' };
 
 export default function Payments() {
+  const location = useLocation();
   const [payments, setPayments] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState(initialForm);
   const [saving, setSaving] = useState(false);
+  const [statusFilter, setStatusFilter] = useState('');
+  const [memberFilter, setMemberFilter] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
 
-  const fetchAll = async () => {
+  const [allMembers, setAllMembers] = useState([]);
+  const [memberSearch, setMemberSearch] = useState('');
+  const debouncedMemberSearch = useDebounce(memberSearch, 300);
+  const [selectedMember, setSelectedMember] = useState(null);
+  const [memberMemberships, setMemberMemberships] = useState([]);
+  const [error, setError] = useState(null);
+  const [loadingMemberships, setLoadingMemberships] = useState(false);
+
+  const fetchAll = async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true);
+    setLoading(true);
+    setError(null);
     try {
-      setLoading(true);
+      const params = {};
+      if (statusFilter) params.status = statusFilter.toUpperCase();
+      if (memberFilter) params.userId = memberFilter;
+      if (dateFrom) params.startDate = new Date(`${dateFrom}T00:00:00`).toISOString();
+      if (dateTo) params.endDate = new Date(`${dateTo}T23:59:59`).toISOString();
       const [payRes, statRes] = await Promise.all([
-        api.get('/payments'),
+        api.get('/payments', { params }),
         api.get('/payments/stats'),
       ]);
       setPayments(payRes.data.data || payRes.data.payments || []);
       setStats(statRes.data.data || statRes.data);
     } catch (err) {
-      console.error(err);
+      setError(err.message || 'Failed to load payments');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
-  useEffect(() => { fetchAll(); }, []);
+  useEffect(() => { fetchAll(); }, [statusFilter, memberFilter, dateFrom, dateTo]);
+
+  useEffect(() => {
+    if (location.state?.openCreate) {
+      setForm(initialForm);
+      setSelectedMember(null);
+      setMemberMemberships([]);
+      setMemberSearch('');
+      setShowModal(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    const fetchMembers = async () => {
+      try {
+        const res = await api.get('/members', { params: { limit: 200 } });
+        setAllMembers(res.data.data || res.data.members || []);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchMembers();
+  }, []);
+
+  const fetchMemberMemberships = async (memberId) => {
+    setLoadingMemberships(true);
+    setMemberMemberships([]);
+    try {
+      const res = await api.get('/memberships', { params: { userId: memberId } });
+      setMemberMemberships(res.data.data || res.data.memberships || []);
+    } catch (err) {
+      console.error(err);
+      setMemberMemberships([]);
+    } finally {
+      setLoadingMemberships(false);
+    }
+  };
+
+  const filteredMembers = allMembers.filter((m) => {
+    if (!debouncedMemberSearch) return true;
+    const q = debouncedMemberSearch.toLowerCase();
+    return (m.name || '').toLowerCase().includes(q) || (m.email || '').toLowerCase().includes(q);
+  });
+
+  const handleMemberSelect = (member) => {
+    setSelectedMember(member);
+    setMemberSearch('');
+    setForm((f) => ({ ...f, userId: member._id, membershipId: '' }));
+    fetchMemberMemberships(member._id);
+  };
+
+  const handleSubmittedMemberChange = () => {
+    setSelectedMember(null);
+    setMemberMemberships([]);
+    setForm((f) => ({ ...f, userId: '', membershipId: '' }));
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -41,6 +123,9 @@ export default function Payments() {
       await api.post('/payments', { ...form, amount: Number(form.amount) });
       setShowModal(false);
       setForm(initialForm);
+      setSelectedMember(null);
+      setMemberMemberships([]);
+      setMemberSearch('');
       fetchAll();
     } catch (err) {
       alert(err.message || 'Failed to add payment');
@@ -60,22 +145,69 @@ export default function Payments() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-slate-900">Payments</h1>
-        <button onClick={() => { setForm(initialForm); setShowModal(true); }} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
-          + Add Payment
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => fetchAll(true)} disabled={refreshing} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50">
+            <ArrowPathIcon className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} aria-hidden="true" />
+            Refresh
+          </button>
+          <button onClick={() => { setForm(initialForm); setSelectedMember(null); setMemberMemberships([]); setMemberSearch(''); setShowModal(true); }} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
+            + Add Payment
+          </button>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl border border-slate-200 p-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+          <div>
+            <label className="block text-xs font-medium text-slate-500 mb-1">Status</label>
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+              <option value="">All statuses</option>
+              <option value="COMPLETED">Completed</option>
+              <option value="PENDING">Pending</option>
+              <option value="FAILED">Failed</option>
+              <option value="REFUNDED">Refunded</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-500 mb-1">Member</label>
+            <select value={memberFilter} onChange={(e) => setMemberFilter(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+              <option value="">All members</option>
+              {allMembers.map((m) => (
+                <option key={m._id} value={m._id}>{m.name}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-500 mb-1">From</label>
+            <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-500 mb-1">To</label>
+            <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+          </div>
+          <div className="flex items-end">
+            <button onClick={() => { setStatusFilter(''); setMemberFilter(''); setDateFrom(''); setDateTo(''); }} className="w-full px-3 py-2 rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-50 text-sm font-medium">
+              Clear
+            </button>
+          </div>
+        </div>
       </div>
 
       {stats && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <StatCard icon="💰" label="Total Revenue" value={fmtCurrency(stats.totalRevenue || stats.total)} color="indigo" />
-          <StatCard icon="📅" label="Monthly Revenue" value={fmtCurrency(stats.monthlyRevenue || stats.monthly)} color="green" />
-          <StatCard icon="⏳" label="Pending" value={fmtCurrency(stats.pending || stats.pendingAmount)} color="yellow" />
+          <StatCard icon={BanknotesIcon} label="Total Revenue" value={fmtCurrency(stats.totalRevenue || stats.total)} color="indigo" />
+          <StatCard icon={CalendarDaysIcon} label="Monthly Revenue" value={fmtCurrency(stats.monthlyRevenue || stats.monthly)} color="green" />
+          <StatCard icon={ClockIcon} label="Pending" value={fmtCurrency(stats.pending || stats.pendingAmount)} color="yellow" />
         </div>
       )}
 
-      {loading ? <LoadingSpinner size="lg" /> : payments.length === 0 ? (
-        <EmptyState icon="💳" message="No payments recorded yet" action={
-          <button onClick={() => { setForm(initialForm); setShowModal(true); }} className="text-indigo-600 hover:text-indigo-800 font-medium">Add first payment</button>
+      {error ? (
+        <div className="bg-white rounded-xl border border-slate-200">
+          <ErrorState message={error} onRetry={fetchAll} />
+        </div>
+      ) : loading ? <LoadingSpinner size="lg" /> : payments.length === 0 ? (
+        <EmptyState icon={CreditCardIcon} message="No payments recorded yet" action={
+          <button onClick={() => { setForm(initialForm); setSelectedMember(null); setMemberMemberships([]); setMemberSearch(''); setShowModal(true); }} className="text-indigo-600 hover:text-indigo-800 font-medium">Add first payment</button>
         } />
       ) : (
         <DataTable headers={['Member', 'Amount', 'Method', 'Status', 'Date', 'Notes']}>
@@ -96,13 +228,47 @@ export default function Payments() {
 
       <Modal isOpen={showModal} onClose={() => setShowModal(false)} title="Add Payment">
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">User ID</label>
-            <input required value={form.userId} onChange={(e) => setForm({ ...form, userId: e.target.value })} placeholder="Member user ID" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+          <div className="relative">
+            <label className="block text-sm font-medium text-slate-700 mb-1">Select Member</label>
+            {selectedMember ? (
+              <div className="flex items-center gap-2 px-3 py-2 border border-slate-300 rounded-lg bg-slate-50">
+                <span className="flex-1 text-sm text-slate-900">{selectedMember.name} ({selectedMember.email})</span>
+                <button type="button" onClick={handleSubmittedMemberChange} className="text-slate-400 hover:text-slate-600 text-lg leading-none">&times;</button>
+              </div>
+            ) : (
+              <input
+                value={memberSearch}
+                onChange={(e) => setMemberSearch(e.target.value)}
+                placeholder="Search member..."
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+              />
+            )}
+            {memberSearch && !selectedMember && filteredMembers.length > 0 && (
+              <ul className="absolute z-10 mt-1 w-full bg-white border border-slate-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                {filteredMembers.slice(0, 20).map((m) => (
+                  <li key={m._id} onClick={() => handleMemberSelect(m)} className="px-3 py-2 text-sm hover:bg-indigo-50 cursor-pointer">
+                    {m.name} <span className="text-slate-500">({m.email})</span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Membership ID</label>
-            <input value={form.membershipId} onChange={(e) => setForm({ ...form, membershipId: e.target.value })} placeholder="Membership ID (optional)" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+            <label className="block text-sm font-medium text-slate-700 mb-1">Membership (optional)</label>
+            {!selectedMember ? (
+              <input disabled placeholder="Select a member first" className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-slate-50 text-slate-400" />
+            ) : loadingMemberships ? (
+              <input disabled placeholder="Loading memberships..." className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-slate-50 text-slate-400" />
+            ) : memberMemberships.length === 0 ? (
+              <div className="px-3 py-2 border border-slate-300 rounded-lg bg-slate-50 text-sm text-slate-500">No memberships found for this member</div>
+            ) : (
+              <select value={form.membershipId} onChange={(e) => setForm({ ...form, membershipId: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                <option value="">None</option>
+                {memberMemberships.map((m) => (
+                  <option key={m._id} value={m._id}>{m.plan?.name || 'Membership'} — {(m.status || '').toUpperCase()}</option>
+                ))}
+              </select>
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Amount (₹)</label>

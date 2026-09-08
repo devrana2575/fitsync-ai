@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { MapPinIcon } from '@heroicons/react/24/outline';
 import api from '../../services/api';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 
@@ -6,6 +7,7 @@ export default function Attendance() {
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
   const [checking, setChecking] = useState(false);
+  const [checkingOutId, setCheckingOutId] = useState('');
   const [error, setError] = useState(null);
   const [view, setView] = useState('table');
 
@@ -35,6 +37,18 @@ export default function Attendance() {
       alert(err.message);
     } finally {
       setChecking(false);
+    }
+  };
+
+  const handleCheckOut = async (id) => {
+    try {
+      setCheckingOutId(id);
+      await api.post(`/attendance/checkout/${id}`);
+      fetchAttendance();
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setCheckingOutId('');
     }
   };
 
@@ -85,7 +99,12 @@ export default function Attendance() {
               disabled={checking}
               className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors disabled:opacity-50"
             >
-              {checking ? 'Checking in...' : '📍 Check In'}
+              {checking ? 'Checking in...' : (
+                <>
+                  <MapPinIcon className="h-4 w-4" aria-hidden="true" />
+                  Check In
+                </>
+              )}
             </button>
           </div>
         </div>
@@ -127,13 +146,17 @@ export default function Attendance() {
                   {records.map((r, idx) => (
                     <tr key={r._id || r.id || idx} className="hover:bg-slate-50 transition-colors">
                       <td className="px-6 py-4 text-sm font-medium text-slate-900">
-                        {new Date(r.checkInTime || r.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                        {new Date(r.checkInTime || r.date).toLocaleDateString('en-IN', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
                       </td>
                       <td className="px-6 py-4 text-sm text-slate-500">
-                        {r.checkInTime ? new Date(r.checkInTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : '—'}
+                        {r.checkInTime ? new Date(r.checkInTime).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' }) : '—'}
                       </td>
                       <td className="px-6 py-4 text-sm text-slate-500">
-                        {r.checkOutTime ? new Date(r.checkOutTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : '—'}
+                        {r.checkOutTime ? new Date(r.checkOutTime).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' }) : (
+                          <button onClick={() => handleCheckOut(r._id || r.id)} disabled={checkingOutId === (r._id || r.id)} className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50">
+                            {checkingOutId === (r._id || r.id) ? 'Checking out...' : 'Check Out'}
+                          </button>
+                        )}
                       </td>
                       <td className="px-6 py-4 text-sm text-slate-500">{formatDuration(r.duration)}</td>
                       <td className="px-6 py-4">
@@ -151,7 +174,7 @@ export default function Attendance() {
           <div className="space-y-6">
             {Object.entries(groupedByMonth).sort((a, b) => b[0].localeCompare(a[0])).map(([monthKey, monthRecords]) => {
               const [year, month] = monthKey.split('-');
-              const monthName = new Date(year, month - 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+              const monthName = new Date(year, month - 1).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
               return (
                 <div key={monthKey} className="bg-white rounded-xl border border-slate-200 p-6">
                   <div className="flex items-center justify-between mb-4">

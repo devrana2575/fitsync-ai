@@ -3,15 +3,14 @@ const router = express.Router();
 const { body, validationResult } = require('express-validator');
 const User = require('../models/User');
 const MemberProfile = require('../models/MemberProfile');
-const TrainerProfile = require('../models/TrainerProfile');
 const { generateToken } = require('../utils/helpers');
 const { auth } = require('../middleware/auth');
 
 router.post('/register', [
   body('name').trim().notEmpty().withMessage('Name is required'),
   body('email').isEmail().withMessage('Valid email is required'),
-  body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
-  body('role').isIn(['admin', 'trainer', 'member']).withMessage('Invalid role')
+  body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters')
+    .matches(/^(?=.*[A-Za-z])(?=.*\d).+$/).withMessage('Password must contain both letters and numbers')
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -19,24 +18,16 @@ router.post('/register', [
       return res.status(400).json({ message: errors.array()[0].msg });
     }
 
-    const { name, email, password, role, phone, specializations } = req.body;
+    const { name, email, password, phone, specializations } = req.body;
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ message: 'Email already registered' });
     }
 
-    const user = await User.create({ name, email, password, role });
+    const user = await User.create({ name, email, password, role: 'member' });
 
-    if (role === 'member') {
-      await MemberProfile.create({ user: user._id, phone });
-    } else if (role === 'trainer') {
-      await TrainerProfile.create({
-        user: user._id,
-        phone,
-        specializations: specializations || []
-      });
-    }
+    await MemberProfile.create({ user: user._id, phone });
 
     const token = generateToken(user._id);
 
@@ -50,7 +41,7 @@ router.post('/register', [
       }
     });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
@@ -92,7 +83,37 @@ router.post('/login', [
       }
     });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.put('/change-password', [
+  body('currentPassword').notEmpty().withMessage('Current password is required'),
+  body('newPassword').isLength({ min: 8 }).withMessage('New password must be at least 8 characters')
+    .matches(/^(?=.*[A-Za-z])(?=.*\d).+$/).withMessage('New password must contain both letters and numbers')
+], auth, async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ message: errors.array()[0].msg });
+    }
+
+    const user = await User.findById(req.user._id).select('+password');
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    const isMatch = await user.comparePassword(req.body.currentPassword);
+    if (!isMatch) return res.status(400).json({ message: 'Current password is incorrect' });
+
+    if (req.body.currentPassword === req.body.newPassword) {
+      return res.status(400).json({ message: 'New password must be different from the current password' });
+    }
+
+    user.password = req.body.newPassword;
+    await user.save();
+
+    res.json({ message: 'Password updated successfully' });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
@@ -109,7 +130,7 @@ router.get('/me', auth, async (req, res) => {
 
     res.json({ user, profile });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
@@ -134,7 +155,7 @@ router.put('/me', auth, async (req, res) => {
 
     res.json({ user });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 

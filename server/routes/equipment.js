@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Equipment = require('../models/Equipment');
 const { auth, authorize } = require('../middleware/auth');
+const { escapeRegex } = require('../utils/helpers');
 
 router.get('/', auth, async (req, res) => {
   try {
@@ -9,11 +10,11 @@ router.get('/', auth, async (req, res) => {
     const filter = {};
     if (category) filter.category = category;
     if (condition) filter.condition = condition;
-    if (search) filter.name = { $regex: search, $options: 'i' };
+    if (search) filter.name = { $regex: escapeRegex(search), $options: 'i' };
     const equipment = await Equipment.find(filter).sort({ name: 1 });
     res.json({ equipment });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
@@ -26,26 +27,55 @@ router.get('/maintenance', auth, authorize('admin'), async (req, res) => {
     }).sort({ nextMaintenance: 1 });
     res.json({ equipment: upcoming });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
 router.post('/', auth, authorize('admin'), async (req, res) => {
   try {
-    const equipment = await Equipment.create(req.body);
+    const { name, category, brand, model, condition, status, purchaseDate, lastMaintenance, nextMaintenance, location, notes, isActive } = req.body;
+    const equipment = await Equipment.create({
+      name,
+      category: category || 'strength',
+      brand,
+      model,
+      condition: condition || 'good',
+      status: status || 'available',
+      purchaseDate,
+      lastMaintenance,
+      nextMaintenance,
+      location,
+      notes,
+      isActive: isActive !== undefined ? isActive : true
+    });
     res.status(201).json({ equipment });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
 router.put('/:id', auth, authorize('admin'), async (req, res) => {
   try {
-    const equipment = await Equipment.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const { name, category, brand, model, condition, status, purchaseDate, lastMaintenance, nextMaintenance, location, notes, isActive } = req.body;
+    const update = {};
+    if (name !== undefined) update.name = name;
+    if (category !== undefined) update.category = category;
+    if (brand !== undefined) update.brand = brand;
+    if (model !== undefined) update.model = model;
+    if (condition !== undefined) update.condition = condition;
+    if (status !== undefined) update.status = status;
+    if (purchaseDate !== undefined) update.purchaseDate = purchaseDate;
+    if (lastMaintenance !== undefined) update.lastMaintenance = lastMaintenance;
+    if (nextMaintenance !== undefined) update.nextMaintenance = nextMaintenance;
+    if (location !== undefined) update.location = location;
+    if (notes !== undefined) update.notes = notes;
+    if (isActive !== undefined) update.isActive = isActive;
+
+    const equipment = await Equipment.findByIdAndUpdate(req.params.id, update, { new: true });
     if (!equipment) return res.status(404).json({ message: 'Equipment not found' });
     res.json({ equipment });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
@@ -54,7 +84,7 @@ router.delete('/:id', auth, authorize('admin'), async (req, res) => {
     await Equipment.findByIdAndUpdate(req.params.id, { isActive: false });
     res.json({ message: 'Equipment deactivated' });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
@@ -71,7 +101,7 @@ router.get('/stats', auth, authorize('admin'), async (req, res) => {
     ]);
     res.json({ total, needsMaintenance, byCondition });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 

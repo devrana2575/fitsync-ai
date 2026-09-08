@@ -259,7 +259,7 @@ export default function Workouts() {
                       </td>
                       <td className="px-6 py-4 text-sm text-slate-500">
                         {plan.createdAt
-                          ? new Date(plan.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                          ? new Date(plan.createdAt).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' })
                           : '—'}
                       </td>
                     </tr>

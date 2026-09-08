@@ -32,7 +32,7 @@ const attendanceSchema = new mongoose.Schema({
   timestamps: true
 });
 
-attendanceSchema.index({ user: 1, date: 1 });
+attendanceSchema.index({ user: 1, date: 1 }, { unique: true });
 attendanceSchema.index({ date: -1 });
 attendanceSchema.index({ user: 1 });
 

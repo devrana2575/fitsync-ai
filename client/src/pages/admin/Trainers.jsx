@@ -1,27 +1,34 @@
 import { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { UserGroupIcon } from '@heroicons/react/24/outline';
 import api from '../../services/api';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import EmptyState from '../../components/common/EmptyState';
+import ErrorState from '../../components/common/ErrorState';
 import Modal from '../../components/common/Modal';
 import DataTable from '../../components/common/DataTable';
 
 const initialForm = { name: '', email: '', password: '', specializations: '', experience: '' };
 
 export default function Trainers() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [trainers, setTrainers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(initialForm);
   const [saving, setSaving] = useState(false);
 
   const fetchTrainers = async () => {
+    setLoading(true);
+    setError(null);
     try {
-      setLoading(true);
       const res = await api.get('/trainers');
       setTrainers(res.data.data || res.data.trainers || []);
     } catch (err) {
-      console.error(err);
+      setError(err.message || 'Failed to load trainers');
     } finally {
       setLoading(false);
     }
@@ -30,12 +37,20 @@ export default function Trainers() {
   useEffect(() => { fetchTrainers(); }, []);
 
   const openAdd = () => { setEditing(null); setForm(initialForm); setShowModal(true); };
+
+  useEffect(() => {
+    if (location.state?.openCreate) {
+      openAdd();
+      navigate('.', { replace: true, state: {} });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const openEdit = (t) => {
     setEditing(t);
     setForm({
       name: t.name, email: t.email, password: '',
-      specializations: Array.isArray(t.specializations) ? t.specializations.join(', ') : (t.specializations || ''),
-      experience: t.experience || '',
+      specializations: Array.isArray(t.profile?.specializations) ? t.profile.specializations.join(', ') : (t.profile?.specializations || ''),
+      experience: t.profile?.experience || '',
     });
     setShowModal(true);
   };
@@ -65,8 +80,12 @@ export default function Trainers() {
   };
 
   const toggleDeactivate = async (t) => {
+    if (t.isActive !== false) {
+      const proceed = confirm(`Deactivate ${t.name}? They will not be able to log in until reactivated.`);
+      if (!proceed) return;
+    }
     try {
-      await api.put(`/users/${t._id}/deactivate`);
+      await api.put(`/users/${t._id}/${t.isActive !== false ? 'deactivate' : 'activate'}`);
       fetchTrainers();
     } catch (err) {
       alert(err.message || 'Failed');
@@ -82,8 +101,12 @@ export default function Trainers() {
         </button>
       </div>
 
-      {loading ? <LoadingSpinner size="lg" /> : trainers.length === 0 ? (
-        <EmptyState icon="🏋️" message="No trainers found" />
+      {error ? (
+        <div className="bg-white rounded-xl border border-slate-200">
+          <ErrorState message={error} onRetry={fetchTrainers} />
+        </div>
+      ) : loading ? <LoadingSpinner size="lg" /> : trainers.length === 0 ? (
+        <EmptyState icon={UserGroupIcon} message="No trainers found" />
       ) : (
         <DataTable headers={['Name', 'Email', 'Specializations', 'Experience', 'Members Assigned', 'Status', 'Actions']}>
           {trainers.map((t, i) => (
@@ -92,13 +115,13 @@ export default function Trainers() {
               <td className="px-6 py-4 text-slate-600">{t.email}</td>
               <td className="px-6 py-4 text-slate-600">
                 <div className="flex flex-wrap gap-1">
-                  {(Array.isArray(t.specializations) ? t.specializations : [t.specializations]).filter(Boolean).map((s, j) => (
+                  {(Array.isArray(t.profile?.specializations) ? t.profile.specializations : [t.profile?.specializations]).filter(Boolean).map((s, j) => (
                     <span key={j} className="px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded text-xs font-medium">{s}</span>
                   ))}
                 </div>
               </td>
-              <td className="px-6 py-4 text-slate-600">{t.experience ? `${t.experience} yrs` : '—'}</td>
-              <td className="px-6 py-4 text-slate-600">{t.membersCount ?? t.assignedMembers?.length ?? '—'}</td>
+              <td className="px-6 py-4 text-slate-600">{t.profile?.experience ? `${t.profile.experience} yrs` : '—'}</td>
+              <td className="px-6 py-4 text-slate-600">{t.memberCount ?? t.assignedMembers?.length ?? '—'}</td>
               <td className="px-6 py-4">
                 <span className={`px-2 py-1 rounded-full text-xs font-medium ${t.isActive !== false ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                   {t.isActive !== false ? 'Active' : 'Inactive'}

@@ -2,10 +2,12 @@ const express = require('express');
 const router = express.Router();
 const Attendance = require('../models/Attendance');
 const { auth, authorize } = require('../middleware/auth');
+const { parsePagination } = require('../utils/helpers');
 
 router.get('/', auth, authorize('admin', 'trainer'), async (req, res) => {
   try {
-    const { page = 1, limit = 30, date, userId } = req.query;
+    const { page, limit } = parsePagination(req.query.page, req.query.limit, 1, 30, 100);
+    const { date, userId } = req.query;
     const filter = {};
     if (userId) filter.user = userId;
     if (date) {
@@ -18,24 +20,24 @@ router.get('/', auth, authorize('admin', 'trainer'), async (req, res) => {
     const records = await Attendance.find(filter)
       .populate('user', 'name email role')
       .sort({ checkInTime: -1 })
-      .skip((parseInt(page) - 1) * parseInt(limit))
-      .limit(parseInt(limit));
-    res.json({ records, total, page: parseInt(page), pages: Math.ceil(total / parseInt(limit)) });
+      .skip((page - 1) * limit)
+      .limit(limit);
+    res.json({ records, total, page, pages: Math.ceil(total / limit) });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
 router.get('/my', auth, async (req, res) => {
   try {
-    const { page = 1, limit = 30 } = req.query;
+    const { page, limit } = parsePagination(req.query.page, req.query.limit, 1, 30, 100);
     const records = await Attendance.find({ user: req.user._id })
       .sort({ date: -1 })
-      .skip((parseInt(page) - 1) * parseInt(limit))
-      .limit(parseInt(limit));
+      .skip((page - 1) * limit)
+      .limit(limit);
     res.json({ records });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
@@ -48,7 +50,7 @@ router.get('/today', auth, authorize('admin', 'trainer'), async (req, res) => {
     const records = await Attendance.find({ date: { $gte: today, $lt: tomorrow } }).populate('user', 'name email role');
     res.json({ records, count: records.length });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
@@ -75,7 +77,7 @@ router.get('/stats', auth, authorize('admin'), async (req, res) => {
 
     res.json({ todayCount, monthlyRecords, hourlyDistribution });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
@@ -96,7 +98,7 @@ router.post('/checkin', auth, authorize('admin', 'trainer'), async (req, res) =>
     });
     res.status(201).json({ attendance });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
@@ -104,12 +106,18 @@ router.post('/checkout/:id', auth, async (req, res) => {
   try {
     const attendance = await Attendance.findById(req.params.id);
     if (!attendance) return res.status(404).json({ message: 'Attendance not found' });
+    if (attendance.user.toString() !== req.user._id.toString() && req.user.role !== 'admin' && req.user.role !== 'trainer') {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+    if (attendance.checkOutTime) {
+      return res.status(400).json({ message: 'Already checked out' });
+    }
     attendance.checkOutTime = new Date();
     attendance.duration = Math.round((attendance.checkOutTime - attendance.checkInTime) / 60000);
     await attendance.save();
     res.json({ attendance });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
@@ -130,7 +138,7 @@ router.post('/qr-checkin', auth, async (req, res) => {
     });
     res.status(201).json({ attendance });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 

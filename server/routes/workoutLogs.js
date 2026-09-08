@@ -1,11 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const WorkoutLog = require('../models/WorkoutLog');
-const { auth } = require('../middleware/auth');
+const { auth, authorize } = require('../middleware/auth');
+const { parsePagination } = require('../utils/helpers');
 
 router.get('/my', auth, async (req, res) => {
   try {
-    const { page = 1, limit = 30, exerciseId } = req.query;
+    const { page, limit } = parsePagination(req.query.page, req.query.limit, 1, 30, 100);
+    const { exerciseId } = req.query;
     const filter = { user: req.user._id };
     if (exerciseId) filter.exercise = exerciseId;
     const total = await WorkoutLog.countDocuments(filter);
@@ -13,15 +15,15 @@ router.get('/my', auth, async (req, res) => {
       .populate('exercise', 'name category muscleGroup')
       .populate('workoutPlan', 'name')
       .sort({ date: -1 })
-      .skip((parseInt(page) - 1) * parseInt(limit))
-      .limit(parseInt(limit));
-    res.json({ logs, total, page: parseInt(page), pages: Math.ceil(total / parseInt(limit)) });
+      .skip((page - 1) * limit)
+      .limit(limit);
+    res.json({ logs, total, page, pages: Math.ceil(total / limit) });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
-router.get('/member/:userId', auth, async (req, res) => {
+router.get('/member/:userId', auth, authorize('admin', 'trainer'), async (req, res) => {
   try {
     const logs = await WorkoutLog.find({ user: req.params.userId })
       .populate('exercise', 'name category muscleGroup')
@@ -29,7 +31,7 @@ router.get('/member/:userId', auth, async (req, res) => {
       .limit(50);
     res.json({ logs });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
@@ -50,7 +52,7 @@ router.post('/', auth, async (req, res) => {
     });
     res.status(201).json({ log });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
@@ -74,7 +76,7 @@ router.get('/stats', auth, async (req, res) => {
 
     res.json({ totalWorkouts, completedWorkouts, recentWorkouts, weeklyFrequency });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 

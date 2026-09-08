@@ -20,6 +20,9 @@ const fitnessGoalSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  start: {
+    type: Number
+  },
   target: {
     type: Number,
     required: true

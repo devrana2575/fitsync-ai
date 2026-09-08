@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
+import { XCircleIcon, ClipboardDocumentListIcon, CheckCircleIcon, ClockIcon, BellAlertIcon } from '@heroicons/react/24/outline';
 import api from '../../services/api';
+import useDebounce from '../../hooks/useDebounce';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import EmptyState from '../../components/common/EmptyState';
 import Modal from '../../components/common/Modal';
@@ -7,8 +10,10 @@ import DataTable from '../../components/common/DataTable';
 import StatCard from '../../components/common/StatCard';
 
 const initialPlan = { name: '', price: '', duration: '', features: '', description: '' };
+const initialAssignForm = { selectedMember: null, selectedPlan: null, startDate: new Date().toISOString().split('T')[0] };
 
 export default function Memberships() {
+  const location = useLocation();
   const [tab, setTab] = useState('plans');
   const [plans, setPlans] = useState([]);
   const [memberships, setMemberships] = useState([]);
@@ -18,6 +23,13 @@ export default function Memberships() {
   const [editingPlan, setEditingPlan] = useState(null);
   const [planForm, setPlanForm] = useState(initialPlan);
   const [saving, setSaving] = useState(false);
+
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [assignForm, setAssignForm] = useState(initialAssignForm);
+  const [assignSaving, setAssignSaving] = useState(false);
+  const [allMembers, setAllMembers] = useState([]);
+  const [memberSearch, setMemberSearch] = useState('');
+  const debouncedMemberSearch = useDebounce(memberSearch, 300);
 
   const fetchAll = async () => {
     setLoading(true);
@@ -37,7 +49,24 @@ export default function Memberships() {
     }
   };
 
-  useEffect(() => { fetchAll(); }, []);
+  const fetchMembers = async () => {
+    try {
+      const res = await api.get('/members', { params: { limit: 200 } });
+      setAllMembers(res.data.data || res.data.members || []);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  useEffect(() => { fetchAll(); fetchMembers(); }, []);
+
+  useEffect(() => {
+    if (location.state?.openCreate) {
+      setTab('memberships');
+      openAssignModal();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const openAddPlan = () => { setEditingPlan(null); setPlanForm(initialPlan); setShowPlanModal(true); };
   const openEditPlan = (p) => {
@@ -48,6 +77,55 @@ export default function Memberships() {
       description: p.description || '',
     });
     setShowPlanModal(true);
+  };
+
+  const filteredMembers = allMembers.filter((m) => {
+    if (!debouncedMemberSearch) return true;
+    const q = debouncedMemberSearch.toLowerCase();
+    return (m.name || '').toLowerCase().includes(q) || (m.email || '').toLowerCase().includes(q);
+  });
+
+  const openAssignModal = () => {
+    setAssignForm(initialAssignForm);
+    setMemberSearch('');
+    setShowAssignModal(true);
+  };
+
+  const handleAssignMemberSelect = (member) => {
+    setAssignForm({ ...assignForm, selectedMember: member });
+    setMemberSearch('');
+  };
+
+  const handleAssignSubmit = async (e) => {
+    e.preventDefault();
+    const { selectedMember, selectedPlan, startDate } = assignForm;
+    if (!selectedMember || !selectedPlan) return;
+    try {
+      const activeRes = await api.get(`/memberships/active/${selectedMember._id}`);
+      const activeMembership = activeRes.data.data || activeRes.data.membership;
+      if (activeMembership) {
+        const proceed = confirm('This member already has an active membership \u2014 it will be replaced. Continue?');
+        if (!proceed) return;
+      }
+    } catch {
+      // If the check fails, proceed anyway
+    }
+    setAssignSaving(true);
+    try {
+      const payload = {
+        userId: selectedMember._id,
+        planId: selectedPlan._id,
+        startDate,
+      };
+      await api.post('/memberships', payload);
+      setShowAssignModal(false);
+      setAssignForm(initialAssignForm);
+      fetchAll();
+    } catch (err) {
+      alert(err.message || 'Failed to assign membership');
+    } finally {
+      setAssignSaving(false);
+    }
   };
 
   const handlePlanSubmit = async (e) => {
@@ -104,11 +182,11 @@ export default function Memberships() {
 
       {stats && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-          <StatCard icon="✅" label="Active" value={stats.active || 0} color="green" />
-          <StatCard icon="❌" label="Expired" value={stats.expired || 0} color="red" />
-          <StatCard icon="⏳" label="Pending" value={stats.pending || 0} color="yellow" />
-          <StatCard icon="🚫" label="Cancelled" value={stats.cancelled || 0} color="blue" />
-          <StatCard icon="⏰" label="Expiring Soon" value={stats.expiringSoon || 0} color="purple" />
+          <StatCard icon={CheckCircleIcon} label="Active" value={stats.active || 0} color="green" />
+          <StatCard icon={XCircleIcon} label="Expired" value={stats.expired || 0} color="red" />
+          <StatCard icon={ClockIcon} label="Pending" value={stats.pending || 0} color="yellow" />
+          <StatCard icon={XCircleIcon} label="Cancelled" value={stats.cancelled || 0} color="blue" />
+          <StatCard icon={BellAlertIcon} label="Expiring Soon" value={stats.expiringSoon || 0} color="purple" />
         </div>
       )}
 
@@ -127,7 +205,7 @@ export default function Memberships() {
             <div className="flex justify-end">
               <button onClick={openAddPlan} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">+ Add Plan</button>
             </div>
-            {plans.length === 0 ? <EmptyState icon="📋" message="No plans created yet" /> : (
+            {plans.length === 0 ? <EmptyState icon={ClipboardDocumentListIcon} message="No plans created yet" /> : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {plans.map((p) => (
                   <div key={p._id} className="bg-white rounded-xl border border-slate-200 p-6 hover:shadow-md transition-shadow">
@@ -142,7 +220,7 @@ export default function Memberships() {
                       <ul className="space-y-1">
                         {p.features.map((f, i) => (
                           <li key={i} className="text-sm text-slate-600 flex items-center gap-2">
-                            <span className="text-green-500">✓</span> {f}
+                            <CheckCircleIcon className="h-4 w-4 text-green-500" aria-hidden="true" /> {f}
                           </li>
                         ))}
                       </ul>
@@ -153,31 +231,36 @@ export default function Memberships() {
             )}
           </div>
         ) : (
-          memberships.length === 0 ? <EmptyState icon="📋" message="No active memberships" /> : (
-            <DataTable headers={['Member', 'Plan', 'Start Date', 'End Date', 'Status', 'Actions']}>
-              {memberships.map((m, i) => (
-                <tr key={m._id} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
-                  <td className="px-6 py-4 font-medium text-slate-900">{m.user?.name || m.member?.name || '—'}</td>
-                  <td className="px-6 py-4 text-slate-600">{m.plan?.name || '—'}</td>
-                  <td className="px-6 py-4 text-slate-600">{m.startDate ? new Date(m.startDate).toLocaleDateString('en-IN') : '—'}</td>
-                  <td className="px-6 py-4 text-slate-600">{m.endDate ? new Date(m.endDate).toLocaleDateString('en-IN') : '—'}</td>
-                  <td className="px-6 py-4">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColor(m.status)}`}>{m.status}</span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex gap-2">
-                      {m.status?.toLowerCase() === 'active' && (
-                        <>
-                          <button onClick={() => renewMembership(m)} className="text-green-600 hover:text-green-800 font-medium text-sm">Renew</button>
-                          <button onClick={() => cancelMembership(m)} className="text-red-600 hover:text-red-800 font-medium text-sm">Cancel</button>
-                        </>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </DataTable>
-          )
+          <div className="space-y-4">
+            <div className="flex justify-end">
+              <button onClick={openAssignModal} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">+ Assign Membership</button>
+            </div>
+            {memberships.length === 0 ? <EmptyState icon={ClipboardDocumentListIcon} message="No active memberships" /> : (
+              <DataTable headers={['Member', 'Plan', 'Start Date', 'End Date', 'Status', 'Actions']}>
+                {memberships.map((m, i) => (
+                  <tr key={m._id} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
+                    <td className="px-6 py-4 font-medium text-slate-900">{m.user?.name || m.member?.name || '—'}</td>
+                    <td className="px-6 py-4 text-slate-600">{m.plan?.name || '—'}</td>
+                    <td className="px-6 py-4 text-slate-600">{m.startDate ? new Date(m.startDate).toLocaleDateString('en-IN') : '—'}</td>
+                    <td className="px-6 py-4 text-slate-600">{m.endDate ? new Date(m.endDate).toLocaleDateString('en-IN') : '—'}</td>
+                    <td className="px-6 py-4">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColor(m.status)}`}>{m.status}</span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex gap-2">
+                        {m.status?.toLowerCase() === 'active' && (
+                          <>
+                            <button onClick={() => renewMembership(m)} className="text-green-600 hover:text-green-800 font-medium text-sm">Renew</button>
+                            <button onClick={() => cancelMembership(m)} className="text-red-600 hover:text-red-800 font-medium text-sm">Cancel</button>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </DataTable>
+            )}
+          </div>
         )
       )}
 
@@ -207,6 +290,58 @@ export default function Memberships() {
             <button type="button" onClick={() => setShowPlanModal(false)} className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 font-medium">Cancel</button>
             <button type="submit" disabled={saving} className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-medium disabled:opacity-50">
               {saving ? 'Saving...' : editingPlan ? 'Update' : 'Create'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal isOpen={showAssignModal} onClose={() => setShowAssignModal(false)} title="Assign Membership">
+        <form onSubmit={handleAssignSubmit} className="space-y-4">
+          <div className="relative">
+            <label className="block text-sm font-medium text-slate-700 mb-1">Select Member</label>
+            {assignForm.selectedMember ? (
+              <div className="flex items-center gap-2 px-3 py-2 border border-slate-300 rounded-lg bg-slate-50">
+                <span className="flex-1 text-sm text-slate-900">{assignForm.selectedMember.name} ({assignForm.selectedMember.email})</span>
+                <button type="button" onClick={() => setAssignForm({ ...assignForm, selectedMember: null })} className="text-slate-400 hover:text-slate-600 text-lg leading-none">&times;</button>
+              </div>
+            ) : (
+              <input
+                value={memberSearch}
+                onChange={(e) => setMemberSearch(e.target.value)}
+                placeholder="Search member..."
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+              />
+            )}
+            {memberSearch && !assignForm.selectedMember && filteredMembers.length > 0 && (
+              <ul className="absolute z-10 mt-1 w-full bg-white border border-slate-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                {filteredMembers.slice(0, 20).map((m) => (
+                  <li key={m._id} onClick={() => handleAssignMemberSelect(m)} className="px-3 py-2 text-sm hover:bg-indigo-50 cursor-pointer">
+                    {m.name} <span className="text-slate-500">({m.email})</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Plan</label>
+            <select required value={assignForm.selectedPlan?._id || ''} onChange={(e) => {
+              const plan = plans.find((p) => p._id === e.target.value) || null;
+              setAssignForm({ ...assignForm, selectedPlan: plan });
+            }} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+              <option value="">Choose a plan...</option>
+              {plans.map((p) => (
+                <option key={p._id} value={p._id}>{p.name} — ₹{Number(p.price).toLocaleString('en-IN')} ({p.duration} days)</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Start Date (optional)</label>
+            <input type="date" value={assignForm.startDate} onChange={(e) => setAssignForm({ ...assignForm, startDate: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+          </div>
+          <div className="flex justify-end gap-3 pt-2">
+            <button type="button" onClick={() => setShowAssignModal(false)} className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 font-medium">Cancel</button>
+            <button type="submit" disabled={assignSaving || !assignForm.selectedMember || !assignForm.selectedPlan} className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-medium disabled:opacity-50">
+              {assignSaving ? 'Assigning...' : 'Assign'}
             </button>
           </div>
         </form>
