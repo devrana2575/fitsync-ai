@@ -78,7 +78,7 @@ export default function MemberDetail() {
   );
   if (!data || !data.member) return <EmptyState icon={UserIcon} message="Member not found" />;
 
-  const { member, profile, membership, attendance, payments, workoutPlans, workoutLogs, goals, measurements, insights, attention } = data;
+  const { member, profile, membership, memberships, attendance, payments, workoutPlans, workoutLogs, goals, measurements, insights, attention } = data;
   void member;
 
   const section = (title, Icon, children, emptyMsg) => (

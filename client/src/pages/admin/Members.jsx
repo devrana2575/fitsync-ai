@@ -145,12 +145,23 @@ export default function Members() {
                 </td>
                 <td className="px-6 py-4">
                   <div className="flex flex-col gap-1">
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium w-fit ${m.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                      {m.isActive ? 'Active' : 'Inactive'}
-                    </span>
-                    {m.membership && (
-                      <span className="px-2 py-0.5 rounded-full text-xs font-medium w-fit bg-indigo-50 text-indigo-700 capitalize">
-                        {m.membership.status.toLowerCase()}
+                    {m.membership ? (
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium w-fit ${
+                        m.membership.status === 'ACTIVE' ? 'bg-green-100 text-green-700' :
+                        m.membership.status === 'EXPIRED' ? 'bg-amber-100 text-amber-700' :
+                        m.membership.status === 'CANCELLED' ? 'bg-red-100 text-red-700' :
+                        'bg-slate-100 text-slate-600'
+                      }`}>
+                        {m.membership.status.charAt(0)}{m.membership.status.slice(1).toLowerCase()}
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded-full text-xs font-medium w-fit bg-slate-100 text-slate-500">
+                        No Plan
+                      </span>
+                    )}
+                    {!m.isActive && (
+                      <span className="px-2 py-0.5 rounded-full text-xs font-medium w-fit bg-red-100 text-red-700">
+                        Deactivated
                       </span>
                     )}
                   </div>
