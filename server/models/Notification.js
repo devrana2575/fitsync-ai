@@ -18,7 +18,7 @@ const notificationSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['membership_expiry', 'payment_due', 'low_attendance', 'high_risk', 'progress_anomaly', 'equipment_maintenance', 'general', 'workout_reminder'],
+    enum: ['membership_expiry', 'payment_due', 'low_attendance', 'high_risk', 'progress_anomaly', 'equipment_maintenance', 'general', 'workout_reminder', 'class_update', 'announcement'],
     default: 'general'
   },
   isRead: {
@@ -35,5 +35,15 @@ const notificationSchema = new mongoose.Schema({
 
 notificationSchema.index({ user: 1, isRead: 1 });
 notificationSchema.index({ user: 1, createdAt: -1 });
+
+notificationSchema.post('save', function (doc) {
+  try {
+    const { emitToUser } = require('../utils/socket');
+    const userId = doc.user && typeof doc.user === 'object' && doc.user._id ? doc.user._id : doc.user;
+    emitToUser(String(userId), 'notification', doc.toObject());
+  } catch (error) {
+    // socket layer not initialized yet — ignore
+  }
+});
 
 module.exports = mongoose.model('Notification', notificationSchema);

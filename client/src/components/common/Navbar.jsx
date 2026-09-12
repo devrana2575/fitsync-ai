@@ -10,8 +10,10 @@ import {
   SparklesIcon,
   ClipboardDocumentCheckIcon,
   Bars3Icon,
+  XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../../context/AuthContext';
+import { useSocket } from '../../context/SocketContext';
 import api from '../../services/api';
 
 const roleStyles = {
@@ -52,13 +54,16 @@ function timeAgo(dateStr) {
 
 export default function Navbar({ onMenuClick }) {
   const { user, logout } = useAuth();
+  const socket = useSocket();
   const [showDropdown, setShowDropdown] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifications, setNotifications] = useState([]);
   const [notifLoading, setNotifLoading] = useState(false);
   const [notifError, setNotifError] = useState(false);
+  const [toasts, setToasts] = useState([]);
   const notifRef = useRef(null);
+  const toastId = useRef(0);
 
   const fetchUnreadCount = useCallback(async () => {
     try {
@@ -89,6 +94,22 @@ export default function Navbar({ onMenuClick }) {
   useEffect(() => {
     fetchUnreadCount();
   }, [fetchUnreadCount]);
+
+  useEffect(() => {
+    if (!socket?.socket) return;
+    const handler = (n) => {
+      setUnreadCount((prev) => prev + 1);
+      setNotifications((prev) => (n ? [n, ...prev].slice(0, 20) : prev));
+      if (!n) return;
+      const id = ++toastId.current;
+      setToasts((prev) => [...prev.slice(-2), { id, ...n }]);
+      setTimeout(() => {
+        setToasts((prev) => prev.filter((t) => t.id !== id));
+      }, 6000);
+    };
+    socket.registerOnNotification(handler);
+    return () => socket.registerOnNotification(null);
+  }, [socket]);
 
   useEffect(() => {
     const handleVisibility = () => {
@@ -140,6 +161,26 @@ export default function Navbar({ onMenuClick }) {
 
   return (
     <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 sm:px-6 sticky top-0 z-20">
+      {toasts.length > 0 && (
+        <div className="fixed top-16 right-4 z-[60] space-y-2 w-80 max-w-[calc(100vw-2rem)]">
+          {toasts.map((t) => {
+            const TIcon = typeIcons[t.type] || BellIcon;
+            const tone = typeTones[t.type] || 'text-indigo-500';
+            return (
+              <div key={t.id} className="bg-white rounded-xl shadow-lg shadow-slate-200/70 border border-slate-200 px-4 py-3 flex items-start gap-3 fade-in">
+                <TIcon className={`h-5 w-5 mt-0.5 shrink-0 ${tone}`} aria-hidden="true" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-slate-900 leading-snug">{t.title}</p>
+                  <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{t.message}</p>
+                </div>
+                <button onClick={() => setToasts((prev) => prev.filter((x) => x.id !== t.id))} className="text-slate-300 hover:text-slate-500" aria-label="Dismiss">
+                  <XMarkIcon className="h-4 w-4" aria-hidden="true" />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
       <button
         onClick={onMenuClick}
         className="lg:hidden p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"

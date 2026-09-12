@@ -5,6 +5,7 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const connectDB = require('./config/db');
 const { startCronJobs, expireMemberships } = require('./utils/cron');
+const { initSocket } = require('./utils/socket');
 
 dotenv.config();
 
@@ -18,6 +19,9 @@ app.use(cors({
   origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
   credentials: true
 }));
+
+const checkout = require('./routes/checkout');
+app.post('/api/checkout/webhook', express.raw({ type: 'application/json' }), checkout.webhookHandler);
 
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
@@ -62,6 +66,7 @@ app.use('/api/reports', require('./routes/reports'));
 app.use('/api/settings', require('./routes/settings'));
 app.use('/api/classes', require('./routes/classes'));
 app.use('/api/nutrition', require('./routes/nutrition'));
+app.use('/api/checkout', checkout.router);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString(), service: 'fitsync-ai-api' });
@@ -87,10 +92,11 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 5000;
 connectDB()
   .then(() => {
-    app.listen(PORT, () => {
+    const httpServer = app.listen(PORT, () => {
       console.log(`FitSync AI Server running on port ${PORT}`);
       startCronJobs();
     });
+    initSocket(httpServer);
     expireMemberships().catch((err) => console.error('[Startup] Expiry sweep failed:', err.message));
   })
   .catch((err) => {

@@ -199,14 +199,14 @@ router.delete('/sessions/:id', auth, authorize('admin', 'trainer'), async (req, 
     const affected = await ClassBooking.find({ session: session._id, status: { $in: ['booked', 'waitlisted'] } }).select('user').lean();
     await ClassBooking.updateMany({ _id: { $in: affected.map((b) => b._id) } }, { $set: { status: 'cancelled' } });
     if (affected.length > 0) {
-      await Notification.insertMany(
-        affected.map((b) => ({
+      for (const b of affected) {
+        await Notification.create({
           user: b.user,
           title: 'Class Cancelled',
           message: `A class session you had ${b.status === 'waitlisted' ? 'waitlisted for' : 'booked'} has been cancelled.`,
           type: 'class_update'
-        }))
-      );
+        });
+      }
     }
     res.json({ message: 'Session cancelled' });
   } catch (error) {

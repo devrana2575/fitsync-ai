@@ -3,6 +3,7 @@ import { CreditCardIcon } from '@heroicons/react/24/outline';
 import api from '../../services/api';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import EmptyState from '../../components/common/EmptyState';
+import Modal from '../../components/common/Modal';
 import { fmtDate } from '../../utils/format';
 
 const statusMeta = {
@@ -16,6 +17,11 @@ export default function Membership() {
   const [memberships, setMemberships] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [plans, setPlans] = useState([]);
+  const [plansLoading, setPlansLoading] = useState(true);
+  const [selectedPlan, setSelectedPlan] = useState(null);
+  const [processing, setProcessing] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
 
   const fetchData = async () => {
     try {
@@ -29,7 +35,51 @@ export default function Membership() {
     }
   };
 
-  useEffect(() => { fetchData(); }, []);
+  const fetchPlans = async () => {
+    try {
+      setPlansLoading(true);
+      const res = await api.get('/membership-plans/all');
+      setPlans(res.data.plans || []);
+    } catch {
+    } finally {
+      setPlansLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchData(); fetchPlans(); }, []);
+
+  const handlePay = async (plan) => {
+    try {
+      setProcessing(true);
+      const res = await api.post('/checkout/create', { planId: plan._id });
+      const { mode, url, payment } = res.data;
+      if (mode === 'stripe' && url) {
+        window.location.href = url;
+      } else if (mode === 'demo') {
+        setSelectedPlan({ ...plan, paymentId: payment });
+        setModalOpen(true);
+      }
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleConfirmDemo = async () => {
+    try {
+      setProcessing(true);
+      await api.post(`/checkout/confirm/${selectedPlan.paymentId}`);
+      alert('Payment successful! Your membership is now active.');
+      setModalOpen(false);
+      setSelectedPlan(null);
+      fetchData();
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setProcessing(false);
+    }
+  };
 
   if (loading) return <LoadingSpinner />;
   if (error) return <div className="p-6 text-center text-red-600">{error}</div>;
@@ -81,6 +131,33 @@ export default function Membership() {
 
             <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
               <div className="px-6 py-4 border-b border-slate-100">
+                <h3 className="font-semibold text-slate-900">Buy / Renew Membership</h3>
+              </div>
+              {plansLoading ? (
+                <div className="py-10 flex justify-center"><LoadingSpinner /></div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4">
+                  {plans.map((plan) => (
+                    <div key={plan._id} className="border border-slate-200 rounded-xl p-5 flex flex-col">
+                      <h4 className="font-semibold text-slate-900 mb-1">{plan.name}</h4>
+                      <p className="text-2xl font-bold text-slate-900 mb-1">₹{Number(plan.price || 0).toLocaleString('en-IN')}</p>
+                      <p className="text-sm text-slate-500 mb-2">{plan.duration} days</p>
+                      <p className="text-sm text-slate-600 mb-4 flex-1">{plan.description}</p>
+                      <button
+                        onClick={() => handlePay(plan)}
+                        disabled={processing}
+                        className="w-full rounded-lg bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-sm font-medium py-2 transition-colors"
+                      >
+                        Pay Online
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+              <div className="px-6 py-4 border-b border-slate-100">
                 <h3 className="font-semibold text-slate-900">Membership History</h3>
               </div>
               <div className="overflow-x-auto">
@@ -113,6 +190,32 @@ export default function Membership() {
             </div>
           </div>
         )}
+
+        <Modal isOpen={modalOpen} onClose={() => { if (!processing) setModalOpen(false); }} title="Confirm Payment">
+          {selectedPlan && (
+            <div>
+              <p className="text-sm text-slate-600 mb-4">
+                Demo Mode – Your payment of ₹{Number(selectedPlan.price || 0).toLocaleString('en-IN')} for {selectedPlan.name} is ready. This simulates a successful payment gateway.
+              </p>
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => setModalOpen(false)}
+                  disabled={processing}
+                  className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                >
+                  Close
+                </button>
+                <button
+                  onClick={handleConfirmDemo}
+                  disabled={processing}
+                  className="rounded-lg bg-green-600 hover:bg-green-700 disabled:opacity-50 px-4 py-2 text-sm text-white"
+                >
+                  {processing ? 'Processing…' : 'Simulate Payment'}
+                </button>
+              </div>
+            </div>
+          )}
+        </Modal>
       </div>
     </div>
   );

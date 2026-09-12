@@ -16,6 +16,7 @@ export default function Payments() {
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [banner, setBanner] = useState(null);
 
   const fetchData = async () => {
     try {
@@ -29,7 +30,22 @@ export default function Payments() {
     }
   };
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => {
+    fetchData();
+    const params = new URLSearchParams(window.location.search);
+    const checkout = params.get('checkout');
+    if (checkout === 'success') {
+      setBanner('success');
+    } else if (checkout === 'cancelled') {
+      setBanner('cancelled');
+    }
+    if (checkout) {
+      params.delete('checkout');
+      const qs = params.toString();
+      const newUrl = qs ? `${window.location.pathname}?${qs}` : window.location.pathname;
+      window.history.replaceState(null, '', newUrl);
+    }
+  }, []);
 
   if (loading) return <LoadingSpinner />;
   if (error) return <div className="p-6 text-center text-red-600">{error}</div>;
@@ -39,6 +55,17 @@ export default function Payments() {
       <div className="max-w-5xl mx-auto">
         <h1 className="text-2xl font-bold text-slate-900 mb-1">Payment History</h1>
         <p className="text-slate-500 mb-8">All payments recorded for your membership</p>
+
+        {banner === 'success' && (
+          <div className="mb-6 rounded-lg bg-green-100 text-green-700 px-4 py-3 text-sm font-medium">
+            Payment successful! Your membership is now active.
+          </div>
+        )}
+        {banner === 'cancelled' && (
+          <div className="mb-6 rounded-lg bg-amber-100 text-amber-700 px-4 py-3 text-sm font-medium">
+            Checkout cancelled.
+          </div>
+        )}
 
         {payments.length === 0 ? (
           <EmptyState icon={BanknotesIcon} message="No payments recorded yet" />
