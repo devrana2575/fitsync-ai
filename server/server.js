@@ -61,6 +61,7 @@ app.use('/api/ml', require('./routes/ml'));
 app.use('/api/reports', require('./routes/reports'));
 app.use('/api/settings', require('./routes/settings'));
 app.use('/api/classes', require('./routes/classes'));
+app.use('/api/nutrition', require('./routes/nutrition'));
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString(), service: 'fitsync-ai-api' });

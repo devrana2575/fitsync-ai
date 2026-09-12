@@ -20,10 +20,12 @@ import TrainerMembers from './pages/trainer/Members';
 import TrainerWorkouts from './pages/trainer/Workouts';
 import TrainerAttendance from './pages/trainer/Attendance';
 import TrainerClasses from './pages/trainer/Classes';
+import TrainerMealPlans from './pages/trainer/MealPlans';
 import MemberDashboard from './pages/member/Dashboard';
 import MemberAttendance from './pages/member/Attendance';
 import MemberWorkouts from './pages/member/Workouts';
 import MemberClasses from './pages/member/Classes';
+import MemberNutrition from './pages/member/Nutrition';
 import MemberGoals from './pages/member/Goals';
 import MemberProgress from './pages/member/Progress';
 import MemberMembership from './pages/member/Membership';
@@ -92,6 +94,7 @@ export default function App() {
             <Route path="attendance" element={<TrainerAttendance />} />
             <Route path="workouts" element={<TrainerWorkouts />} />
             <Route path="classes" element={<TrainerClasses />} />
+            <Route path="meal-plans" element={<TrainerMealPlans />} />
           </Route>
 
           <Route
@@ -106,6 +109,7 @@ export default function App() {
             <Route path="attendance" element={<MemberAttendance />} />
             <Route path="workouts" element={<MemberWorkouts />} />
             <Route path="classes" element={<MemberClasses />} />
+            <Route path="nutrition" element={<MemberNutrition />} />
             <Route path="goals" element={<MemberGoals />} />
             <Route path="progress" element={<MemberProgress />} />
             <Route path="membership" element={<MemberMembership />} />

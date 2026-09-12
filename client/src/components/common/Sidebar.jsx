@@ -14,6 +14,7 @@ import {
   CalendarDaysIcon,
   ClockIcon,
   IdentificationIcon,
+  CakeIcon,
   XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { useEffect, useState } from 'react';
@@ -39,6 +40,7 @@ const trainerMenu = [
   { to: '/trainer/classes', icon: CalendarDaysIcon, label: 'Classes' },
   { to: '/trainer/attendance', icon: ClipboardDocumentListIcon, label: 'Attendance' },
   { to: '/trainer/workouts', icon: BoltIcon, label: 'Workouts' },
+  { to: '/trainer/meal-plans', icon: CakeIcon, label: 'Meal Plans' },
 ];
 
 const memberMenu = [
@@ -48,6 +50,7 @@ const memberMenu = [
   { to: '/member/classes', icon: CalendarDaysIcon, label: 'Classes' },
   { to: '/member/attendance', icon: ClockIcon, label: 'Attendance' },
   { to: '/member/workouts', icon: BoltIcon, label: 'Workouts' },
+  { to: '/member/nutrition', icon: CakeIcon, label: 'Nutrition' },
   { to: '/member/goals', icon: TrophyIcon, label: 'Goals' },
   { to: '/member/progress', icon: ChartBarSquareIcon, label: 'Progress' },
   { to: '/member/notifications', icon: ClockIcon, label: 'Notifications' },
