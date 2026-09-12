@@ -1,43 +1,53 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Suspense, lazy } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
 import PrivateRoute from './components/common/PrivateRoute';
 import DashboardLayout from './layouts/DashboardLayout';
 import LoadingSpinner from './components/common/LoadingSpinner';
-import Login from './pages/auth/Login';
-import Register from './pages/auth/Register';
-import AdminDashboard from './pages/admin/Dashboard';
-import AdminMembers from './pages/admin/Members';
-import AdminTrainers from './pages/admin/Trainers';
-import AdminMemberships from './pages/admin/Memberships';
-import AdminPayments from './pages/admin/Payments';
-import AdminAttendance from './pages/admin/Attendance';
-import AdminEquipment from './pages/admin/Equipment';
-import AdminClasses from './pages/admin/Classes';
-import AdminAnnouncements from './pages/admin/Announcements';
-import AdminAnalytics from './pages/admin/Analytics';
-import AdminMLInsights from './pages/admin/MLInsights';
-import AdminModelTraining from './pages/admin/ModelTraining';
-import TrainerDashboard from './pages/trainer/Dashboard';
-import TrainerMembers from './pages/trainer/Members';
-import TrainerWorkouts from './pages/trainer/Workouts';
-import TrainerAttendance from './pages/trainer/Attendance';
-import TrainerClasses from './pages/trainer/Classes';
-import TrainerMealPlans from './pages/trainer/MealPlans';
-import TrainerTemplates from './pages/trainer/Templates';
-import MemberAnnouncements from './pages/member/Announcements';
-import MemberDashboard from './pages/member/Dashboard';
-import MemberAttendance from './pages/member/Attendance';
-import MemberWorkouts from './pages/member/Workouts';
-import MemberClasses from './pages/member/Classes';
-import MemberNutrition from './pages/member/Nutrition';
-import MemberGoals from './pages/member/Goals';
-import MemberProgress from './pages/member/Progress';
-import MemberMembership from './pages/member/Membership';
-import MemberPayments from './pages/member/Payments';
-import MemberProfile from './pages/member/Profile';
-import MemberNotifications from './pages/member/Notifications';
-import MemberDetail from './pages/common/MemberDetail';
+
+const Login = lazy(() => import('./pages/auth/Login'));
+const Register = lazy(() => import('./pages/auth/Register'));
+const AdminDashboard = lazy(() => import('./pages/admin/Dashboard'));
+const AdminMembers = lazy(() => import('./pages/admin/Members'));
+const AdminTrainers = lazy(() => import('./pages/admin/Trainers'));
+const AdminMemberships = lazy(() => import('./pages/admin/Memberships'));
+const AdminPayments = lazy(() => import('./pages/admin/Payments'));
+const AdminAttendance = lazy(() => import('./pages/admin/Attendance'));
+const AdminEquipment = lazy(() => import('./pages/admin/Equipment'));
+const AdminClasses = lazy(() => import('./pages/admin/Classes'));
+const AdminAnnouncements = lazy(() => import('./pages/admin/Announcements'));
+const AdminAnalytics = lazy(() => import('./pages/admin/Analytics'));
+const AdminMLInsights = lazy(() => import('./pages/admin/MLInsights'));
+const AdminModelTraining = lazy(() => import('./pages/admin/ModelTraining'));
+const TrainerDashboard = lazy(() => import('./pages/trainer/Dashboard'));
+const TrainerMembers = lazy(() => import('./pages/trainer/Members'));
+const TrainerWorkouts = lazy(() => import('./pages/trainer/Workouts'));
+const TrainerAttendance = lazy(() => import('./pages/trainer/Attendance'));
+const TrainerClasses = lazy(() => import('./pages/trainer/Classes'));
+const TrainerMealPlans = lazy(() => import('./pages/trainer/MealPlans'));
+const TrainerTemplates = lazy(() => import('./pages/trainer/Templates'));
+const MemberAnnouncements = lazy(() => import('./pages/member/Announcements'));
+const MemberDashboard = lazy(() => import('./pages/member/Dashboard'));
+const MemberAttendance = lazy(() => import('./pages/member/Attendance'));
+const MemberWorkouts = lazy(() => import('./pages/member/Workouts'));
+const MemberClasses = lazy(() => import('./pages/member/Classes'));
+const MemberNutrition = lazy(() => import('./pages/member/Nutrition'));
+const MemberGoals = lazy(() => import('./pages/member/Goals'));
+const MemberProgress = lazy(() => import('./pages/member/Progress'));
+const MemberMembership = lazy(() => import('./pages/member/Membership'));
+const MemberPayments = lazy(() => import('./pages/member/Payments'));
+const MemberProfile = lazy(() => import('./pages/member/Profile'));
+const MemberNotifications = lazy(() => import('./pages/member/Notifications'));
+const MemberDetail = lazy(() => import('./pages/common/MemberDetail'));
+
+function RouteFallback() {
+  return (
+    <div className="flex items-center justify-center min-h-screen">
+      <LoadingSpinner size="lg" />
+    </div>
+  );
+}
 
 function RootRedirect() {
   const { user, loading } = useAuth();
@@ -61,9 +71,10 @@ export default function App() {
     <AuthProvider>
       <SocketProvider>
         <BrowserRouter>
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
+          <Suspense fallback={<RouteFallback />}>
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
 
           <Route
             path="/admin"
@@ -131,6 +142,7 @@ export default function App() {
           <Route path="/" element={<RootRedirect />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        </Suspense>
       </BrowserRouter>
       </SocketProvider>
     </AuthProvider>

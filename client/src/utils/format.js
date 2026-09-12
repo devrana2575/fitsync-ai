@@ -56,3 +56,28 @@ export const todayKey = (date = new Date()) => {
   const d = String(date.getDate()).padStart(2, '0');
   return `${y}-${m}-${d}`;
 };
+
+export const formatDate = (d) => {
+  if (!d) return '—';
+  const date = new Date(d);
+  if (Number.isNaN(date.getTime())) return '—';
+  return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+};
+
+export const formatDateTime = (d) => {
+  if (!d) return '—';
+  const date = new Date(d);
+  if (Number.isNaN(date.getTime())) return '—';
+  return date.toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+};
+
+export const truncate = (str, n = 50) => {
+  if (!str) return '';
+  const s = String(str);
+  return s.length > n ? `${s.slice(0, n)}...` : s;
+};
+
+export const calcMatchPct = (score) => {
+  const pct = Math.round(Number(score || 0) * 10);
+  return Math.max(5, Math.min(100, pct));
+};
