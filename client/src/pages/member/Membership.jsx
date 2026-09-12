@@ -38,7 +38,7 @@ export default function Membership() {
   const fetchPlans = async () => {
     try {
       setPlansLoading(true);
-      const res = await api.get('/membership-plans/all');
+      const res = await api.get('/membership-plans');
       setPlans(res.data.plans || []);
     } catch {
     } finally {

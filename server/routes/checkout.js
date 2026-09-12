@@ -17,6 +17,11 @@ const activateMembershipFromPayment = async (membershipId) => {
   const membership = await Membership.findById(membershipId).populate('plan');
   if (!membership || membership.status === 'ACTIVE' || membership.status === 'CANCELLED') return;
 
+  await Membership.updateMany(
+    { user: membership.user, status: 'ACTIVE', _id: { $ne: membership._id } },
+    { status: 'CANCELLED' }
+  );
+
   const now = new Date();
   const start = new Date();
   const end = new Date(start);
@@ -51,12 +56,6 @@ router.post('/create', auth, authorize('member'), async (req, res) => {
 
     const plan = await MembershipPlan.findOne({ _id: planId, isActive: true });
     if (!plan) return res.status(404).json({ message: 'Plan not found' });
-
-    const existingActive = await Membership.findOne({ user: req.user._id, status: 'ACTIVE' });
-    if (existingActive) {
-      existingActive.status = 'CANCELLED';
-      await existingActive.save();
-    }
 
     const start = new Date();
     const end = new Date(start);

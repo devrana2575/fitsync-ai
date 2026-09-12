@@ -3,6 +3,7 @@ const router = express.Router();
 const { body, validationResult } = require('express-validator');
 const User = require('../models/User');
 const MemberProfile = require('../models/MemberProfile');
+const TrainerProfile = require('../models/TrainerProfile');
 const { generateToken } = require('../utils/helpers');
 const { auth } = require('../middleware/auth');
 

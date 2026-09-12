@@ -4,7 +4,6 @@ const Attendance = require('../models/Attendance');
 const WorkoutLog = require('../models/WorkoutLog');
 const BodyMeasurement = require('../models/BodyMeasurement');
 const MemberProfile = require('../models/MemberProfile');
-const MLPrediction = require('../models/MLPrediction');
 
 const GOAL_MAP = {
   weight_loss: 'weight_loss',
@@ -43,8 +42,8 @@ async function buildMemberContext(memberId) {
     weightChange = last - first;
   }
 
-  const segment = (await MLPrediction.findOne({ member: memberId, model: 'segmentation' }).sort({ predictedAt: -1 }));
-  const risk = (await MLPrediction.findOne({ member: memberId, model: 'engagement_risk' }).sort({ predictedAt: -1 }));
+  const segment = null;
+  const risk = null;
 
   const goalType = latestGoal ? latestGoal.type : (profile?.medicalConditions ? 'general_fitness' : 'general_fitness');
   const primaryGoal = GOAL_MAP[goalType] || 'general_fitness';

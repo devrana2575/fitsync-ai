@@ -9,7 +9,6 @@ const WorkoutPlan = require('../models/WorkoutPlan');
 const WorkoutLog = require('../models/WorkoutLog');
 const FitnessGoal = require('../models/FitnessGoal');
 const BodyMeasurement = require('../models/BodyMeasurement');
-const AIInsight = require('../models/AIInsight');
 const { auth, authorize } = require('../middleware/auth');
 const { body, validationResult } = require('express-validator');
 const { escapeRegex, parsePagination } = require('../utils/helpers');
@@ -69,6 +68,18 @@ router.get('/', auth, authorize('admin', 'trainer'), async (req, res) => {
   }
 });
 
+router.get('/by-trainer', auth, authorize('admin', 'trainer'), async (req, res) => {
+  try {
+    const filter = req.user.role === 'trainer' ? { assignedTrainer: req.user._id } : {};
+    const profiles = await MemberProfile.find(filter)
+      .populate('user', 'name email isActive')
+      .sort({ createdAt: -1 });
+    res.json({ members: profiles });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 router.get('/:id', auth, authorize('admin', 'trainer'), async (req, res) => {
   try {
     const member = await User.findById(req.params.id);
@@ -83,7 +94,7 @@ router.get('/:id', auth, authorize('admin', 'trainer'), async (req, res) => {
       return res.status(403).json({ message: 'Access denied' });
     }
 
-    const [memberships, attendance, payments, workoutPlans, workoutLogs, goals, measurements, insights, expiringMembership, lastVisit] = await Promise.all([
+    const [memberships, attendance, payments, workoutPlans, workoutLogs, goals, measurements, expiringMembership, lastVisit] = await Promise.all([
       Membership.find({ user: member._id }).populate('plan').sort({ endDate: -1 }).limit(5),
       Attendance.find({ user: member._id }).sort({ date: -1 }).limit(30),
       Payment.find({ user: member._id })
@@ -101,7 +112,6 @@ router.get('/:id', auth, authorize('admin', 'trainer'), async (req, res) => {
         .limit(20),
       FitnessGoal.find({ user: member._id }).sort({ createdAt: -1 }).limit(10),
       BodyMeasurement.find({ user: member._id }).sort({ date: -1 }).limit(10),
-      AIInsight.find({ user: member._id, isActive: true }).sort({ createdAt: -1 }).limit(10),
       // Thresholds mirror server/utils/cron.js (7-day low-attendance) and the admin
       // dashboard (30-day expiring-soon window). Single query per member view.
       (async () => {
@@ -137,7 +147,6 @@ router.get('/:id', auth, authorize('admin', 'trainer'), async (req, res) => {
       workoutLogs,
       goals,
       measurements,
-      insights,
       lastVisit,
       attention
     });

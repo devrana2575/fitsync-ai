@@ -31,7 +31,6 @@ const adminMenu = [
   { to: '/admin/equipment', icon: WrenchScrewdriverIcon, label: 'Equipment' },
   { to: '/admin/announcements', icon: MegaphoneIcon, label: 'Announcements' },
   { to: '/admin/analytics', icon: ChartPieIcon, label: 'Analytics' },
-  { to: '/admin/ml-insights', icon: ChartBarSquareIcon, label: 'Member Insights' },
 ];
 
 const trainerMenu = [

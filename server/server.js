@@ -62,7 +62,6 @@ app.use('/api/measurements', require('./routes/measurements'));
 app.use('/api/equipment', require('./routes/equipment'));
 app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/analytics', require('./routes/analytics'));
-app.use('/api/ml', require('./routes/ml'));
 app.use('/api/reports', require('./routes/reports'));
 app.use('/api/settings', require('./routes/settings'));
 app.use('/api/nutrition', require('./routes/nutrition'));

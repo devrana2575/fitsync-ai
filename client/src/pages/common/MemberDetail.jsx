@@ -8,7 +8,6 @@ import {
   BanknotesIcon,
   BoltIcon,
   StarIcon,
-  LightBulbIcon,
   CheckCircleIcon,
   XCircleIcon,
   ClockIcon,
@@ -78,7 +77,7 @@ export default function MemberDetail() {
   );
   if (!data || !data.member) return <EmptyState icon={UserIcon} message="Member not found" />;
 
-  const { member, profile, membership, memberships, attendance, payments, workoutPlans, workoutLogs, goals, measurements, insights, attention } = data;
+  const { member, profile, membership, memberships, attendance, payments, workoutPlans, workoutLogs, goals, measurements, attention } = data;
   void member;
 
   const section = (title, Icon, children, emptyMsg) => (
@@ -327,20 +326,6 @@ export default function MemberDetail() {
             </div>
           ) : null,
           'No active workout plans'
-        ))}
-
-        {section('Insights', LightBulbIcon, (
-          (insights || []).length > 0 ? (
-            <div className="space-y-2">
-              {(insights || []).map((insight, idx) => (
-                <div key={insight._id || idx} className="p-3 bg-indigo-50 border border-indigo-100 rounded-lg">
-                  <p className="text-sm font-medium text-slate-800">{insight.title}</p>
-                  <p className="text-sm text-slate-600 mt-0.5">{insight.description || insight.message}</p>
-                </div>
-              ))}
-            </div>
-          ) : null,
-          'No insights yet'
         ))}
       </div>
     </div>

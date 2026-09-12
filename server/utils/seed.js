@@ -25,8 +25,6 @@ const NutritionLog = require('../models/NutritionLog');
 const WorkoutTemplate = require('../models/WorkoutTemplate');
 const Announcement = require('../models/Announcement');
 const GymSetting = require('../models/GymSetting');
-const MLPrediction = require('../models/MLPrediction');
-const AIInsight = require('../models/AIInsight');
 
 const DAYS_AGO = (n) => new Date(Date.now() - n * 24 * 60 * 60 * 1000);
 const MONTHS_AGO = (n) => {
@@ -688,81 +686,6 @@ const seedDatabase = async () => {
       console.log('Gym settings: created');
     } else {
       console.log('Gym settings: already exist, skipping');
-    }
-
-    // ============================================================
-    // ML PREDICTIONS
-    // ============================================================
-    const existingMLCount = await MLPrediction.countDocuments();
-    if (existingMLCount === 0) {
-      const mlDefs = [];
-      const modelTypes = ['segmentation', 'engagement_risk', 'progress_anomaly', 'attendance_forecast'];
-      const riskLevels = ['LOW', 'MEDIUM', 'HIGH'];
-      const predictions = {
-        segmentation: ['Regular Member', 'Casual Visitor', 'Power User', 'At-Risk Member'],
-        engagement_risk: ['Low churn risk', 'Medium churn risk', 'High churn risk'],
-        progress_anomaly: ['On track', 'Ahead of schedule', 'Behind target'],
-        attendance_forecast: ['Expected 4 visits/week', 'Expected 2 visits/week', 'Likely to skip next week'],
-      };
-      const reasons = {
-        segmentation: 'Based on attendance frequency and workout patterns',
-        engagement_risk: 'Calculated from recent attendance decline and membership status',
-        progress_anomaly: 'Compared against body measurement trends and workout consistency',
-        attendance_forecast: 'Predicted using historical attendance data and seasonal trends',
-      };
-
-      for (let i = 0; i < Math.min(members.length, 8); i++) {
-        for (const modelType of modelTypes) {
-          const preds = predictions[modelType];
-          mlDefs.push({
-            member: members[i]._id,
-            model: modelType,
-            prediction: preds[i % preds.length],
-            probability: parseFloat((0.5 + Math.random() * 0.5).toFixed(2)),
-            riskLevel: riskLevels[i % 3],
-            reason: reasons[modelType],
-            features: { attendance_total: 20 + i * 5, workout_total: 15 + i * 3 },
-            predictedAt: DAYS_AGO(Math.floor(Math.random() * 30)),
-          });
-        }
-      }
-      await MLPrediction.insertMany(mlDefs);
-      console.log(`ML predictions: ${mlDefs.length} created`);
-    } else {
-      console.log(`ML predictions: ${existingMLCount} already exist, skipping`);
-    }
-
-    // ============================================================
-    // AI INSIGHTS
-    // ============================================================
-    const existingInsightCount = await AIInsight.countDocuments();
-    if (existingInsightCount === 0) {
-      const insightDefs = [
-        { type: 'attendance', title: 'Low attendance detected', description: '3 members have attended less than 2 times in the last 2 weeks.', severity: 'warning' },
-        { type: 'workout', title: 'Workout completion rate dropping', description: 'Average workout completion rate dropped from 85% to 68% this month.', severity: 'warning' },
-        { type: 'progress', title: 'Great progress on weight loss goals', description: '5 members are on track to meet their weight loss targets ahead of schedule.', severity: 'info' },
-        { type: 'membership', title: '5 memberships expiring soon', description: '5 memberships will expire within the next 7 days. Consider reaching out for renewals.', severity: 'critical' },
-        { type: 'engagement', title: 'Member engagement spike', description: 'Overall member engagement increased by 15% compared to last month.', severity: 'info' },
-        { type: 'general', title: 'Peak hours identified', description: 'Peak gym hours are 6-9 AM and 5-8 PM. Consider staffing adjustments.', severity: 'info' },
-        { type: 'attendance', title: 'Weekend attendance improving', description: 'Weekend attendance has increased by 20% over the last month.', severity: 'info' },
-        { type: 'workout', title: 'New exercise adoption', description: 'Members are increasingly incorporating deadlifts and pull-ups into their routines.', severity: 'info' },
-      ];
-
-      for (let i = 0; i < members.length && i < 5; i++) {
-        insightDefs.push({
-          user: members[i]._id,
-          type: 'progress',
-          title: 'Personal best achieved',
-          description: `${members[i].name} set a new personal best this week.`,
-          severity: 'info',
-          metadata: { exercise: 'Bench Press', previous: 60, current: 65, unit: 'kg' },
-        });
-      }
-
-      await AIInsight.insertMany(insightDefs);
-      console.log(`AI insights: ${insightDefs.length} created`);
-    } else {
-      console.log(`AI insights: ${existingInsightCount} already exist, skipping`);
     }
 
     // ============================================================

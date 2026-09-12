@@ -6,7 +6,6 @@ const Attendance = require('../models/Attendance');
 const Membership = require('../models/Membership');
 const WorkoutLog = require('../models/WorkoutLog');
 const BodyMeasurement = require('../models/BodyMeasurement');
-const MLPrediction = require('../models/MLPrediction');
 const { auth, authorize } = require('../middleware/auth');
 const { parsePagination } = require('../utils/helpers');
 
@@ -88,20 +87,6 @@ router.get('/admin/attendance', auth, authorize('admin'), async (req, res) => {
     ]);
     const uniqueMembers = uniqueMembersResult[0]?.uniqueMembers || 0;
     res.json({ report: 'Attendance Report', data: records, total, page, pages: Math.ceil(total / limit), uniqueMembers });
-  } catch (error) {
-    res.status(500).json({ message: 'Server error' });
-  }
-});
-
-router.get('/admin/ml-risk', auth, authorize('admin'), async (req, res) => {
-  try {
-    const predictions = await MLPrediction.find({ model: 'engagement_risk' })
-      .populate('member', 'name email')
-      .sort({ probability: -1 });
-    const highRisk = predictions.filter(p => p.riskLevel === 'HIGH');
-    const mediumRisk = predictions.filter(p => p.riskLevel === 'MEDIUM');
-    const lowRisk = predictions.filter(p => p.riskLevel === 'LOW');
-    res.json({ report: 'ML Risk Report', predictions, highRisk, mediumRisk, lowRisk });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }

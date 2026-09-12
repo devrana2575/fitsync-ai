@@ -21,7 +21,6 @@ export default function MemberDashboard() {
   const navigate = useNavigate();
   const [dashboard, setDashboard] = useState(null);
   const [measurements, setMeasurements] = useState([]);
-  const [insights, setInsights] = useState([]);
   const [goals, setGoals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -30,10 +29,9 @@ export default function MemberDashboard() {
   const fetchData = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
 
-    const [dashResult, measResult, insResult, goalsResult] = await Promise.allSettled([
+    const [dashResult, measResult, goalsResult] = await Promise.allSettled([
       api.get('/analytics/member/dashboard'),
       api.get('/measurements/my'),
-      api.get('/ml/insights'),
       api.get('/goals/my'),
     ]);
 
@@ -50,12 +48,6 @@ export default function MemberDashboard() {
       setMeasurements(Array.isArray(measData) ? measData.slice(-10) : []);
     } else {
       newErrors.measurements = measResult.reason?.message;
-    }
-
-    if (insResult.status === 'fulfilled') {
-      setInsights(insResult.value.data?.insights || insResult.value.data || []);
-    } else {
-      newErrors.insights = insResult.reason?.message;
     }
 
     if (goalsResult.status === 'fulfilled') {
@@ -252,27 +244,6 @@ export default function MemberDashboard() {
             </div>
           </div>
         </div>
-
-        {errors.insights ? (
-          <div className="bg-white rounded-xl border border-slate-200 p-6">
-            <h2 className="text-lg font-semibold text-slate-900 mb-4">Insights</h2>
-            <ErrorState message="Failed to load insights" onRetry={handleRefresh} />
-          </div>
-        ) : Array.isArray(insights) && insights.length > 0 && (
-          <div className="bg-white rounded-xl border border-slate-200 p-6">
-            <h2 className="text-lg font-semibold text-slate-900 mb-4">Insights</h2>
-            <div className="space-y-3">
-              {insights.slice(0, 5).map((insight, idx) => (
-                <div key={idx} className="p-3 bg-indigo-50 border border-indigo-100 rounded-lg">
-                  <p className="text-sm text-slate-700">{insight.message || insight.text || insight}</p>
-                  {insight.type && (
-                    <span className="inline-block mt-1 text-xs text-indigo-600 font-medium">{insight.type}</span>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

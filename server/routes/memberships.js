@@ -69,7 +69,7 @@ router.post('/', auth, authorize('admin'), async (req, res) => {
       plan: planId,
       startDate: start,
       endDate: end,
-      status: 'PENDING',
+      status: 'ACTIVE',
       autoRenew: autoRenew || false
     });
 

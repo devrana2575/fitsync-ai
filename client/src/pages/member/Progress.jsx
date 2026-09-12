@@ -284,7 +284,7 @@ export default function Progress() {
               {photos.map((photo) => (
                 <div key={photo._id || photo.url} className="bg-white rounded-xl border border-slate-200 overflow-hidden">
                   <img
-                    src={`http://localhost:5000${photo.url}`}
+                    src={photo.url}
                     alt={photo.caption || 'Progress photo'}
                     className="h-48 w-full object-cover rounded-t-xl"
                   />
