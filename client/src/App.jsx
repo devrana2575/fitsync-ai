@@ -15,6 +15,7 @@ const AdminMemberships = lazy(() => import('./pages/admin/Memberships'));
 const AdminPayments = lazy(() => import('./pages/admin/Payments'));
 const AdminAttendance = lazy(() => import('./pages/admin/Attendance'));
 const AdminEquipment = lazy(() => import('./pages/admin/Equipment'));
+const AdminBranches = lazy(() => import('./pages/admin/Branches'));
 const AdminClasses = lazy(() => import('./pages/admin/Classes'));
 const AdminAnnouncements = lazy(() => import('./pages/admin/Announcements'));
 const AdminAnalytics = lazy(() => import('./pages/admin/Analytics'));
@@ -92,6 +93,7 @@ export default function App() {
             <Route path="payments" element={<AdminPayments />} />
             <Route path="attendance" element={<AdminAttendance />} />
             <Route path="equipment" element={<AdminEquipment />} />
+            <Route path="branches" element={<AdminBranches />} />
             <Route path="classes" element={<AdminClasses />} />
             <Route path="announcements" element={<AdminAnnouncements />} />
             <Route path="analytics" element={<AdminAnalytics />} />

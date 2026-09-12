@@ -26,6 +26,7 @@ const FoodItem = require('../models/FoodItem');
 const MealPlan = require('../models/MealPlan');
 const NutritionLog = require('../models/NutritionLog');
 const WorkoutTemplate = require('../models/WorkoutTemplate');
+const GymBranch = require('../models/GymBranch');
 const Announcement = require('../models/Announcement');
 const GymSetting = require('../models/GymSetting');
 const MLPrediction = require('../models/MLPrediction');
@@ -922,6 +923,24 @@ const seedDatabase = async () => {
       console.log(`Announcements: ${annDefs.length} created`);
     } else {
       console.log(`Announcements: ${annCount} already exist, skipping`);
+    }
+
+    // ============================================================
+    // GYM BRANCHES
+    // ============================================================
+    const branchCount = await GymBranch.countDocuments();
+    if (branchCount === 0) {
+      const branchDefs = [
+        { name: 'FitSync Downtown', code: 'DOWN', address: '12 MG Road, Bengaluru 560001', phone: '+91 98000 00001', operatingHours: 'Mon-Sat 5:00 AM - 11:00 PM' },
+        { name: 'FitSync Indiranagar', code: 'INDR', address: '4th Cross, 100 Feet Road, Indiranagar 560038', phone: '+91 98000 00002', operatingHours: 'Mon-Sun 4:30 AM - 11:30 PM' },
+        { name: 'FitSync Whitefield', code: 'WLFD', address: 'ITPL Main Road, Whitefield 560066', phone: '+91 98000 00003', operatingHours: 'Mon-Sat 5:30 AM - 10:30 PM' }
+      ];
+      for (const bd of branchDefs) {
+        await GymBranch.create({ ...bd, manager: admins[0]._id });
+      }
+      console.log(`Gym branches: ${branchDefs.length} created`);
+    } else {
+      console.log(`Gym branches: ${branchCount} already exist, skipping`);
     }
 
     // ============================================================

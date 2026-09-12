@@ -73,6 +73,7 @@ app.use('/api/photos', require('./routes/progressPhotos'));
 app.use('/api/announcements', require('./routes/announcements'));
 app.use('/api/training', require('./routes/training'));
 app.use('/api/recommendations', require('./routes/recommendations'));
+app.use('/api/branches', require('./routes/branches'));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.get('/api/health', (req, res) => {
