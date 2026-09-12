@@ -589,6 +589,33 @@ const seedDatabase = async () => {
           { mealType: 'dinner', items: [[14, 2], [2, 0.75], [9, 1]], notes: 'Sweet potato, chicken and spinach' },
         ]
       },
+      {
+        name: 'Lean Bulk 2800', createdByIdx: 0, assignedIdx: 0, desc: 'High-calorie muscle-building plan with clean carbs and protein',
+        meals: [
+          { mealType: 'breakfast', items: [[0, 1], [7, 1.5], [4, 1], [11, 1]], notes: 'Oats with milk, banana and almonds' },
+          { mealType: 'lunch', items: [[1, 2], [2, 1.5], [9, 1]], notes: 'Generous rice with chicken and spinach' },
+          { mealType: 'snack', items: [[13, 2], [10, 1]], notes: 'Peanut butter toast' },
+          { mealType: 'dinner', items: [[14, 1.5], [2, 1.5], [8, 1]], notes: 'Sweet potato with chicken and broccoli' },
+        ]
+      },
+      {
+        name: 'Keto Fat Burner', createdByIdx: 0, assignedIdx: 1, desc: 'Low-carb ketogenic plan to accelerate fat loss',
+        meals: [
+          { mealType: 'breakfast', items: [[3, 3], [6, 1]], notes: 'Eggs with Greek yogurt' },
+          { mealType: 'lunch', items: [[2, 2], [9, 1.5]], notes: 'Grilled chicken with spinach' },
+          { mealType: 'snack', items: [[11, 2]], notes: 'Handful of almonds' },
+          { mealType: 'dinner', items: [[15, 1.5], [8, 1]], notes: 'Pan-seared salmon with broccoli' },
+        ]
+      },
+      {
+        name: 'Balanced Wellness Plan', createdByIdx: 0, assignedIdx: 9, desc: 'Moderate all-rounder plan for maintenance and general health',
+        meals: [
+          { mealType: 'breakfast', items: [[0, 0.75], [7, 1], [5, 1]], notes: 'Small oats porridge with milk and apple' },
+          { mealType: 'lunch', items: [[1, 1], [2, 1], [8, 1]], notes: 'Rice with chicken and broccoli' },
+          { mealType: 'snack', items: [[6, 1], [11, 1]], notes: 'Greek yogurt with almonds' },
+          { mealType: 'dinner', items: [[19, 0.75], [15, 1], [9, 1]], notes: 'Quinoa with salmon and spinach' },
+        ]
+      },
     ];
 
     const existingPlans = await MealPlan.countDocuments();
@@ -653,11 +680,9 @@ const seedDatabase = async () => {
               });
             }
             const populated = await NutritionLog.populate(log, { path: 'meals.food', select: 'calories protein carbs fat' });
-            for (const meal of populated.meals) {
-              for (const item of meal.items) {
-                log.totalCalories += (item.food.calories || 0) * item.quantity;
-                log.totalProtein += (item.food.protein || 0) * item.quantity;
-              }
+            for (const item of populated.meals) {
+              log.totalCalories += (item.food.calories || 0) * item.quantity;
+              log.totalProtein += (item.food.protein || 0) * item.quantity;
             }
             await log.save();
             logCount++;
