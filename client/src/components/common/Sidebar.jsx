@@ -11,13 +11,10 @@ import {
   ChartBarSquareIcon,
   BoltIcon,
   TrophyIcon,
-  CalendarDaysIcon,
   ClockIcon,
   IdentificationIcon,
   CakeIcon,
   MegaphoneIcon,
-  CpuChipIcon,
-  BuildingOffice2Icon,
   XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { useEffect, useState } from 'react';
@@ -31,19 +28,15 @@ const adminMenu = [
   { to: '/admin/memberships', icon: CreditCardIcon, label: 'Memberships' },
   { to: '/admin/payments', icon: BanknotesIcon, label: 'Payments' },
   { to: '/admin/attendance', icon: ClipboardDocumentListIcon, label: 'Attendance' },
-  { to: '/admin/classes', icon: CalendarDaysIcon, label: 'Classes' },
   { to: '/admin/equipment', icon: WrenchScrewdriverIcon, label: 'Equipment' },
   { to: '/admin/announcements', icon: MegaphoneIcon, label: 'Announcements' },
-  { to: '/admin/branches', icon: BuildingOffice2Icon, label: 'Branches' },
   { to: '/admin/analytics', icon: ChartPieIcon, label: 'Analytics' },
   { to: '/admin/ml-insights', icon: ChartBarSquareIcon, label: 'Member Insights' },
-  { to: '/admin/model-training', icon: CpuChipIcon, label: 'Model Training' },
 ];
 
 const trainerMenu = [
   { to: '/trainer', icon: ChartBarIcon, label: 'Dashboard', end: true },
   { to: '/trainer/members', icon: UsersIcon, label: 'My Members' },
-  { to: '/trainer/classes', icon: CalendarDaysIcon, label: 'Classes' },
   { to: '/trainer/attendance', icon: ClipboardDocumentListIcon, label: 'Attendance' },
   { to: '/trainer/workouts', icon: BoltIcon, label: 'Workouts' },
   { to: '/trainer/templates', icon: ClipboardDocumentListIcon, label: 'Templates' },
@@ -54,7 +47,6 @@ const memberMenu = [
   { to: '/member', icon: ChartBarIcon, label: 'Dashboard', end: true },
   { to: '/member/membership', icon: CreditCardIcon, label: 'Membership' },
   { to: '/member/payments', icon: BanknotesIcon, label: 'Payments' },
-  { to: '/member/classes', icon: CalendarDaysIcon, label: 'Classes' },
   { to: '/member/attendance', icon: ClockIcon, label: 'Attendance' },
   { to: '/member/workouts', icon: BoltIcon, label: 'Workouts' },
   { to: '/member/nutrition', icon: CakeIcon, label: 'Nutrition' },

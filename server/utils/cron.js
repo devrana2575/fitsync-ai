@@ -151,8 +151,6 @@ const startCronJobs = () => {
   cron.schedule('0 8 * * *', generateNotifications);
   cron.schedule('0 12 * * 1', generateNotifications);
   cron.schedule('15 0 * * *', expireMemberships);
-  const { startMlRetrainCron } = require('./mlRetrain');
-  startMlRetrainCron(cron);
   console.log('[Cron] Scheduled notification + membership expiry jobs');
 };
 

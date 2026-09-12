@@ -17,7 +17,6 @@ router.get('/', auth, authorize('admin'), async (req, res) => {
     const memberships = await Membership.find(filter)
       .populate('user', 'name email')
       .populate('plan')
-      .populate('branch', 'name code')
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit);
@@ -50,7 +49,7 @@ router.get('/active/:userId', auth, authorize('admin', 'trainer'), async (req, r
 
 router.post('/', auth, authorize('admin'), async (req, res) => {
   try {
-    const { userId, planId, startDate, autoRenew, branchId } = req.body;
+    const { userId, planId, startDate, autoRenew } = req.body;
 
     const plan = await MembershipPlan.findById(planId);
     if (!plan) return res.status(404).json({ message: 'Plan not found' });
@@ -68,14 +67,13 @@ router.post('/', auth, authorize('admin'), async (req, res) => {
     const membership = await Membership.create({
       user: userId,
       plan: planId,
-      branch: branchId || undefined,
       startDate: start,
       endDate: end,
       status: 'PENDING',
       autoRenew: autoRenew || false
     });
 
-    const populated = await membership.populate(['plan', 'user', 'branch']);
+    const populated = await membership.populate(['plan', 'user']);
     res.status(201).json({ membership: populated });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });

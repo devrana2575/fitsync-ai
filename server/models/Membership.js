@@ -11,10 +11,6 @@ const membershipSchema = new mongoose.Schema({
     ref: 'MembershipPlan',
     required: true
   },
-  branch: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'GymBranch'
-  },
   startDate: {
     type: Date,
     required: true,

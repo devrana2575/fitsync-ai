@@ -17,7 +17,6 @@ const NOTIFICATION_TYPES = [
   { value: 'high_risk', label: 'High risk alerts' },
   { value: 'progress_anomaly', label: 'Progress anomalies' },
   { value: 'payment_due', label: 'Payment reminders' },
-  { value: 'class_update', label: 'Class updates' },
   { value: 'announcement', label: 'Announcements' },
 ];
 

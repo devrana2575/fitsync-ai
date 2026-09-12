@@ -15,24 +15,19 @@ const AdminMemberships = lazy(() => import('./pages/admin/Memberships'));
 const AdminPayments = lazy(() => import('./pages/admin/Payments'));
 const AdminAttendance = lazy(() => import('./pages/admin/Attendance'));
 const AdminEquipment = lazy(() => import('./pages/admin/Equipment'));
-const AdminBranches = lazy(() => import('./pages/admin/Branches'));
-const AdminClasses = lazy(() => import('./pages/admin/Classes'));
 const AdminAnnouncements = lazy(() => import('./pages/admin/Announcements'));
 const AdminAnalytics = lazy(() => import('./pages/admin/Analytics'));
 const AdminMLInsights = lazy(() => import('./pages/admin/MLInsights'));
-const AdminModelTraining = lazy(() => import('./pages/admin/ModelTraining'));
 const TrainerDashboard = lazy(() => import('./pages/trainer/Dashboard'));
 const TrainerMembers = lazy(() => import('./pages/trainer/Members'));
 const TrainerWorkouts = lazy(() => import('./pages/trainer/Workouts'));
 const TrainerAttendance = lazy(() => import('./pages/trainer/Attendance'));
-const TrainerClasses = lazy(() => import('./pages/trainer/Classes'));
 const TrainerMealPlans = lazy(() => import('./pages/trainer/MealPlans'));
 const TrainerTemplates = lazy(() => import('./pages/trainer/Templates'));
 const MemberAnnouncements = lazy(() => import('./pages/member/Announcements'));
 const MemberDashboard = lazy(() => import('./pages/member/Dashboard'));
 const MemberAttendance = lazy(() => import('./pages/member/Attendance'));
 const MemberWorkouts = lazy(() => import('./pages/member/Workouts'));
-const MemberClasses = lazy(() => import('./pages/member/Classes'));
 const MemberNutrition = lazy(() => import('./pages/member/Nutrition'));
 const MemberGoals = lazy(() => import('./pages/member/Goals'));
 const MemberProgress = lazy(() => import('./pages/member/Progress'));
@@ -93,12 +88,9 @@ export default function App() {
             <Route path="payments" element={<AdminPayments />} />
             <Route path="attendance" element={<AdminAttendance />} />
             <Route path="equipment" element={<AdminEquipment />} />
-            <Route path="branches" element={<AdminBranches />} />
-            <Route path="classes" element={<AdminClasses />} />
             <Route path="announcements" element={<AdminAnnouncements />} />
             <Route path="analytics" element={<AdminAnalytics />} />
             <Route path="ml-insights" element={<AdminMLInsights />} />
-            <Route path="model-training" element={<AdminModelTraining />} />
           </Route>
 
           <Route
@@ -114,7 +106,6 @@ export default function App() {
             <Route path="members/:id" element={<MemberDetail />} />
             <Route path="attendance" element={<TrainerAttendance />} />
             <Route path="workouts" element={<TrainerWorkouts />} />
-            <Route path="classes" element={<TrainerClasses />} />
             <Route path="meal-plans" element={<TrainerMealPlans />} />
             <Route path="templates" element={<TrainerTemplates />} />
           </Route>
@@ -130,7 +121,6 @@ export default function App() {
             <Route index element={<MemberDashboard />} />
             <Route path="attendance" element={<MemberAttendance />} />
             <Route path="workouts" element={<MemberWorkouts />} />
-            <Route path="classes" element={<MemberClasses />} />
             <Route path="nutrition" element={<MemberNutrition />} />
             <Route path="goals" element={<MemberGoals />} />
             <Route path="progress" element={<MemberProgress />} />

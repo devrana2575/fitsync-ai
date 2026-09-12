@@ -65,15 +65,12 @@ app.use('/api/analytics', require('./routes/analytics'));
 app.use('/api/ml', require('./routes/ml'));
 app.use('/api/reports', require('./routes/reports'));
 app.use('/api/settings', require('./routes/settings'));
-app.use('/api/classes', require('./routes/classes'));
 app.use('/api/nutrition', require('./routes/nutrition'));
 app.use('/api/checkout', checkout.router);
 app.use('/api/templates', require('./routes/templates'));
 app.use('/api/photos', require('./routes/progressPhotos'));
 app.use('/api/announcements', require('./routes/announcements'));
-app.use('/api/training', require('./routes/training'));
 app.use('/api/recommendations', require('./routes/recommendations'));
-app.use('/api/branches', require('./routes/branches'));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.get('/api/health', (req, res) => {
