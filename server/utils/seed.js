@@ -19,6 +19,9 @@ const WorkoutLog = require('../models/WorkoutLog');
 const BodyMeasurement = require('../models/BodyMeasurement');
 const FitnessGoal = require('../models/FitnessGoal');
 const Notification = require('../models/Notification');
+const GymClass = require('../models/GymClass');
+const ClassSession = require('../models/ClassSession');
+const ClassBooking = require('../models/ClassBooking');
 
 const DAYS_AGO = (n) => new Date(Date.now() - n * 24 * 60 * 60 * 1000);
 const MONTHS_AGO = (n) => {
@@ -516,6 +519,87 @@ const seedDatabase = async () => {
       console.log(`Notifications: ${notifDefs.length} created`);
     } else {
       console.log(`Notifications: ${existingNotifCount} already exist, skipping`);
+    }
+
+    // ============================================================
+    // GROUP CLASSES
+    // ============================================================
+    const classDefs = [
+      { name: 'Morning HIIT Blast', category: 'hiit', difficulty: 'intermediate', description: 'High intensity interval training to start the day.', defaultDuration: 30, defaultCapacity: 16 },
+      { name: 'Power Yoga', category: 'yoga', difficulty: 'all_levels', description: 'Flow-based yoga focusing on strength and flexibility.', defaultDuration: 45, defaultCapacity: 20 },
+      { name: 'Strength Foundations', category: 'strength', difficulty: 'beginner', description: 'Learn barbell basics with guided coaching.', defaultDuration: 45, defaultCapacity: 12 },
+      { name: 'Spin & Sweat', category: 'cardio', difficulty: 'intermediate', description: 'High-energy indoor cycling session.', defaultDuration: 40, defaultCapacity: 18 },
+      { name: 'Boxing Conditioning', category: 'boxing', difficulty: 'advanced', description: 'Boxing drills and conditioning for all levels.', defaultDuration: 45, defaultCapacity: 14 },
+      { name: 'Core & Mobility', category: 'core', difficulty: 'all_levels', description: 'Core strength and mobility flow.', defaultDuration: 30, defaultCapacity: 20 },
+      { name: 'Zumba Party', category: 'dance', difficulty: 'beginner', description: 'Dance fitness that feels like a party.', defaultDuration: 50, defaultCapacity: 25 },
+    ];
+
+    let classCount = 0;
+    for (const cd of classDefs) {
+      let cls = await GymClass.findOne({ name: cd.name });
+      if (!cls) {
+        await GymClass.create(cd);
+        classCount++;
+      }
+    }
+    console.log(`Group classes: ${classCount} created, ${classDefs.length} total`);
+
+    // ============================================================
+    // CLASS SESSIONS (next 7 days, recurring weekly)
+    // ============================================================
+    const sessionCount = await ClassSession.countDocuments();
+    if (sessionCount === 0) {
+      const nextWeekDays = [0, 1, 2, 3, 4, 5, 6].map((offset) => {
+        const d = new Date();
+        const day = new Date(d);
+        day.setDate(d.getDate() + ((offset - d.getDay() + 7) % 7));
+        return day;
+      });
+
+      const schedule = [
+        { classIdx: 0, trainerIdx: 3, dayOffset: 0, hour: 7, minute: 0, location: 'HIIT Studio' },
+        { classIdx: 4, trainerIdx: 2, dayOffset: 0, hour: 18, minute: 30, location: 'Boxing Ring Area' },
+        { classIdx: 1, trainerIdx: 2, dayOffset: 1, hour: 6, minute: 30, location: 'Yoga Studio' },
+        { classIdx: 5, trainerIdx: 2, dayOffset: 1, hour: 19, minute: 0, location: 'Main Studio' },
+        { classIdx: 3, trainerIdx: 3, dayOffset: 2, hour: 6, minute: 45, location: 'Spin Studio' },
+        { classIdx: 2, trainerIdx: 0, dayOffset: 2, hour: 17, minute: 30, location: 'Strength Area' },
+        { classIdx: 0, trainerIdx: 3, dayOffset: 3, hour: 7, minute: 0, location: 'HIIT Studio' },
+        { classIdx: 6, trainerIdx: 4, dayOffset: 3, hour: 19, minute: 15, location: 'Main Studio' },
+        { classIdx: 1, trainerIdx: 2, dayOffset: 4, hour: 6, minute: 30, location: 'Yoga Studio' },
+        { classIdx: 2, trainerIdx: 0, dayOffset: 4, hour: 18, minute: 0, location: 'Strength Area' },
+        { classIdx: 5, trainerIdx: 2, dayOffset: 5, hour: 9, minute: 0, location: 'Main Studio' },
+        { classIdx: 3, trainerIdx: 3, dayOffset: 5, hour: 10, minute: 30, location: 'Spin Studio' },
+      ];
+
+      for (const sch of schedule) {
+        const start = new Date(nextWeekDays[sch.dayOffset]);
+        start.setHours(sch.hour, sch.minute, 0, 0);
+        if (start < new Date()) start.setDate(start.getDate() + 7);
+
+        const cls = await GymClass.findOne({ name: classDefs[sch.classIdx].name });
+        const session = await ClassSession.create({
+          gymClass: cls._id,
+          trainer: trainers[sch.trainerIdx]._id,
+          startsAt: start,
+          duration: cls.defaultDuration,
+          location: sch.location,
+          capacity: cls.defaultCapacity,
+          waitlistLimit: 5
+        });
+
+        const bookingProb = schedule.length % 3 === 0 ? 0.7 : 0.5;
+        for (let i = 0; i < members.length; i++) {
+          if (i % 2 === 0) {
+            const count = await ClassBooking.countDocuments({ session: session._id, status: 'booked' });
+            let status = 'booked';
+            if (count >= cls.defaultCapacity) status = 'waitlisted';
+            await ClassBooking.create({ session: session._id, user: members[i]._id, status });
+          }
+        }
+      }
+      console.log('Class sessions: seeded with bookings for the next week');
+    } else {
+      console.log(`Class sessions: ${sessionCount} already exist, skipping`);
     }
 
     // ============================================================

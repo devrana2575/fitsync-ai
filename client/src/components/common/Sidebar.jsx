@@ -27,6 +27,7 @@ const adminMenu = [
   { to: '/admin/memberships', icon: CreditCardIcon, label: 'Memberships' },
   { to: '/admin/payments', icon: BanknotesIcon, label: 'Payments' },
   { to: '/admin/attendance', icon: ClipboardDocumentListIcon, label: 'Attendance' },
+  { to: '/admin/classes', icon: CalendarDaysIcon, label: 'Classes' },
   { to: '/admin/equipment', icon: WrenchScrewdriverIcon, label: 'Equipment' },
   { to: '/admin/analytics', icon: ChartPieIcon, label: 'Analytics' },
   { to: '/admin/ml-insights', icon: ChartBarSquareIcon, label: 'Member Insights' },
@@ -35,6 +36,7 @@ const adminMenu = [
 const trainerMenu = [
   { to: '/trainer', icon: ChartBarIcon, label: 'Dashboard', end: true },
   { to: '/trainer/members', icon: UsersIcon, label: 'My Members' },
+  { to: '/trainer/classes', icon: CalendarDaysIcon, label: 'Classes' },
   { to: '/trainer/attendance', icon: ClipboardDocumentListIcon, label: 'Attendance' },
   { to: '/trainer/workouts', icon: BoltIcon, label: 'Workouts' },
 ];
@@ -43,7 +45,8 @@ const memberMenu = [
   { to: '/member', icon: ChartBarIcon, label: 'Dashboard', end: true },
   { to: '/member/membership', icon: CreditCardIcon, label: 'Membership' },
   { to: '/member/payments', icon: BanknotesIcon, label: 'Payments' },
-  { to: '/member/attendance', icon: CalendarDaysIcon, label: 'Attendance' },
+  { to: '/member/classes', icon: CalendarDaysIcon, label: 'Classes' },
+  { to: '/member/attendance', icon: ClockIcon, label: 'Attendance' },
   { to: '/member/workouts', icon: BoltIcon, label: 'Workouts' },
   { to: '/member/goals', icon: TrophyIcon, label: 'Goals' },
   { to: '/member/progress', icon: ChartBarSquareIcon, label: 'Progress' },

@@ -12,15 +12,18 @@ import AdminMemberships from './pages/admin/Memberships';
 import AdminPayments from './pages/admin/Payments';
 import AdminAttendance from './pages/admin/Attendance';
 import AdminEquipment from './pages/admin/Equipment';
+import AdminClasses from './pages/admin/Classes';
 import AdminAnalytics from './pages/admin/Analytics';
 import AdminMLInsights from './pages/admin/MLInsights';
 import TrainerDashboard from './pages/trainer/Dashboard';
 import TrainerMembers from './pages/trainer/Members';
 import TrainerWorkouts from './pages/trainer/Workouts';
 import TrainerAttendance from './pages/trainer/Attendance';
+import TrainerClasses from './pages/trainer/Classes';
 import MemberDashboard from './pages/member/Dashboard';
 import MemberAttendance from './pages/member/Attendance';
 import MemberWorkouts from './pages/member/Workouts';
+import MemberClasses from './pages/member/Classes';
 import MemberGoals from './pages/member/Goals';
 import MemberProgress from './pages/member/Progress';
 import MemberMembership from './pages/member/Membership';
@@ -70,6 +73,7 @@ export default function App() {
             <Route path="payments" element={<AdminPayments />} />
             <Route path="attendance" element={<AdminAttendance />} />
             <Route path="equipment" element={<AdminEquipment />} />
+            <Route path="classes" element={<AdminClasses />} />
             <Route path="analytics" element={<AdminAnalytics />} />
             <Route path="ml-insights" element={<AdminMLInsights />} />
           </Route>
@@ -87,6 +91,7 @@ export default function App() {
             <Route path="members/:id" element={<MemberDetail />} />
             <Route path="attendance" element={<TrainerAttendance />} />
             <Route path="workouts" element={<TrainerWorkouts />} />
+            <Route path="classes" element={<TrainerClasses />} />
           </Route>
 
           <Route
@@ -100,6 +105,7 @@ export default function App() {
             <Route index element={<MemberDashboard />} />
             <Route path="attendance" element={<MemberAttendance />} />
             <Route path="workouts" element={<MemberWorkouts />} />
+            <Route path="classes" element={<MemberClasses />} />
             <Route path="goals" element={<MemberGoals />} />
             <Route path="progress" element={<MemberProgress />} />
             <Route path="membership" element={<MemberMembership />} />
