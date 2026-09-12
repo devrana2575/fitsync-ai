@@ -22,6 +22,7 @@ import TrainerWorkouts from './pages/trainer/Workouts';
 import TrainerAttendance from './pages/trainer/Attendance';
 import TrainerClasses from './pages/trainer/Classes';
 import TrainerMealPlans from './pages/trainer/MealPlans';
+import TrainerTemplates from './pages/trainer/Templates';
 import MemberDashboard from './pages/member/Dashboard';
 import MemberAttendance from './pages/member/Attendance';
 import MemberWorkouts from './pages/member/Workouts';
@@ -97,6 +98,7 @@ export default function App() {
             <Route path="workouts" element={<TrainerWorkouts />} />
             <Route path="classes" element={<TrainerClasses />} />
             <Route path="meal-plans" element={<TrainerMealPlans />} />
+            <Route path="templates" element={<TrainerTemplates />} />
           </Route>
 
           <Route

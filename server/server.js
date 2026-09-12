@@ -1,4 +1,5 @@
 const express = require('express');
+const path = require('path');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const helmet = require('helmet');
@@ -67,6 +68,9 @@ app.use('/api/settings', require('./routes/settings'));
 app.use('/api/classes', require('./routes/classes'));
 app.use('/api/nutrition', require('./routes/nutrition'));
 app.use('/api/checkout', checkout.router);
+app.use('/api/templates', require('./routes/templates'));
+app.use('/api/photos', require('./routes/progressPhotos'));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString(), service: 'fitsync-ai-api' });

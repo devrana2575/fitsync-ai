@@ -25,6 +25,7 @@ const ClassBooking = require('../models/ClassBooking');
 const FoodItem = require('../models/FoodItem');
 const MealPlan = require('../models/MealPlan');
 const NutritionLog = require('../models/NutritionLog');
+const WorkoutTemplate = require('../models/WorkoutTemplate');
 const GymSetting = require('../models/GymSetting');
 const MLPrediction = require('../models/MLPrediction');
 const AIInsight = require('../models/AIInsight');
@@ -845,6 +846,62 @@ const seedDatabase = async () => {
       console.log(`AI insights: ${insightDefs.length} created`);
     } else {
       console.log(`AI insights: ${existingInsightCount} already exist, skipping`);
+    }
+
+    // ============================================================
+    // WORKOUT TEMPLATES
+    // ============================================================
+    const templateCount = await WorkoutTemplate.countDocuments();
+    if (templateCount === 0) {
+      const templateDefs = [
+        {
+          name: 'Full Body Foundation', goal: 'general_fitness', difficulty: 'beginner',
+          desc: 'A balanced introduction to all major movement patterns.',
+          exercises: [7, 8, 14, 19, 10], days: ['monday', 'wednesday', 'friday']
+        },
+        {
+          name: 'Upper Body Strength', goal: 'strength', difficulty: 'intermediate',
+          desc: 'Progressive overload focused on chest, back and shoulders.',
+          exercises: [0, 4, 3, 15, 5], days: ['monday', 'thursday']
+        },
+        {
+          name: 'Leg Day Builder', goal: 'hypertrophy', difficulty: 'intermediate',
+          desc: 'High volume leg training for size and strength.',
+          exercises: [1, 7, 16, 14, 13], days: ['tuesday', 'saturday']
+        },
+        {
+          name: 'Fat Burn Circuit', goal: 'weight_loss', difficulty: 'beginner',
+          desc: 'Combined strength and cardio circuit for maximum calorie burn.',
+          exercises: [18, 9, 11, 12, 19], days: ['monday', 'tuesday', 'thursday', 'friday']
+        },
+        {
+          name: 'Endurance Engine', goal: 'endurance', difficulty: 'intermediate',
+          desc: 'Cardio and conditioning to build stamina.',
+          exercises: [9, 10, 11, 18, 19], days: ['monday', 'wednesday', 'friday']
+        },
+      ];
+
+      let tCount = 0;
+      for (const td of templateDefs) {
+        const tplExercises = [];
+        for (const ei of td.exercises) {
+          tplExercises.push({ exercise: exercises[ei]._id, sets: 3, reps: 10 });
+        }
+        await WorkoutTemplate.create({
+          name: td.name,
+          description: td.desc,
+          createdBy: trainers[0]._id,
+          goal: td.goal,
+          difficulty: td.difficulty,
+          exercises: tplExercises,
+          dayOfWeek: td.days,
+          isShared: true
+        });
+        tCount++;
+      }
+      console.log(`Workout templates: ${tCount} created`);
+    } else {
+      console.log(`Workout templates: ${templateCount} already exist, skipping`);
     }
 
     // ============================================================

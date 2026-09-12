@@ -40,6 +40,7 @@ const trainerMenu = [
   { to: '/trainer/classes', icon: CalendarDaysIcon, label: 'Classes' },
   { to: '/trainer/attendance', icon: ClipboardDocumentListIcon, label: 'Attendance' },
   { to: '/trainer/workouts', icon: BoltIcon, label: 'Workouts' },
+  { to: '/trainer/templates', icon: ClipboardDocumentListIcon, label: 'Templates' },
   { to: '/trainer/meal-plans', icon: CakeIcon, label: 'Meal Plans' },
 ];
 

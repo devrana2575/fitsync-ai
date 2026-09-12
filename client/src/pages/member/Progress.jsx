@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { CameraIcon } from '@heroicons/react/24/outline';
 import api from '../../services/api';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
+import Modal from '../../components/common/Modal';
+import EmptyState from '../../components/common/EmptyState';
 
 export default function Progress() {
   const [measurements, setMeasurements] = useState([]);
@@ -10,6 +13,12 @@ export default function Progress() {
   const [showForm, setShowForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
+
+  const [photos, setPhotos] = useState([]);
+  const [showPhotoForm, setShowPhotoForm] = useState(false);
+  const [photoForm, setPhotoForm] = useState({ caption: '', angle: 'other', file: null });
+  const [photoSubmitting, setPhotoSubmitting] = useState(false);
+  const [photoError, setPhotoError] = useState('');
 
   const [form, setForm] = useState({
     weight: '',
@@ -23,10 +32,10 @@ export default function Progress() {
   });
 
   useEffect(() => {
-    fetchMeasurements();
+    Promise.all([fetchMeasurements(), fetchPhotos()]);
   }, []);
 
-  const fetchMeasurements = async () => {
+  async function fetchMeasurements() {
     try {
       setLoading(true);
       const res = await api.get('/measurements/my');
@@ -36,6 +45,56 @@ export default function Progress() {
       setError(err.message);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function fetchPhotos() {
+    try {
+      const res = await api.get('/photos/my');
+      const data = res.data?.photos || res.data || [];
+      setPhotos(Array.isArray(data) ? data : []);
+    } catch {
+      setPhotos([]);
+    }
+  }
+
+  const handlePhotoChange = (e) => {
+    const { name, value, files } = e.target;
+    setPhotoForm((prev) => ({ ...prev, [name]: name === 'photo' ? files[0] : value }));
+  };
+
+  const handlePhotoSubmit = async (e) => {
+    e.preventDefault();
+    setPhotoError('');
+    if (!photoForm.file) {
+      return setPhotoError('Please select a photo to upload');
+    }
+    try {
+      setPhotoSubmitting(true);
+      const fd = new FormData();
+      fd.append('photo', photoForm.file);
+      fd.append('caption', photoForm.caption);
+      fd.append('angle', photoForm.angle);
+      await api.post('/photos', fd);
+      setPhotoForm({ caption: '', angle: 'other', file: null });
+      setShowPhotoForm(false);
+      alert('Photo uploaded successfully');
+      fetchPhotos();
+    } catch (err) {
+      setPhotoError(err.message);
+    } finally {
+      setPhotoSubmitting(false);
+    }
+  };
+
+  const handleDeletePhoto = async (photo) => {
+    if (!window.confirm('Delete this progress photo?')) return;
+    try {
+      await api.delete(`/photos/${photo._id}`);
+      alert('Photo deleted');
+      fetchPhotos();
+    } catch (err) {
+      alert(err.message);
     }
   };
 
@@ -209,6 +268,94 @@ export default function Progress() {
             <div className="h-[300px] flex items-center justify-center text-slate-400 text-sm">No body measurement data yet</div>
           )}
         </div>
+
+        <div className="bg-white rounded-xl border border-slate-200 p-6 mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-slate-900">Progress Photos</h2>
+            <button
+              onClick={() => setShowPhotoForm(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors"
+            >
+              + Upload Photo
+            </button>
+          </div>
+          {photos.length > 0 ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              {photos.map((photo) => (
+                <div key={photo._id || photo.url} className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                  <img
+                    src={`http://localhost:5000${photo.url}`}
+                    alt={photo.caption || 'Progress photo'}
+                    className="h-48 w-full object-cover rounded-t-xl"
+                  />
+                  <div className="p-4">
+                    <p className="text-sm font-medium text-slate-900 truncate">{photo.caption || 'Progress photo'}</p>
+                    <div className="mt-2 flex items-center gap-2">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-50 text-indigo-600 capitalize">{photo.angle}</span>
+                      <span className="text-xs text-slate-500">
+                        {new Date(photo.createdAt || photo.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      </span>
+                    </div>
+                    <button onClick={() => handleDeletePhoto(photo)} className="mt-3 text-xs font-medium text-red-600 hover:text-red-800">
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <EmptyState icon={CameraIcon} message="No progress photos yet. Upload one to track your transformation." />
+          )}
+        </div>
+
+        <Modal isOpen={showPhotoForm} onClose={() => setShowPhotoForm(false)} title="Upload Progress Photo">
+          <form onSubmit={handlePhotoSubmit} className="space-y-4">
+            {photoError && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{photoError}</div>
+            )}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Caption</label>
+              <input
+                type="text"
+                name="caption"
+                value={photoForm.caption}
+                onChange={handlePhotoChange}
+                placeholder="e.g. Week 4 check-in"
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Angle</label>
+              <select
+                name="angle"
+                value={photoForm.angle}
+                onChange={handlePhotoChange}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              >
+                <option value="other">Other</option>
+                <option value="front">Front</option>
+                <option value="side">Side</option>
+                <option value="back">Back</option>
+                <option value="full">Full</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Photo</label>
+              <input
+                type="file"
+                name="photo"
+                accept="image/*"
+                onChange={handlePhotoChange}
+                className="w-full text-sm text-slate-600 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-indigo-50 file:text-indigo-600 hover:file:bg-indigo-100"
+              />
+            </div>
+            <div className="flex justify-end">
+              <button type="submit" disabled={photoSubmitting} className="px-6 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors disabled:opacity-50">
+                {photoSubmitting ? 'Uploading...' : 'Upload Photo'}
+              </button>
+            </div>
+          </form>
+        </Modal>
 
         {measurements.length > 0 && (
           <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
