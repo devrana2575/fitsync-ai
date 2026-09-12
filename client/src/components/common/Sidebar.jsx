@@ -16,6 +16,7 @@ import {
   IdentificationIcon,
   CakeIcon,
   MegaphoneIcon,
+  CpuChipIcon,
   XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { useEffect, useState } from 'react';
@@ -34,6 +35,7 @@ const adminMenu = [
   { to: '/admin/announcements', icon: MegaphoneIcon, label: 'Announcements' },
   { to: '/admin/analytics', icon: ChartPieIcon, label: 'Analytics' },
   { to: '/admin/ml-insights', icon: ChartBarSquareIcon, label: 'Member Insights' },
+  { to: '/admin/model-training', icon: CpuChipIcon, label: 'Model Training' },
 ];
 
 const trainerMenu = [

@@ -17,6 +17,7 @@ import AdminClasses from './pages/admin/Classes';
 import AdminAnnouncements from './pages/admin/Announcements';
 import AdminAnalytics from './pages/admin/Analytics';
 import AdminMLInsights from './pages/admin/MLInsights';
+import AdminModelTraining from './pages/admin/ModelTraining';
 import TrainerDashboard from './pages/trainer/Dashboard';
 import TrainerMembers from './pages/trainer/Members';
 import TrainerWorkouts from './pages/trainer/Workouts';
@@ -84,6 +85,7 @@ export default function App() {
             <Route path="announcements" element={<AdminAnnouncements />} />
             <Route path="analytics" element={<AdminAnalytics />} />
             <Route path="ml-insights" element={<AdminMLInsights />} />
+            <Route path="model-training" element={<AdminModelTraining />} />
           </Route>
 
           <Route

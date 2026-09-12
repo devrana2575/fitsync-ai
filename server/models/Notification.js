@@ -18,7 +18,7 @@ const notificationSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['membership_expiry', 'payment_due', 'low_attendance', 'high_risk', 'progress_anomaly', 'equipment_maintenance', 'general', 'workout_reminder', 'class_update', 'announcement'],
+    enum: ['membership_expiry', 'payment_due', 'low_attendance', 'high_risk', 'progress_anomaly', 'equipment_maintenance', 'general', 'workout_reminder', 'class_update', 'announcement', 'system'],
     default: 'general'
   },
   isRead: {
@@ -28,6 +28,10 @@ const notificationSchema = new mongoose.Schema({
   link: {
     type: String,
     trim: true
+  },
+  data: {
+    type: mongoose.Schema.Types.Mixed,
+    default: {}
   }
 }, {
   timestamps: true

@@ -1,12 +1,16 @@
 import { useState, useEffect } from 'react';
+import { SparklesIcon } from '@heroicons/react/24/outline';
 import api from '../../services/api';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
+import EmptyState from '../../components/common/EmptyState';
 
 export default function Workouts() {
   const [plans, setPlans] = useState([]);
   const [history, setHistory] = useState([]);
   const [stats, setStats] = useState(null);
   const [exercises, setExercises] = useState([]);
+  const [recommendations, setRecommendations] = useState(null);
+  const [recContext, setRecContext] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [tab, setTab] = useState('plans');
@@ -25,7 +29,19 @@ export default function Workouts() {
 
   useEffect(() => {
     fetchData();
+    fetchRecommendations();
   }, []);
+
+  const fetchRecommendations = async () => {
+    try {
+      const res = await api.get('/recommendations/my');
+      const data = res.data?.recommendations || [];
+      setRecommendations(Array.isArray(data) ? data.slice(0, 4) : []);
+      setRecContext(res.data?.context || null);
+    } catch {
+      setRecommendations([]);
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -86,6 +102,64 @@ export default function Workouts() {
   return (
     <div className="min-h-screen bg-slate-50 p-6">
       <div className="max-w-5xl mx-auto">
+        {recommendations && (
+          <div className="mb-8">
+            <h2 className="text-2xl font-bold text-slate-900">Recommended For You</h2>
+            {recContext && (
+              <p className="text-sm text-slate-500 mt-1 mb-4">
+                {[
+                  recContext.primaryGoal ? `Based on your ${recContext.primaryGoal} goal` : null,
+                  recContext.difficulty ? `${recContext.difficulty} level` : null,
+                  typeof recContext.attendancePct === 'number' ? `${Math.round(recContext.attendancePct)}% 30-day attendance` : null,
+                ].filter(Boolean).join(' · ')}
+              </p>
+            )}
+            {recommendations.length === 0 ? (
+              <div className="bg-white rounded-xl border border-slate-200">
+                <EmptyState message="No recommendations available right now. Check back once you have more workout history." />
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                {recommendations.map((rec) => (
+                  <div key={rec.id} className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+                    <h3 className="font-semibold text-slate-900">{rec.name}</h3>
+                    {rec.description && <p className="text-sm text-slate-500 mt-1">{rec.description}</p>}
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {rec.goal && <span className="bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full">{rec.goal}</span>}
+                      {rec.difficulty && <span className="bg-emerald-100 text-emerald-700 text-xs px-2 py-0.5 rounded-full">{rec.difficulty}</span>}
+                    </div>
+                    <p className="text-xs text-slate-500 mt-2">{rec.exerciseCount ?? 0} exercises · assigned {rec.timesAssigned ?? 0} times</p>
+                    {rec.reasons && rec.reasons.length > 0 && (
+                      <div className="mt-3">
+                        <p className="text-xs font-medium text-slate-600">Why recommended</p>
+                        <ul className="mt-1 space-y-1">
+                          {rec.reasons.slice(0, 2).map((reason, idx) => (
+                            <li key={idx} className="flex items-start gap-1.5 text-xs text-slate-500">
+                              <SparklesIcon className="h-3.5 w-3.5 text-indigo-500 shrink-0 mt-0.5" />
+                              <span>{reason}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {typeof rec.score === 'number' && (
+                      <div className="mt-3">
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="text-xs text-slate-500">Match</span>
+                          <span className="text-xs font-semibold text-indigo-600">{Math.round(rec.score * 10)}%</span>
+                        </div>
+                        <div className="bg-slate-100 rounded-full h-1.5">
+                          <div className="bg-indigo-600 h-1.5 rounded-full" style={{ width: `${Math.round(rec.score * 10)}%` }} />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8 gap-4">
           <div>
             <h1 className="text-2xl font-bold text-slate-900">My Workouts</h1>

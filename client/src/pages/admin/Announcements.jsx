@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { MegaphoneIcon, PinIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
+import { MegaphoneIcon, BookmarkIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import api from '../../services/api';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import EmptyState from '../../components/common/EmptyState';
@@ -104,7 +104,7 @@ export default function Announcements() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <StatCard icon={MegaphoneIcon} label="Total Announcements" value={total} color="indigo" />
         <StatCard icon={CheckCircleIcon} label="Active" value={activeCount} color="green" />
-        <StatCard icon={PinIcon} label="Pinned" value={pinnedCount} color="yellow" />
+        <StatCard icon={BookmarkIcon} label="Pinned" value={pinnedCount} color="yellow" />
       </div>
 
       {error ? (
