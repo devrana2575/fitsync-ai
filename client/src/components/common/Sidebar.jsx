@@ -15,6 +15,7 @@ import {
   ClockIcon,
   IdentificationIcon,
   CakeIcon,
+  MegaphoneIcon,
   XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { useEffect, useState } from 'react';
@@ -30,6 +31,7 @@ const adminMenu = [
   { to: '/admin/attendance', icon: ClipboardDocumentListIcon, label: 'Attendance' },
   { to: '/admin/classes', icon: CalendarDaysIcon, label: 'Classes' },
   { to: '/admin/equipment', icon: WrenchScrewdriverIcon, label: 'Equipment' },
+  { to: '/admin/announcements', icon: MegaphoneIcon, label: 'Announcements' },
   { to: '/admin/analytics', icon: ChartPieIcon, label: 'Analytics' },
   { to: '/admin/ml-insights', icon: ChartBarSquareIcon, label: 'Member Insights' },
 ];
@@ -53,6 +55,7 @@ const memberMenu = [
   { to: '/member/workouts', icon: BoltIcon, label: 'Workouts' },
   { to: '/member/nutrition', icon: CakeIcon, label: 'Nutrition' },
   { to: '/member/goals', icon: TrophyIcon, label: 'Goals' },
+  { to: '/member/announcements', icon: MegaphoneIcon, label: 'Announcements' },
   { to: '/member/progress', icon: ChartBarSquareIcon, label: 'Progress' },
   { to: '/member/notifications', icon: ClockIcon, label: 'Notifications' },
   { to: '/member/profile', icon: IdentificationIcon, label: 'Profile' },

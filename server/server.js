@@ -70,6 +70,7 @@ app.use('/api/nutrition', require('./routes/nutrition'));
 app.use('/api/checkout', checkout.router);
 app.use('/api/templates', require('./routes/templates'));
 app.use('/api/photos', require('./routes/progressPhotos'));
+app.use('/api/announcements', require('./routes/announcements'));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.get('/api/health', (req, res) => {

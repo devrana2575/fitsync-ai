@@ -44,6 +44,18 @@ notificationSchema.post('save', function (doc) {
   } catch (error) {
     // socket layer not initialized yet — ignore
   }
+  setImmediate(async () => {
+    try {
+      const User = require('./User');
+      const { dispatchMessage } = require('../utils/messaging');
+      const userId = doc.user && typeof doc.user === 'object' && doc.user._id ? doc.user._id : doc.user;
+      if (!userId) return;
+      const user = await User.findById(userId).select('email preferences phone');
+      if (user) dispatchMessage(user, doc.toObject());
+    } catch (error) {
+      // best-effort messaging — ignore failures
+    }
+  });
 });
 
 module.exports = mongoose.model('Notification', notificationSchema);

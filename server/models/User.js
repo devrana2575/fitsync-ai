@@ -36,6 +36,11 @@ const userSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  preferences: {
+    emailNotifications: { type: Boolean, default: true },
+    smsNotifications: { type: Boolean, default: false },
+    notifyTypes: { type: [String], default: ['membership_expiry', 'high_risk', 'progress_anomaly', 'payment_due', 'class_update', 'announcement'] }
+  },
   isActive: {
     type: Boolean,
     default: true

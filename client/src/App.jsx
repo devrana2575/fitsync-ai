@@ -14,6 +14,7 @@ import AdminPayments from './pages/admin/Payments';
 import AdminAttendance from './pages/admin/Attendance';
 import AdminEquipment from './pages/admin/Equipment';
 import AdminClasses from './pages/admin/Classes';
+import AdminAnnouncements from './pages/admin/Announcements';
 import AdminAnalytics from './pages/admin/Analytics';
 import AdminMLInsights from './pages/admin/MLInsights';
 import TrainerDashboard from './pages/trainer/Dashboard';
@@ -23,6 +24,7 @@ import TrainerAttendance from './pages/trainer/Attendance';
 import TrainerClasses from './pages/trainer/Classes';
 import TrainerMealPlans from './pages/trainer/MealPlans';
 import TrainerTemplates from './pages/trainer/Templates';
+import MemberAnnouncements from './pages/member/Announcements';
 import MemberDashboard from './pages/member/Dashboard';
 import MemberAttendance from './pages/member/Attendance';
 import MemberWorkouts from './pages/member/Workouts';
@@ -79,6 +81,7 @@ export default function App() {
             <Route path="attendance" element={<AdminAttendance />} />
             <Route path="equipment" element={<AdminEquipment />} />
             <Route path="classes" element={<AdminClasses />} />
+            <Route path="announcements" element={<AdminAnnouncements />} />
             <Route path="analytics" element={<AdminAnalytics />} />
             <Route path="ml-insights" element={<AdminMLInsights />} />
           </Route>
@@ -120,6 +123,7 @@ export default function App() {
             <Route path="payments" element={<MemberPayments />} />
             <Route path="profile" element={<MemberProfile />} />
             <Route path="notifications" element={<MemberNotifications />} />
+            <Route path="announcements" element={<MemberAnnouncements />} />
           </Route>
 
           <Route path="/" element={<RootRedirect />} />

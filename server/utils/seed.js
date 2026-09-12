@@ -26,6 +26,7 @@ const FoodItem = require('../models/FoodItem');
 const MealPlan = require('../models/MealPlan');
 const NutritionLog = require('../models/NutritionLog');
 const WorkoutTemplate = require('../models/WorkoutTemplate');
+const Announcement = require('../models/Announcement');
 const GymSetting = require('../models/GymSetting');
 const MLPrediction = require('../models/MLPrediction');
 const AIInsight = require('../models/AIInsight');
@@ -902,6 +903,25 @@ const seedDatabase = async () => {
       console.log(`Workout templates: ${tCount} created`);
     } else {
       console.log(`Workout templates: ${templateCount} already exist, skipping`);
+    }
+
+    // ============================================================
+    // ANNOUNCEMENTS
+    // ============================================================
+    const annCount = await Announcement.countDocuments();
+    if (annCount === 0) {
+      const annDefs = [
+        { title: 'Welcome to the New Season!', message: 'We have upgraded the gym with new equipment. Check out the new machines in the strength area!', priority: 'info', pinned: true },
+        { title: 'Holiday Schedule Update', message: 'The gym will close early at 6 PM on national holidays this month.', priority: 'warning', pinned: false },
+        { title: 'Annual Memberships Available', message: 'Grab our Annual Premium plan today and save big. Limited time offer!', priority: 'warning', pinned: false },
+        { title: 'Maintenance Notice', message: 'The cardio zone will be under maintenance this Saturday from 9-11 AM.', priority: 'critical', pinned: false },
+      ];
+      for (const ad of annDefs) {
+        await Announcement.create({ ...ad, createdBy: admins[0]._id });
+      }
+      console.log(`Announcements: ${annDefs.length} created`);
+    } else {
+      console.log(`Announcements: ${annCount} already exist, skipping`);
     }
 
     // ============================================================

@@ -21,8 +21,10 @@
     "mongoose": "^8.10.1",
     "multer": "^2.3.0",
     "node-cron": "^3.0.3",
+    "nodemailer": "^10.0.9",
     "qrcode": "^1.5.4",
     "socket.io": "^4.8.3",
-    "stripe": "^22.6.2"
+    "stripe": "^22.6.2",
+    "twilio": "^6.1.1"
   }
 }

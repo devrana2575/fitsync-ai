@@ -12,6 +12,15 @@ import api from '../../services/api';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import EmptyState from '../../components/common/EmptyState';
 
+const NOTIFICATION_TYPES = [
+  { value: 'membership_expiry', label: 'Membership expiry' },
+  { value: 'high_risk', label: 'High risk alerts' },
+  { value: 'progress_anomaly', label: 'Progress anomalies' },
+  { value: 'payment_due', label: 'Payment reminders' },
+  { value: 'class_update', label: 'Class updates' },
+  { value: 'announcement', label: 'Announcements' },
+];
+
 const typeIcons = {
   membership_expiry: SparklesIcon,
   payment_due: ExclamationTriangleIcon,
@@ -51,6 +60,13 @@ export default function Notifications() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [unreadOnly, setUnreadOnly] = useState(false);
+  const [preferences, setPreferences] = useState({
+    emailNotifications: true,
+    smsNotifications: false,
+    notifyTypes: [],
+  });
+  const [prefSaved, setPrefSaved] = useState(false);
+  const [prefError, setPrefError] = useState(null);
 
   const fetchData = async () => {
     try {
@@ -64,7 +80,25 @@ export default function Notifications() {
     }
   };
 
+  const fetchPreferences = async () => {
+    try {
+      const res = await api.get('/auth/me');
+      const pref = res.data?.user?.preferences;
+      if (pref) {
+        setPreferences({
+          emailNotifications: pref.emailNotifications ?? true,
+          smsNotifications: pref.smsNotifications ?? false,
+          notifyTypes: Array.isArray(pref.notifyTypes) ? pref.notifyTypes : [],
+        });
+      }
+    } catch {
+      // silent
+    }
+  };
+
   useEffect(() => { fetchData(); }, [unreadOnly]);
+
+  useEffect(() => { fetchPreferences(); }, []);
 
   const handleMarkRead = async (id) => {
     try {
@@ -82,6 +116,30 @@ export default function Notifications() {
     } catch {
       // silent
     }
+  };
+
+  const handleSavePreferences = async () => {
+    try {
+      setPrefError(null);
+      await api.put('/auth/preferences', preferences);
+      setPrefSaved(true);
+      setTimeout(() => setPrefSaved(false), 3000);
+    } catch (err) {
+      setPrefError(err.message);
+    }
+  };
+
+  const setToggle = (key) => {
+    setPreferences((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const toggleNotifyType = (value) => {
+    setPreferences((prev) => ({
+      ...prev,
+      notifyTypes: prev.notifyTypes.includes(value)
+        ? prev.notifyTypes.filter((v) => v !== value)
+        : [...prev.notifyTypes, value],
+    }));
   };
 
   if (loading && notifications.length === 0) return <LoadingSpinner />;
@@ -111,6 +169,85 @@ export default function Notifications() {
               </button>
             )}
           </div>
+        </div>
+
+        <div className="bg-white rounded-xl border border-slate-200 p-6 mb-6">
+          <div className="flex items-center justify-between mb-4 gap-3">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900">Notification Preferences</h2>
+              <p className="text-sm text-slate-500">Choose how you want to be notified</p>
+            </div>
+            <button
+              onClick={handleSavePreferences}
+              className="text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg px-4 py-2 transition-colors"
+            >
+              Save
+            </button>
+          </div>
+
+          <div className="space-y-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-medium text-slate-800">Email notifications</p>
+                <p className="text-xs text-slate-500">Receive updates via email</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setToggle('emailNotifications')}
+                className={`relative inline-flex h-5 w-10 shrink-0 rounded-full transition-colors ${preferences.emailNotifications ? 'bg-indigo-600' : 'bg-slate-300'}`}
+              >
+                <span
+                  className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${preferences.emailNotifications ? 'translate-x-4' : 'translate-x-0'}`}
+                />
+              </button>
+            </div>
+
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-medium text-slate-800">SMS notifications</p>
+                <p className="text-xs text-slate-500">Receive updates via text message</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setToggle('smsNotifications')}
+                className={`relative inline-flex h-5 w-10 shrink-0 rounded-full transition-colors ${preferences.smsNotifications ? 'bg-indigo-600' : 'bg-slate-300'}`}
+              >
+                <span
+                  className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${preferences.smsNotifications ? 'translate-x-4' : 'translate-x-0'}`}
+                />
+              </button>
+            </div>
+
+            <div>
+              <p className="text-sm font-medium text-slate-800 mb-2">Notify me about</p>
+              <div className="flex flex-wrap gap-2">
+                {NOTIFICATION_TYPES.map((t) => {
+                  const active = preferences.notifyTypes.includes(t.value);
+                  return (
+                    <button
+                      key={t.value}
+                      type="button"
+                      onClick={() => toggleNotifyType(t.value)}
+                      className={`text-xs font-medium rounded-full px-3 py-1.5 border transition-colors ${active ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'}`}
+                    >
+                      {t.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {prefSaved && (
+            <div className="mt-4 text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-2">
+              Preferences saved successfully
+            </div>
+          )}
+          {prefError && (
+            <div className="mt-4 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-4 py-2">
+              {prefError}
+            </div>
+          )}
         </div>
 
         {notifications.length === 0 ? (

@@ -159,4 +159,19 @@ router.put('/me', auth, async (req, res) => {
   }
 });
 
+router.put('/preferences', auth, async (req, res) => {
+  try {
+    const { emailNotifications, smsNotifications, notifyTypes } = req.body;
+    const update = {};
+    if (emailNotifications !== undefined) update['preferences.emailNotifications'] = emailNotifications;
+    if (smsNotifications !== undefined) update['preferences.smsNotifications'] = smsNotifications;
+    if (Array.isArray(notifyTypes)) update['preferences.notifyTypes'] = notifyTypes;
+
+    const user = await User.findByIdAndUpdate(req.user._id, update, { new: true });
+    res.json({ preferences: user.preferences });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 module.exports = router;
