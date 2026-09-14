@@ -29,6 +29,7 @@ const adminMenu = [
   { to: '/admin/payments', icon: BanknotesIcon, label: 'Payments' },
   { to: '/admin/attendance', icon: ClipboardDocumentListIcon, label: 'Attendance' },
   { to: '/admin/equipment', icon: WrenchScrewdriverIcon, label: 'Equipment' },
+  { to: '/admin/foods', icon: CakeIcon, label: 'Food Database' },
   { to: '/admin/announcements', icon: MegaphoneIcon, label: 'Announcements' },
   { to: '/admin/analytics', icon: ChartPieIcon, label: 'Analytics' },
 ];

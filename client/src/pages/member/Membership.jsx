@@ -54,7 +54,7 @@ export default function Membership() {
       const res = await api.post('/checkout/create', { planId: plan._id });
       const { mode, url, payment } = res.data;
       if (mode === 'stripe' && url) {
-        window.location.href = url;
+        window.location.assign(url);
       } else if (mode === 'demo') {
         setSelectedPlan({ ...plan, paymentId: payment });
         setModalOpen(true);

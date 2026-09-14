@@ -33,10 +33,6 @@ export default function Goals() {
     targetDate: '',
   });
 
-  useEffect(() => {
-    fetchGoals();
-  }, []);
-
   const fetchGoals = async () => {
     try {
       setLoading(true);
@@ -49,6 +45,10 @@ export default function Goals() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchGoals();
+  }, []);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });

@@ -27,11 +27,6 @@ export default function Workouts() {
     notes: '',
   });
 
-  useEffect(() => {
-    fetchData();
-    fetchRecommendations();
-  }, []);
-
   const fetchRecommendations = async () => {
     try {
       const res = await api.get('/recommendations/my');
@@ -66,6 +61,11 @@ export default function Workouts() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchData();
+    fetchRecommendations();
+  }, []);
 
   const handleLogChange = (e) => {
     setLogForm({ ...logForm, [e.target.name]: e.target.value });

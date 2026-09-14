@@ -137,7 +137,7 @@ export default function Nutrition() {
 
   const updateWater = async (delta) => {
     const next = Math.max(0, (log?.waterGlasses || 0) + delta);
-    setLog({ ...(log || {}), waterGlasses: next });
+    setLog({ ...log, waterGlasses: next });
     try {
       await api.put('/nutrition/log/water', { date: today, waterGlasses: next });
     } catch (err) {
@@ -386,9 +386,10 @@ export default function Nutrition() {
                 <option value="protein">Protein</option>
                 <option value="fruit">Fruit</option>
                 <option value="vegetable">Vegetable</option>
-                <option value="grain">Grain</option>
+                <option value="grains">Grains</option>
                 <option value="dairy">Dairy</option>
                 <option value="snack">Snack</option>
+                <option value="beverage">Beverage</option>
               </select>
             </div>
             <div>

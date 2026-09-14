@@ -11,10 +11,6 @@ export default function Attendance() {
   const [error, setError] = useState(null);
   const [view, setView] = useState('table');
 
-  useEffect(() => {
-    fetchAttendance();
-  }, []);
-
   const fetchAttendance = async () => {
     try {
       setLoading(true);
@@ -27,6 +23,10 @@ export default function Attendance() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchAttendance();
+  }, []);
 
   const handleCheckIn = async () => {
     try {

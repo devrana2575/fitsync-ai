@@ -17,6 +17,7 @@ const AdminAttendance = lazy(() => import('./pages/admin/Attendance'));
 const AdminEquipment = lazy(() => import('./pages/admin/Equipment'));
 const AdminAnnouncements = lazy(() => import('./pages/admin/Announcements'));
 const AdminAnalytics = lazy(() => import('./pages/admin/Analytics'));
+const AdminFoodDatabase = lazy(() => import('./pages/admin/FoodDatabase'));
 const TrainerDashboard = lazy(() => import('./pages/trainer/Dashboard'));
 const TrainerMembers = lazy(() => import('./pages/trainer/Members'));
 const TrainerWorkouts = lazy(() => import('./pages/trainer/Workouts'));
@@ -89,6 +90,7 @@ export default function App() {
             <Route path="equipment" element={<AdminEquipment />} />
             <Route path="announcements" element={<AdminAnnouncements />} />
             <Route path="analytics" element={<AdminAnalytics />} />
+            <Route path="foods" element={<AdminFoodDatabase />} />
           </Route>
 
           <Route

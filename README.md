@@ -13,10 +13,15 @@ A comprehensive full-stack gym management system with integrated machine learnin
 - **Attendance** - Manual check-in, QR check-in, daily/monthly tracking
 - **Workout Plans** - Trainers create plans, assign exercises with sets/reps/weight
 - **Exercise Library** - 20+ pre-built exercises across categories
+- **Workout Templates** - Pre-built templates with one-click member assignment
+- **Nutrition Tracking** - Food database, meal plans, calorie/macro logging, water tracker
 - **Fitness Goals** - Weight loss, muscle gain, strength, endurance goals
 - **Body Measurements** - Weight, BMI, body fat, circumferences tracking
 - **Equipment Management** - Track equipment condition and maintenance schedules
 - **Notifications** - In-app notifications for membership, attendance, risk alerts
+- **Announcements** - Poster board with priority levels, pinning and expiry
+- **Online Payments** - Stripe checkout with demo-mode fallback for membership purchase
+- **Email/SMS Alerts** - Optional dispatch for membership expiry, risk and announcements
 - **Reports** - Revenue, membership, attendance, ML risk reports
 
 ### Dashboards
@@ -76,8 +81,8 @@ fitsync-ai/
 │       ├── context/           # Auth context
 │       └── utils/             # Utility functions
 ├── server/                    # Node.js backend
-│   ├── models/                # 16 Mongoose schemas
-│   ├── routes/                # 18 route files
+│   ├── models/                # 21 Mongoose schemas
+│   ├── routes/                # 24 route files
 │   ├── middleware/             # Auth & role middleware
 │   ├── config/                # Database config
 │   └── utils/                 # Helpers, seed, cron
@@ -101,14 +106,19 @@ fitsync-ai/
 | payments | Payment records with amount, method, status |
 | attendances | Check-in/out times, duration, method |
 | workoutplans | Trainer-created plans with exercise assignments |
+| workouttemplates | Pre-built workout templates reusable across members |
 | exercises | Exercise library with categories and muscle groups |
 | workoutlogs | Member workout completion records |
+| fooditems | Food database with per-serving macros |
+| mealplans | Trainer-created meal plans with calculated daily macros |
+| nutritionlogs | Member daily calorie/macros/water logs |
 | fitnessgoals | Member fitness goals with progress tracking |
 | bodymeasurements | Weight, height, BMI, body circumferences |
 | equipment | Gym equipment with condition and maintenance |
+| announcements | Gym poster board with priority and expiry |
+| progressphotos | Member progress photo history |
 | notifications | In-app notifications |
-| mlpredictions | ML model prediction results |
-| aiinsights | AI-generated insights |
+| gymsettings | Gym name and settings |
 
 ## Installation
 
@@ -278,26 +288,24 @@ The ML models are trained on **synthetic data** generated to simulate realistic 
 
 ## Limitations
 
-1. **Synthetic Data**: All training data is generated, not real gym data
+1. **Synthetic Data**: ML training data is generated, not real gym data
 2. **Small Dataset**: 20 members may not represent real-world gym population
 3. **Forecasting**: Simple moving average, not ARIMA or Prophet
 4. **Anomaly Detection**: Statistical thresholds, not deep learning
-5. **No Real-time**: WebSocket not implemented for live updates
-6. **No Payment Gateway**: Payments are recorded manually
+5. **No Real-time**: WebSocket implemented for notifications only, not live dashboards
+6. **Payment Gateway**: Stripe integrated but demo-mode is the default fallback
 7. **QR Check-in**: Basic implementation, not camera-based scanner
+8. **Nutrition**: Food database is crowd-seeded by admins/members; no barcode scanning
 
 ## Future Scope
 
-- WebSocket real-time notifications
+- WebSocket real-time dashboards
 - Integration with wearable devices
 - Advanced time-series forecasting (Prophet, LSTM)
 - Mobile app (React Native)
-- Payment gateway integration
 - Body composition analysis with camera
-- Nutrition tracking
 - Class scheduling
-- Multi-branch support
-- Email/SMS notifications
+- Nutrition barcode scanning
 
 ## Project Report
 

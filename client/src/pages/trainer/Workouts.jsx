@@ -21,10 +21,6 @@ export default function Workouts() {
     exercises: [{ ...emptyExercise }],
   });
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
   const fetchData = async () => {
     try {
       setLoading(true);
@@ -45,6 +41,10 @@ export default function Workouts() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });

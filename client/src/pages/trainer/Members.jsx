@@ -10,10 +10,6 @@ export default function Members() {
   const [search, setSearch] = useState('');
   const navigate = useNavigate();
 
-  useEffect(() => {
-    fetchMembers();
-  }, []);
-
   const fetchMembers = async () => {
     try {
       setLoading(true);
@@ -25,6 +21,10 @@ export default function Members() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchMembers();
+  }, []);
 
   const filtered = members.filter(
     (m) =>
