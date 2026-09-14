@@ -194,8 +194,12 @@ router.get('/log', auth, authorize('member'), async (req, res) => {
     const { date } = req.query;
     const filter = { user: req.user._id };
     if (date) {
-      const d = new Date(date);
-      filter.date = { $gte: d, $lt: new Date(d.getTime() + 24 * 60 * 60 * 1000) };
+      const day = new Date(`${date}T00:00:00`);
+      if (!isNaN(day.getTime())) {
+        const next = new Date(day);
+        next.setDate(next.getDate() + 1);
+        filter.date = { $gte: day, $lt: next };
+      }
     }
     const logs = await NutritionLog.find(filter).populate('meals.food', 'name servingSize servingUnit calories protein carbs fat').sort({ date: -1 });
     res.json({ logs });

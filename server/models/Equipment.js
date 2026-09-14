@@ -47,6 +47,10 @@ const equipmentSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
+  description: {
+    type: String,
+    trim: true
+  },
   notes: {
     type: String,
     trim: true

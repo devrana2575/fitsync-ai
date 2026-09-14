@@ -33,7 +33,7 @@ router.get('/maintenance', auth, authorize('admin'), async (req, res) => {
 
 router.post('/', auth, authorize('admin'), async (req, res) => {
   try {
-    const { name, category, brand, model, condition, status, purchaseDate, lastMaintenance, nextMaintenance, location, notes, isActive } = req.body;
+    const { name, category, brand, model, condition, status, purchaseDate, lastMaintenance, nextMaintenance, location, description, notes, isActive } = req.body;
     const equipment = await Equipment.create({
       name,
       category: category || 'strength',
@@ -45,6 +45,7 @@ router.post('/', auth, authorize('admin'), async (req, res) => {
       lastMaintenance,
       nextMaintenance,
       location,
+      description,
       notes,
       isActive: isActive !== undefined ? isActive : true
     });
@@ -56,7 +57,7 @@ router.post('/', auth, authorize('admin'), async (req, res) => {
 
 router.put('/:id', auth, authorize('admin'), async (req, res) => {
   try {
-    const { name, category, brand, model, condition, status, purchaseDate, lastMaintenance, nextMaintenance, location, notes, isActive } = req.body;
+    const { name, category, brand, model, condition, status, purchaseDate, lastMaintenance, nextMaintenance, location, description, notes, isActive } = req.body;
     const update = {};
     if (name !== undefined) update.name = name;
     if (category !== undefined) update.category = category;
@@ -68,6 +69,7 @@ router.put('/:id', auth, authorize('admin'), async (req, res) => {
     if (lastMaintenance !== undefined) update.lastMaintenance = lastMaintenance;
     if (nextMaintenance !== undefined) update.nextMaintenance = nextMaintenance;
     if (location !== undefined) update.location = location;
+    if (description !== undefined) update.description = description;
     if (notes !== undefined) update.notes = notes;
     if (isActive !== undefined) update.isActive = isActive;
 

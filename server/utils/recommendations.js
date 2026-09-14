@@ -50,7 +50,7 @@ async function buildMemberContext(memberId) {
 
   let difficulty = 'beginner';
   if (attendancePct >= 50 && daysSinceVisit <= 3) difficulty = 'intermediate';
-  if (attendancePct >= 75 && daysSinceVisit <= 1 || (attendancePct >= 50 && (measurements.length || logs30) > 8)) difficulty = 'advanced';
+  if ((attendancePct >= 75 && daysSinceVisit <= 1) || (attendancePct >= 50 && (measurements.length + logs30) > 8)) difficulty = 'advanced';
 
   return {
     memberId,

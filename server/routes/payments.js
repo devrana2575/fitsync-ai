@@ -15,6 +15,11 @@ const activateMembershipFromPayment = async (membershipId) => {
   const membership = await Membership.findById(membershipId).populate('plan');
   if (!membership || membership.status === 'ACTIVE' || membership.status === 'CANCELLED') return;
 
+  await Membership.updateMany(
+    { user: membership.user, status: 'ACTIVE', _id: { $ne: membership._id } },
+    { status: 'CANCELLED' }
+  );
+
   const now = new Date();
   if (membership.status === 'EXPIRED' || !membership.endDate || membership.endDate <= now) {
     const start = new Date();

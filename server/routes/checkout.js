@@ -87,7 +87,7 @@ router.post('/create', auth, authorize('member'), async (req, res) => {
         mode: 'payment',
         line_items: [{
           price_data: {
-            currency: plan.currency === 'USD' ? 'usd' : 'inr',
+            currency: 'inr',
             product_data: { name: `${plan.name} Membership` },
             unit_amount: Math.round(plan.price * 100)
           },

@@ -51,11 +51,18 @@ notificationSchema.post('save', function (doc) {
   setImmediate(async () => {
     try {
       const User = require('./User');
+      const MemberProfile = require('./MemberProfile');
+      const TrainerProfile = require('./TrainerProfile');
       const { dispatchMessage } = require('../utils/messaging');
       const userId = doc.user && typeof doc.user === 'object' && doc.user._id ? doc.user._id : doc.user;
       if (!userId) return;
-      const user = await User.findById(userId).select('email preferences phone');
-      if (user) dispatchMessage(user, doc.toObject());
+      const user = await User.findById(userId).select('email preferences role');
+      if (!user) return;
+      const profile = user.role === 'trainer'
+        ? await TrainerProfile.findOne({ user: userId }).select('phone')
+        : await MemberProfile.findOne({ user: userId }).select('phone');
+      user.phone = profile?.phone || '';
+      dispatchMessage(user, doc.toObject());
     } catch (error) {
       // best-effort messaging — ignore failures
     }

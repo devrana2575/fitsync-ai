@@ -129,7 +129,7 @@ export default function Announcements() {
                 )}
               </td>
               <td className="px-6 py-4 text-slate-600">{a.createdBy?.name || '—'}</td>
-              <td className="px-6 py-4 text-slate-600">{fmtDate(a.createdAAt || a.createdAt)}</td>
+              <td className="px-6 py-4 text-slate-600">{fmtDate(a.createdAt)}</td>
               <td className="px-6 py-4">
                 <div className="flex gap-3">
                   <button onClick={() => openEdit(a)} className="text-indigo-600 hover:text-indigo-800 font-medium text-sm">Edit</button>

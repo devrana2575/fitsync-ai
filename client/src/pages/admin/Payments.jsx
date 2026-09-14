@@ -280,7 +280,7 @@ export default function Payments() {
               <option value="cash">Cash</option>
               <option value="card">Card</option>
               <option value="upi">UPI</option>
-              <option value="net_banking">Net Banking</option>
+              <option value="bank_transfer">Net Banking</option>
             </select>
           </div>
           <div>

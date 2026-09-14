@@ -28,8 +28,8 @@ export default function Members() {
 
   const filtered = members.filter(
     (m) =>
-      m.user?.name?.toLowerCase().includes(search.toLowerCase()) ||
-      m.user?.email?.toLowerCase().includes(search.toLowerCase())
+      (m.user?.name || '').toLowerCase().includes(search.toLowerCase()) ||
+      (m.user?.email || '').toLowerCase().includes(search.toLowerCase())
   );
 
   if (loading) return <LoadingSpinner />;

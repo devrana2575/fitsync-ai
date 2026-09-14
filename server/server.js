@@ -10,8 +10,6 @@ const { initSocket } = require('./utils/socket');
 
 dotenv.config();
 
-connectDB();
-
 const app = express();
 
 app.use(helmet());

@@ -22,10 +22,14 @@ export default function Nutrition() {
   const [addFood, setAddFood] = useState(null);
   const [addForm, setAddForm] = useState({ mealType: 'breakfast', quantity: 1 });
   const [saving, setSaving] = useState(false);
+  const [showCreateFood, setShowCreateFood] = useState(false);
+  const [newFoodForm, setNewFoodForm] = useState({ name: '', category: 'other', servingSize: '100', servingUnit: 'g', calories: '', protein: '', carbs: '', fat: '' });
+  const [creatingFood, setCreatingFood] = useState(false);
 
   const addSectionRef = useRef(null);
 
-  const today = new Date().toISOString().split('T')[0];
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
   const fetchAll = async () => {
     setLoading(true);
@@ -75,6 +79,32 @@ export default function Nutrition() {
   }));
 
   const itemCalories = (it) => Math.round((it.food?.calories || 0) * it.quantity);
+
+  const handleCreateFood = async (e) => {
+    e.preventDefault();
+    if (!newFoodForm.name.trim()) return;
+    setCreatingFood(true);
+    try {
+      await api.post('/nutrition/foods', {
+        name: newFoodForm.name,
+        category: newFoodForm.category,
+        servingSize: Number(newFoodForm.servingSize) || 100,
+        servingUnit: newFoodForm.servingUnit || 'g',
+        calories: Number(newFoodForm.calories) || 0,
+        protein: Number(newFoodForm.protein) || 0,
+        carbs: Number(newFoodForm.carbs) || 0,
+        fat: Number(newFoodForm.fat) || 0,
+      });
+      setShowCreateFood(false);
+      setNewFoodForm({ name: '', category: 'other', servingSize: '100', servingUnit: 'g', calories: '', protein: '', carbs: '', fat: '' });
+      const res = await api.get('/nutrition/foods');
+      setFoods(res.data.foods || []);
+    } catch (err) {
+      alert(err.message || 'Failed to create food item');
+    } finally {
+      setCreatingFood(false);
+    }
+  };
 
   const handleDelete = async (entryId) => {
     if (!window.confirm("Remove this food from today's log?")) return;
@@ -205,7 +235,15 @@ export default function Nutrition() {
 
           <div ref={addSectionRef} className="bg-white rounded-xl border border-slate-200 p-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-              <h2 className="text-lg font-semibold text-slate-900">Add Food</h2>
+              <div className="flex items-center gap-3">
+                <h2 className="text-lg font-semibold text-slate-900">Add Food</h2>
+                <button
+                  onClick={() => setShowCreateFood(true)}
+                  className="inline-flex items-center gap-1 text-sm text-indigo-600 hover:text-indigo-800 font-medium"
+                >
+                  <PlusIcon className="h-4 w-4" aria-hidden="true" /> Create Custom Food
+                </button>
+              </div>
               <div className="flex flex-col sm:flex-row gap-3">
                 <div className="relative">
                   <MagnifyingGlassIcon className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" aria-hidden="true" />
@@ -323,6 +361,80 @@ export default function Nutrition() {
             <button type="button" onClick={() => setAddFood(null)} className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 font-medium">Cancel</button>
             <button type="submit" disabled={saving} className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-medium disabled:opacity-50">
               {saving ? 'Adding...' : 'Add to Log'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal isOpen={showCreateFood} onClose={() => setShowCreateFood(false)} title="Create Custom Food">
+        <form onSubmit={handleCreateFood} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Name *</label>
+            <input
+              required
+              value={newFoodForm.name}
+              onChange={(e) => setNewFoodForm({ ...newFoodForm, name: e.target.value })}
+              placeholder="e.g. Grilled Chicken Breast"
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Category</label>
+              <select value={newFoodForm.category} onChange={(e) => setNewFoodForm({ ...newFoodForm, category: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                <option value="other">Other</option>
+                <option value="protein">Protein</option>
+                <option value="fruit">Fruit</option>
+                <option value="vegetable">Vegetable</option>
+                <option value="grain">Grain</option>
+                <option value="dairy">Dairy</option>
+                <option value="snack">Snack</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Serving Size *</label>
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  required
+                  min="1"
+                  value={newFoodForm.servingSize}
+                  onChange={(e) => setNewFoodForm({ ...newFoodForm, servingSize: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                />
+                <select value={newFoodForm.servingUnit} onChange={(e) => setNewFoodForm({ ...newFoodForm, servingUnit: e.target.value })} className="px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                  <option value="g">g</option>
+                  <option value="ml">ml</option>
+                  <option value="cup">cup</option>
+                  <option value="piece">piece</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            {[
+              { key: 'calories', label: 'Calories (kcal)' },
+              { key: 'protein', label: 'Protein (g)' },
+              { key: 'carbs', label: 'Carbs (g)' },
+              { key: 'fat', label: 'Fat (g)' },
+            ].map((f) => (
+              <div key={f.key}>
+                <label className="block text-sm font-medium text-slate-700 mb-1">{f.label}</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.1"
+                  value={newFoodForm[f.key]}
+                  onChange={(e) => setNewFoodForm({ ...newFoodForm, [f.key]: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                />
+              </div>
+            ))}
+          </div>
+          <div className="flex justify-end gap-3 pt-2">
+            <button type="button" onClick={() => setShowCreateFood(false)} className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 font-medium">Cancel</button>
+            <button type="submit" disabled={creatingFood} className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-medium disabled:opacity-50">
+              {creatingFood ? 'Creating...' : 'Create Food'}
             </button>
           </div>
         </form>
