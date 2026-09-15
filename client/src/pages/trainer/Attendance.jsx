@@ -6,6 +6,7 @@ import EmptyState from '../../components/common/EmptyState';
 import ErrorState from '../../components/common/ErrorState';
 import StatCard from '../../components/common/StatCard';
 import { fmtDate } from '../../utils/format';
+import useTrainerDashboard from '../../hooks/useTrainerDashboard';
 
 export default function Attendance() {
   const [records, setRecords] = useState([]);
@@ -15,32 +16,23 @@ export default function Attendance() {
   const [selectedMember, setSelectedMember] = useState('');
   const [checkInLoading, setCheckInLoading] = useState(false);
   const [checkOutId, setCheckOutId] = useState('');
+  const { data: dashboard } = useTrainerDashboard();
 
-  const fetchAll = async () => {
+  const fetchResults = async () => {
     setLoading(true);
     setError(null);
     try {
-      const dashRes = await api.get('/analytics/trainer/dashboard');
-      const assigned = dashRes.data?.members || [];
-      const memberRecords = [];
-      const memberList = [];
+      const today = new Date().toISOString().split('T')[0];
+      const assigned = dashboard?.members || [];
+      const memberList = assigned.map((row) => row.user || row);
 
-      for (const row of assigned) {
-        const m = row.user || row;
-        memberList.push(m);
-        if (m._id) {
-          try {
-            const attRes = await api.get('/attendance', { params: { userId: m._id, date: new Date().toISOString().split('T')[0] } });
-            const todays = attRes.data.records || attRes.data.data || attRes.data.attendance || [];
-            memberRecords.push(...(Array.isArray(todays) ? todays : []));
-          } catch {
-            // member may have no attendance today
-          }
-        }
-      }
+      const memberIds = memberList.map((m) => m._id).filter(Boolean);
+      const batchRes = memberIds.length
+        ? await api.get('/attendance/batch-today', { params: { userIds: memberIds.join(','), date: today } })
+        : { data: { records: [] } };
 
       setMembers(memberList);
-      setRecords(memberRecords);
+      setRecords(batchRes.data.records || []);
     } catch (err) {
       setError(err.message || 'Failed to load attendance');
     } finally {
@@ -48,7 +40,9 @@ export default function Attendance() {
     }
   };
 
-  useEffect(() => { fetchAll(); }, []);
+  useEffect(() => {
+    if (dashboard) fetchResults();
+  }, [dashboard]);
 
   const handleCheckIn = async (e) => {
     e.preventDefault();
@@ -57,7 +51,7 @@ export default function Attendance() {
     try {
       await api.post('/attendance/checkin', { userId: selectedMember, memberId: selectedMember });
       setSelectedMember('');
-      fetchAll();
+      fetchResults();
     } catch (err) {
       alert(err.message || 'Check-in failed');
     } finally {
@@ -69,7 +63,7 @@ export default function Attendance() {
     setCheckOutId(id);
     try {
       await api.post(`/attendance/checkout/${id}`);
-      fetchAll();
+      fetchResults();
     } catch (err) {
       alert(err.message || 'Check-out failed');
     } finally {
@@ -81,7 +75,7 @@ export default function Attendance() {
   const availableMembers = members.filter((m) => !checkedInIds.has(String(m._id)));
 
   if (error) {
-    return <div className="space-y-6"><h1 className="text-2xl font-bold text-slate-900">Attendance</h1><ErrorState message={error} onRetry={fetchAll} /></div>;
+    return <div className="space-y-6"><h1 className="text-2xl font-bold text-slate-900">Attendance</h1><ErrorState message={error} onRetry={fetchResults} /></div>;
   }
 
   return (

@@ -6,7 +6,7 @@ const { body, validationResult } = require('express-validator');
 
 router.get('/', auth, async (req, res) => {
   try {
-    const plans = await MembershipPlan.find({ isActive: true }).sort({ price: 1 });
+    const plans = await MembershipPlan.find({ isActive: true }).sort({ price: 1 }).lean();
     res.json({ plans });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
@@ -15,7 +15,7 @@ router.get('/', auth, async (req, res) => {
 
 router.get('/all', auth, authorize('admin'), async (req, res) => {
   try {
-    const plans = await MembershipPlan.find().sort({ createdAt: -1 });
+    const plans = await MembershipPlan.find().sort({ createdAt: -1 }).lean();
     res.json({ plans });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });

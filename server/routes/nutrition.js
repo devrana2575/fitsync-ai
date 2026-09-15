@@ -18,12 +18,15 @@ const macroPerQuantity = (food, qty) => ({
 // ----------------------------------------------------------------
 router.get('/foods', auth, async (req, res) => {
   try {
-    const { search, category } = req.query;
+    const { search, category, limit = 200, page = 1 } = req.query;
     const filter = { isActive: true };
     if (search) filter.name = { $regex: escapeRegex(search), $options: 'i' };
     if (category && category !== 'all') filter.category = category;
-    const foods = await FoodItem.find(filter).sort({ name: 1 });
-    res.json({ foods });
+    const total = await FoodItem.countDocuments(filter);
+    const foods = await FoodItem.find(filter).sort({ name: 1 })
+      .skip((Number(page) - 1) * Number(limit))
+      .limit(Math.min(Number(limit), 500)).lean();
+    res.json({ foods, total, page: Number(page), pages: Math.ceil(total / Number(limit)) });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }
@@ -114,25 +117,23 @@ router.post('/plans', auth, authorize('admin', 'trainer'), async (req, res) => {
     const populatedMeals = [];
     let dailyCalories = 0, dailyProtein = 0, dailyCarbs = 0, dailyFat = 0;
 
+    const foodIds = [...new Set((meals || []).flatMap((meal) => (meal.items || []).map((item) => item.food)))];
+    const foods = foodIds.length ? await FoodItem.find({ _id: { $in: foodIds }, isActive: true }).select('_id calories protein carbs fat').lean() : [];
+    const foodById = new Map(foods.map((f) => [String(f._id), f]));
+
     for (const meal of meals || []) {
       const populatedItems = [];
       for (const item of meal.items || []) {
-        const food = await FoodItem.findById(item.food);
+        const food = foodById.get(String(item.food));
         if (!food) continue;
         const macros = macroPerQuantity(food, item.quantity || 1);
+        dailyCalories += macros.calories;
+        dailyProtein += macros.protein;
+        dailyCarbs += macros.carbs;
+        dailyFat += macros.fat;
         populatedItems.push({ food: food._id, quantity: item.quantity || 1 });
       }
       populatedMeals.push({ mealType: meal.mealType, items: populatedItems, notes: meal.notes });
-    }
-
-    const populated = await MealPlan.populate(populatedMeals, { path: 'items.food', select: 'calories protein carbs fat' });
-    for (const meal of populated) {
-      for (const item of meal.items) {
-        dailyCalories += (item.food.calories || 0) * item.quantity;
-        dailyProtein += (item.food.protein || 0) * item.quantity;
-        dailyCarbs += (item.food.carbs || 0) * item.quantity;
-        dailyFat += (item.food.fat || 0) * item.quantity;
-      }
     }
 
     const plan = await MealPlan.create({
@@ -200,8 +201,10 @@ router.get('/log', auth, authorize('member'), async (req, res) => {
         next.setDate(next.getDate() + 1);
         filter.date = { $gte: day, $lt: next };
       }
+    } else {
+      filter.date = { $gte: new Date(Date.now() - 31 * 24 * 60 * 60 * 1000) };
     }
-    const logs = await NutritionLog.find(filter).populate('meals.food', 'name servingSize servingUnit calories protein carbs fat').sort({ date: -1 });
+    const logs = await NutritionLog.find(filter).populate('meals.food', 'name servingSize servingUnit calories protein carbs fat').sort({ date: -1 }).limit(90).lean();
     res.json({ logs });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });

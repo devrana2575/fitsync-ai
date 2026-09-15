@@ -37,5 +37,6 @@ const workoutLogSchema = new mongoose.Schema({
 
 workoutLogSchema.index({ user: 1, date: -1 });
 workoutLogSchema.index({ user: 1, exercise: 1 });
+workoutLogSchema.index({ user: 1, isCompleted: 1 });
 
 module.exports = mongoose.model('WorkoutLog', workoutLogSchema);

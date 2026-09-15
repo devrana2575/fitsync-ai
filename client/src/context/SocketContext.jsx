@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useRef, useState } from 'react';
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { io } from 'socket.io-client';
 import { useAuth } from './AuthContext';
 
@@ -41,13 +41,16 @@ export function SocketProvider({ children }) {
     };
   }, [user]);
 
-  const value = {
-    socket,
-    connected,
-    liveNotifications,
-    clearLiveNotifications: () => setLiveNotifications([]),
-    registerOnNotification: (cb) => { onNotification.current = cb; },
-  };
+  const value = useMemo(
+    () => ({
+      socket,
+      connected,
+      liveNotifications,
+      clearLiveNotifications: () => setLiveNotifications([]),
+      registerOnNotification: (cb) => { onNotification.current = cb; },
+    }),
+    [socket, connected, liveNotifications]
+  );
 
   return <SocketContext.Provider value={value}>{children}</SocketContext.Provider>;
 }

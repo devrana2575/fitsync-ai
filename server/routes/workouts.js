@@ -16,10 +16,11 @@ router.get('/', auth, authorize('admin', 'trainer'), async (req, res) => {
     const plans = await WorkoutPlan.find(filter)
       .populate('trainer', 'name email')
       .populate('member', 'name email')
-      .populate('exercises.exercise')
+      .populate('exercises.exercise', 'name category muscleGroup')
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
-      .limit(limit);
+      .limit(limit)
+      .lean();
 
     res.json({ plans, total, page, pages: Math.ceil(total / limit) });
   } catch (error) {
@@ -31,8 +32,9 @@ router.get('/my', auth, async (req, res) => {
   try {
     const plans = await WorkoutPlan.find({ member: req.user._id, isActive: true })
       .populate('trainer', 'name')
-      .populate('exercises.exercise')
-      .sort({ createdAt: -1 });
+      .populate('exercises.exercise', 'name category muscleGroup')
+      .sort({ createdAt: -1 })
+      .lean();
     res.json({ plans });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
@@ -44,7 +46,8 @@ router.get('/:id', auth, async (req, res) => {
     const plan = await WorkoutPlan.findById(req.params.id)
       .populate('trainer', 'name email')
       .populate('member', 'name email')
-      .populate('exercises.exercise');
+      .populate('exercises.exercise', 'name category muscleGroup')
+      .lean();
     if (!plan) return res.status(404).json({ message: 'Workout plan not found' });
 
     const isAdmin = req.user.role === 'admin';

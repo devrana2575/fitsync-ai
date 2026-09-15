@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { CakeIcon, ExclamationTriangleIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import api from '../../services/api';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
@@ -116,13 +116,16 @@ export default function FoodDatabase() {
     setShowModal(true);
   };
 
-  const filtered = foods.filter((f) => {
-    const mc = categoryFilter === 'all' || f.category === categoryFilter;
-    const ms = f.name.toLowerCase().includes(search.toLowerCase());
-    return mc && ms;
-  });
+  const filtered = useMemo(() => {
+    const mc = categoryFilter === 'all' ? () => true : (food) => food.category === categoryFilter;
+    const q = search.toLowerCase();
+    return foods.filter((f) => mc(f) && f.name.toLowerCase().includes(q));
+  }, [foods, categoryFilter, search]);
 
-  const stats = CATEGORIES.map((c) => ({ label: c.label, count: foods.filter((f) => f.category === c.value).length })).filter((s) => s.count > 0);
+  const stats = useMemo(
+    () => CATEGORIES.map((c) => ({ label: c.label, count: foods.filter((f) => f.category === c.value).length })).filter((s) => s.count > 0),
+    [foods]
+  );
 
   return (
     <div className="space-y-6">

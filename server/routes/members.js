@@ -30,21 +30,26 @@ router.get('/', auth, authorize('admin', 'trainer'), async (req, res) => {
 
     const total = await User.countDocuments(filter);
     const members = await User.find(filter)
+      .select('name email role isActive avatar createdAt')
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
-      .limit(limit);
+      .limit(limit)
+      .lean();
 
     const memberIds = members.map((m) => m._id);
-    const profiles = memberIds.length > 0
-      ? await MemberProfile.find({ user: { $in: memberIds } }).populate('assignedTrainer', 'name')
-      : [];
+    const [profiles, activeMemberships] = await Promise.all([
+      memberIds.length > 0
+        ? MemberProfile.find({ user: { $in: memberIds } }).populate('assignedTrainer', 'name').lean()
+        : [],
+      memberIds.length > 0
+        ? Membership.find({ user: { $in: memberIds }, status: 'ACTIVE' })
+            .populate('plan', 'name')
+            .sort({ endDate: -1 })
+            .lean()
+        : []
+    ]);
     const profileMap = new Map(profiles.map((p) => [p.user.toString(), p]));
 
-    const activeMemberships = memberIds.length > 0
-      ? await Membership.find({ user: { $in: memberIds }, status: 'ACTIVE' })
-          .populate('plan', 'name')
-          .sort({ endDate: -1 })
-      : [];
     const membershipMap = new Map();
     for (const m of activeMemberships) {
       const key = m.user.toString();
@@ -54,7 +59,7 @@ router.get('/', auth, authorize('admin', 'trainer'), async (req, res) => {
     const membersWithProfiles = members.map((m) => {
       const profile = profileMap.get(m._id.toString()) || null;
       const membership = membershipMap.get(m._id.toString()) || null;
-      return { ...m.toObject(), profile, membership };
+      return { ...m, profile, membership };
     });
 
     res.json({
@@ -73,7 +78,8 @@ router.get('/by-trainer', auth, authorize('admin', 'trainer'), async (req, res) 
     const filter = req.user.role === 'trainer' ? { assignedTrainer: req.user._id } : {};
     const profiles = await MemberProfile.find(filter)
       .populate('user', 'name email isActive')
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
     res.json({ members: profiles });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
@@ -95,23 +101,27 @@ router.get('/:id', auth, authorize('admin', 'trainer'), async (req, res) => {
     }
 
     const [memberships, attendance, payments, workoutPlans, workoutLogs, goals, measurements, expiringMembership, lastVisit] = await Promise.all([
-      Membership.find({ user: member._id }).populate('plan').sort({ endDate: -1 }).limit(5),
-      Attendance.find({ user: member._id }).sort({ date: -1 }).limit(30),
+      Membership.find({ user: member._id }).populate('plan', 'name price duration').sort({ endDate: -1 }).limit(5).lean(),
+      Attendance.find({ user: member._id }).select('date checkInTime checkOutTime duration').sort({ date: -1 }).limit(30).lean(),
       Payment.find({ user: member._id })
+        .select('amount method status date membership')
         .populate({ path: 'membership', populate: { path: 'plan', select: 'name' } })
         .sort({ date: -1 })
-        .limit(10),
+        .limit(10)
+        .lean(),
       WorkoutPlan.find({ member: member._id, isActive: true })
         .populate('trainer', 'name')
-        .populate('exercises.exercise')
+        .populate('exercises.exercise', 'name category muscleGroup')
         .sort({ createdAt: -1 })
-        .limit(10),
+        .limit(10)
+        .lean(),
       WorkoutLog.find({ user: member._id })
         .populate('exercise', 'name category muscleGroup')
         .sort({ date: -1 })
-        .limit(20),
-      FitnessGoal.find({ user: member._id }).sort({ createdAt: -1 }).limit(10),
-      BodyMeasurement.find({ user: member._id }).sort({ date: -1 }).limit(10),
+        .limit(20)
+        .lean(),
+      FitnessGoal.find({ user: member._id }).sort({ createdAt: -1 }).limit(10).lean(),
+      BodyMeasurement.find({ user: member._id }).sort({ date: -1 }).limit(10).lean(),
       // Thresholds mirror server/utils/cron.js (7-day low-attendance) and the admin
       // dashboard (30-day expiring-soon window). Single query per member view.
       (async () => {
@@ -120,10 +130,11 @@ router.get('/:id', auth, authorize('admin', 'trainer'), async (req, res) => {
         cutoff.setDate(cutoff.getDate() + 30);
         return Membership.findOne({ user: member._id, status: 'ACTIVE', endDate: { $gte: now, $lte: cutoff } })
           .populate('plan', 'name')
-          .select('user status endDate plan');
+          .select('user status endDate plan')
+          .lean();
       })(),
       (async () => {
-        const last = await Attendance.findOne({ user: member._id }).sort({ checkInTime: -1 }).select('checkInTime');
+        const last = await Attendance.findOne({ user: member._id }).sort({ checkInTime: -1 }).select('checkInTime').lean();
         return last ? last.checkInTime : null;
       })()
     ]);
@@ -229,7 +240,7 @@ router.post('/:id/assign-trainer', auth, authorize('admin'), async (req, res) =>
 
 router.get('/trainer/:trainerId', auth, authorize('admin', 'trainer'), async (req, res) => {
   try {
-    const profiles = await MemberProfile.find({ assignedTrainer: req.params.trainerId }).populate('user', 'name email isActive');
+    const profiles = await MemberProfile.find({ assignedTrainer: req.params.trainerId }).populate('user', 'name email isActive').lean();
     res.json({ members: profiles });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });

@@ -35,5 +35,6 @@ const attendanceSchema = new mongoose.Schema({
 attendanceSchema.index({ user: 1, date: 1 }, { unique: true });
 attendanceSchema.index({ date: -1 });
 attendanceSchema.index({ user: 1 });
+attendanceSchema.index({ user: 1, checkInTime: -1 });
 
 module.exports = mongoose.model('Attendance', attendanceSchema);

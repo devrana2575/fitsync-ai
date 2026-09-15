@@ -30,7 +30,7 @@ const router = express.Router();
 
 router.get('/my', auth, authorize('member'), async (req, res) => {
   try {
-    const photos = await ProgressPhoto.find({ user: req.user._id, isActive: true }).sort({ date: -1 });
+    const photos = await ProgressPhoto.find({ user: req.user._id, isActive: true }).sort({ date: -1 }).limit(200).lean();
     res.json({ photos });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
@@ -39,7 +39,7 @@ router.get('/my', auth, authorize('member'), async (req, res) => {
 
 router.get('/member/:userId', auth, authorize('admin', 'trainer'), async (req, res) => {
   try {
-    const photos = await ProgressPhoto.find({ user: req.params.userId, isActive: true }).sort({ date: -1 });
+    const photos = await ProgressPhoto.find({ user: req.params.userId, isActive: true }).sort({ date: -1 }).limit(200).lean();
     res.json({ photos });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });

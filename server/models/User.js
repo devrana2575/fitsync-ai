@@ -50,6 +50,8 @@ const userSchema = new mongoose.Schema({
 });
 
 userSchema.index({ role: 1 });
+userSchema.index({ role: 1, isActive: 1 });
+userSchema.index({ role: 1, createdAt: -1 });
 
 userSchema.pre('save', async function(next) {
   if (!this.isModified('password')) return next();

@@ -24,9 +24,11 @@ router.get('/', auth, authorize('admin'), async (req, res) => {
 
     const total = await User.countDocuments(filter);
     const users = await User.find(filter)
+      .select('name email role isActive avatar createdAt')
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
-      .limit(limit);
+      .limit(limit)
+      .lean();
 
     res.json({
       users,

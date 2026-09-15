@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const Announcement = require('../models/Announcement');
-const Notification = require('../models/Notification');
 const User = require('../models/User');
 const { auth, authorize } = require('../middleware/auth');
 const { escapeRegex, parsePagination } = require('../utils/helpers');
+const { bulkCreateNotifications } = require('../utils/notify');
 
 router.get('/', auth, async (req, res) => {
   try {
@@ -46,14 +46,12 @@ router.post('/', auth, authorize('admin'), async (req, res) => {
     if ((priority || 'info') === 'critical') {
       const members = await User.find({ role: 'member', isActive: true }).select('_id').lean();
       if (members.length > 0) {
-        for (const m of members) {
-          await Notification.create({
-            user: m._id,
-            title: announcement.title,
-            message: announcement.message.slice(0, 140),
-            type: 'announcement'
-          });
-        }
+        await bulkCreateNotifications(members.map((m) => ({
+          user: m._id,
+          title: announcement.title,
+          message: announcement.message.slice(0, 140),
+          type: 'announcement'
+        })));
       }
     }
 

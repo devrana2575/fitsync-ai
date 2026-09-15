@@ -54,5 +54,6 @@ const fitnessGoalSchema = new mongoose.Schema({
 
 fitnessGoalSchema.index({ user: 1 });
 fitnessGoalSchema.index({ status: 1 });
+fitnessGoalSchema.index({ user: 1, status: 1, createdAt: -1 });
 
 module.exports = mongoose.model('FitnessGoal', fitnessGoalSchema);

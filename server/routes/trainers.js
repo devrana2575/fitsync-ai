@@ -22,29 +22,32 @@ router.get('/', auth, authorize('admin'), async (req, res) => {
 
     const total = await User.countDocuments(filter);
     const trainers = await User.find(filter)
+      .select('name email role isActive avatar createdAt')
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
-      .limit(limit);
+      .limit(limit)
+      .lean();
 
     const trainerIds = trainers.map((t) => t._id);
 
-    const profiles = trainerIds.length > 0
-      ? await TrainerProfile.find({ user: { $in: trainerIds } })
-      : [];
+    const [profiles, counts] = await Promise.all([
+      trainerIds.length > 0
+        ? TrainerProfile.find({ user: { $in: trainerIds } }).lean()
+        : [],
+      trainerIds.length > 0
+        ? MemberProfile.aggregate([
+            { $match: { assignedTrainer: { $in: trainerIds } } },
+            { $group: { _id: '$assignedTrainer', count: { $sum: 1 } } }
+          ])
+        : []
+    ]);
     const profileMap = new Map(profiles.map((p) => [p.user.toString(), p]));
-
-    const counts = trainerIds.length > 0
-      ? await MemberProfile.aggregate([
-          { $match: { assignedTrainer: { $in: trainerIds } } },
-          { $group: { _id: '$assignedTrainer', count: { $sum: 1 } } }
-        ])
-      : [];
     const countMap = new Map(counts.map((c) => [c._id.toString(), c.count]));
 
     const trainersWithProfiles = trainers.map((t) => {
       const profile = profileMap.get(t._id.toString()) || null;
       const memberCount = countMap.get(t._id.toString()) || 0;
-      return { ...t.toObject(), profile, memberCount };
+      return { ...t, profile, memberCount };
     });
 
     res.json({
@@ -64,8 +67,10 @@ router.get('/:id', auth, authorize('admin', 'trainer'), async (req, res) => {
     if (!trainer || trainer.role !== 'trainer') {
       return res.status(404).json({ message: 'Trainer not found' });
     }
-    const profile = await TrainerProfile.findOne({ user: trainer._id });
-    const members = await MemberProfile.find({ assignedTrainer: trainer._id }).populate('user', 'name email isActive');
+    const [profile, members] = await Promise.all([
+      TrainerProfile.findOne({ user: trainer._id }).lean(),
+      MemberProfile.find({ assignedTrainer: trainer._id }).populate('user', 'name email isActive').lean()
+    ]);
     res.json({ trainer, profile, members });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
@@ -130,7 +135,7 @@ router.put('/:id', auth, authorize('admin'), async (req, res) => {
 
 router.get('/list/all', auth, async (req, res) => {
   try {
-    const trainers = await User.find({ role: 'trainer', isActive: true }).select('name email');
+    const trainers = await User.find({ role: 'trainer', isActive: true }).select('name email').lean();
     res.json({ trainers });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });

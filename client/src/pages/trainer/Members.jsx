@@ -1,30 +1,17 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../../services/api';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
+import useTrainerDashboard from '../../hooks/useTrainerDashboard';
 
 export default function Members() {
   const [members, setMembers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [search, setSearch] = useState('');
   const navigate = useNavigate();
-
-  const fetchMembers = async () => {
-    try {
-      setLoading(true);
-      const res = await api.get('/analytics/trainer/dashboard');
-      setMembers(res.data?.members || []);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data, loading, error, reload } = useTrainerDashboard();
 
   useEffect(() => {
-    fetchMembers();
-  }, []);
+    if (data?.members) setMembers(data.members);
+  }, [data]);
 
   const filtered = members.filter(
     (m) =>
@@ -33,7 +20,7 @@ export default function Members() {
   );
 
   if (loading) return <LoadingSpinner />;
-  if (error) return <div className="p-6 text-center text-red-600">{error}</div>;
+  if (error) return <div className="p-6 text-center text-red-600">{error} <button onClick={reload} className="ml-2 underline">Retry</button></div>;
 
   return (
     <div className="min-h-screen bg-slate-50 p-6">

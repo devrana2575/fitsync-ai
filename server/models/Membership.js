@@ -37,5 +37,6 @@ membershipSchema.index({ user: 1 });
 membershipSchema.index({ status: 1 });
 membershipSchema.index({ user: 1, status: 1 });
 membershipSchema.index({ endDate: 1 });
+membershipSchema.index({ status: 1, endDate: 1 });
 
 module.exports = mongoose.model('Membership', membershipSchema);

@@ -1,46 +1,33 @@
 import { useState, useEffect, useCallback } from 'react';
 import { UsersIcon, BoltIcon, ArrowPathIcon, ClipboardDocumentCheckIcon } from '@heroicons/react/24/outline';
-import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import StatCard from '../../components/common/StatCard';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
+import useTrainerDashboard from '../../hooks/useTrainerDashboard';
 
 export default function TrainerDashboard() {
   const { user } = useAuth();
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState(null);
+  const { data, loading, error, reload } = useTrainerDashboard({ forceRefresh: true });
 
-  const fetchDashboard = useCallback(async (isRefresh = false) => {
-    if (isRefresh) setRefreshing(true);
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
     try {
-      const res = await api.get('/analytics/trainer/dashboard');
-      setData(res.data);
-      setError(null);
-    } catch (err) {
-      setError(err.message);
+      await reload();
     } finally {
-      setLoading(false);
       setRefreshing(false);
     }
-  }, []);
-
-  useEffect(() => {
-    fetchDashboard();
-  }, [fetchDashboard]);
+  }, [reload]);
 
   useEffect(() => {
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') {
-        fetchDashboard(true);
+        handleRefresh();
       }
     };
     document.addEventListener('visibilitychange', handleVisibility);
     return () => document.removeEventListener('visibilitychange', handleVisibility);
-  }, [fetchDashboard]);
-
-  const handleRefresh = () => fetchDashboard(true);
+  }, [handleRefresh]);
 
   if (loading) return <LoadingSpinner />;
   if (error) return (

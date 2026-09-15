@@ -59,11 +59,13 @@ router.get('/', auth, authorize('admin'), async (req, res) => {
 
     const total = await Payment.countDocuments(filter);
     const payments = await Payment.find(filter)
+      .select('user amount method status date membership')
       .populate('user', 'name email')
-      .populate('membership')
+      .populate('membership', 'plan startDate endDate status')
       .sort({ date: -1 })
       .skip((page - 1) * limit)
-      .limit(limit);
+      .limit(limit)
+      .lean();
 
     res.json({ payments, total, page, pages: Math.ceil(total / limit) });
   } catch (error) {
@@ -74,8 +76,11 @@ router.get('/', auth, authorize('admin'), async (req, res) => {
 router.get('/my', auth, async (req, res) => {
   try {
     const payments = await Payment.find({ user: req.user._id })
+      .select('user amount method status date membership')
       .populate({ path: 'membership', populate: { path: 'plan', select: 'name' } })
-      .sort({ date: -1 });
+      .sort({ date: -1 })
+      .limit(100)
+      .lean();
     res.json({ payments });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
@@ -140,31 +145,30 @@ router.get('/stats', auth, authorize('admin'), async (req, res) => {
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    const totalRevenue = await Payment.aggregate([
-      { $match: { status: 'COMPLETED' } },
-      { $group: { _id: null, total: { $sum: '$amount' } } }
-    ]);
-
-    const monthlyRevenue = await Payment.aggregate([
-      { $match: { status: 'COMPLETED', date: { $gte: startOfMonth } } },
-      { $group: { _id: null, total: { $sum: '$amount' } } }
-    ]);
-
-    const pendingAmount = await Payment.aggregate([
-      { $match: { status: 'PENDING' } },
-      { $group: { _id: null, total: { $sum: '$amount' } } }
-    ]);
-
-    const monthlyTrend = await Payment.aggregate([
-      { $match: { status: 'COMPLETED' } },
-      {
-        $group: {
-          _id: { year: { $year: '$date' }, month: { $month: '$date' } },
-          total: { $sum: '$amount' }
-        }
-      },
-      { $sort: { '_id.year': 1, '_id.month': 1 } },
-      { $limit: 12 }
+    const [totalRevenue, monthlyRevenue, pendingAmount, monthlyTrend] = await Promise.all([
+      Payment.aggregate([
+        { $match: { status: 'COMPLETED' } },
+        { $group: { _id: null, total: { $sum: '$amount' } } }
+      ]),
+      Payment.aggregate([
+        { $match: { status: 'COMPLETED', date: { $gte: startOfMonth } } },
+        { $group: { _id: null, total: { $sum: '$amount' } } }
+      ]),
+      Payment.aggregate([
+        { $match: { status: 'PENDING' } },
+        { $group: { _id: null, total: { $sum: '$amount' } } }
+      ]),
+      Payment.aggregate([
+        { $match: { status: 'COMPLETED' } },
+        {
+          $group: {
+            _id: { year: { $year: '$date' }, month: { $month: '$date' } },
+            total: { $sum: '$amount' }
+          }
+        },
+        { $sort: { '_id.year': 1, '_id.month': 1 } },
+        { $limit: 12 }
+      ])
     ]);
 
     res.json({

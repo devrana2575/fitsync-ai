@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import {
@@ -86,6 +86,19 @@ export default function MemberDashboard() {
     }
   };
 
+  const weightData = useMemo(
+    () => measurements.map((m) => ({
+      date: new Date(m.createdAt || m.date).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' }),
+      weight: m.weight,
+    })),
+    [measurements]
+  );
+
+  const activeGoals = useMemo(
+    () => (Array.isArray(goals) ? goals.filter((g) => g.status?.toLowerCase() === 'active') : []),
+    [goals]
+  );
+
   if (loading) return <LoadingSpinner />;
 
   const stats = {
@@ -98,12 +111,6 @@ export default function MemberDashboard() {
     expiryDate: dashboard?.membership?.endDate || '',
     status: dashboard?.membership?.status || '',
   };
-  const weightData = measurements.map((m) => ({
-    date: new Date(m.createdAt || m.date).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' }),
-    weight: m.weight,
-  }));
-
-  const activeGoals = Array.isArray(goals) ? goals.filter((g) => g.status?.toLowerCase() === 'active') : [];
   const todayWorkout = dashboard?.todayWorkout;
 
   const todayName = () => {

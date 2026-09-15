@@ -10,12 +10,16 @@ router.get('/', auth, async (req, res) => {
     const { unreadOnly } = req.query;
     const filter = { user: req.user._id };
     if (unreadOnly === 'true') filter.isRead = false;
-    const total = await Notification.countDocuments(filter);
-    const notifications = await Notification.find(filter)
-      .sort({ createdAt: -1 })
-      .skip((page - 1) * limit)
-      .limit(limit);
-    const unreadCount = await Notification.countDocuments({ user: req.user._id, isRead: false });
+    const [total, notifications, unreadCount] = await Promise.all([
+      Notification.countDocuments(filter),
+      Notification.find(filter)
+        .select('title message type isRead link createdAt')
+        .sort({ createdAt: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .lean(),
+      Notification.countDocuments({ user: req.user._id, isRead: false })
+    ]);
     res.json({ notifications, total, unreadCount, page, pages: Math.ceil(total / limit) });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });

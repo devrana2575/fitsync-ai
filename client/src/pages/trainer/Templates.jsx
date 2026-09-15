@@ -5,6 +5,7 @@ import LoadingSpinner from '../../components/common/LoadingSpinner';
 import EmptyState from '../../components/common/EmptyState';
 import ErrorState from '../../components/common/ErrorState';
 import Modal from '../../components/common/Modal';
+import useTrainerDashboard from '../../hooks/useTrainerDashboard';
 
 const GOALS = ['strength', 'hypertrophy', 'endurance', 'weight_loss', 'general_fitness'];
 const DIFFICULTIES = ['beginner', 'intermediate', 'advanced'];
@@ -18,7 +19,6 @@ const emptyExercise = { exercise: '', sets: '', reps: '', weight: '', duration: 
 export default function Templates() {
   const [templates, setTemplates] = useState([]);
   const [exercises, setExercises] = useState([]);
-  const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [goalFilter, setGoalFilter] = useState('all');
@@ -30,6 +30,8 @@ export default function Templates() {
   const [assignMember, setAssignMember] = useState('');
   const [assigning, setAssigning] = useState(false);
   const [toast, setToast] = useState(null);
+  const { data: dashboard } = useTrainerDashboard();
+  const members = dashboard?.members || [];
 
   const fetchData = async () => {
     setLoading(true);
@@ -38,14 +40,12 @@ export default function Templates() {
       const params = {};
       if (goalFilter !== 'all') params.goal = goalFilter;
       if (diffFilter !== 'all') params.difficulty = diffFilter;
-      const [tplRes, exRes, memRes] = await Promise.all([
+      const [tplRes, exRes] = await Promise.all([
         api.get('/templates', { params }),
         api.get('/exercises'),
-        api.get('/analytics/trainer/dashboard'),
       ]);
       setTemplates(tplRes.data?.templates || []);
       setExercises(exRes.data?.exercises || []);
-      setMembers(memRes.data?.members || []);
     } catch (err) {
       setError(err.message || 'Failed to load templates');
     } finally {

@@ -1,18 +1,20 @@
 import { useState, useEffect } from 'react';
 import api from '../../services/api';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
+import useTrainerDashboard from '../../hooks/useTrainerDashboard';
 
 const emptyExercise = { exercise: '', sets: '', reps: '', weight: '', duration: '', restTime: '' };
 
 export default function Workouts() {
   const [plans, setPlans] = useState([]);
   const [exercises, setExercises] = useState([]);
-  const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
+  const { data: dashboard } = useTrainerDashboard();
+  const members = dashboard?.members || [];
 
   const [form, setForm] = useState({
     name: '',
@@ -24,17 +26,14 @@ export default function Workouts() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [workoutsRes, exercisesRes, dashboardRes] = await Promise.all([
+      const [workoutsRes, exercisesRes] = await Promise.all([
         api.get('/workouts'),
         api.get('/exercises'),
-        api.get('/analytics/trainer/dashboard'),
       ]);
       const plansData = workoutsRes.data?.plans || workoutsRes.data || [];
       setPlans(Array.isArray(plansData) ? plansData : []);
       const exercisesData = exercisesRes.data?.exercises || exercisesRes.data || [];
       setExercises(Array.isArray(exercisesData) ? exercisesData : []);
-      const membersData = dashboardRes.data?.members || [];
-      setMembers(Array.isArray(membersData) ? membersData : []);
     } catch (err) {
       setError(err.message);
     } finally {

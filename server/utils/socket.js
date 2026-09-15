@@ -18,7 +18,7 @@ const initSocket = (httpServer) => {
       const token = socket.handshake.auth?.token || socket.handshake.headers?.authorization?.replace('Bearer ', '');
       if (!token) return next(new Error('Unauthorized'));
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      const user = await User.findById(decoded.id).select('-password');
+      const user = await User.findById(decoded.id).select('_id isActive').lean();
       if (!user || !user.isActive) return next(new Error('Unauthorized'));
       socket.userId = String(user._id);
       next();

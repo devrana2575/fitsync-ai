@@ -11,7 +11,7 @@ router.get('/', auth, async (req, res) => {
     if (category) filter.category = category;
     if (condition) filter.condition = condition;
     if (search) filter.name = { $regex: escapeRegex(search), $options: 'i' };
-    const equipment = await Equipment.find(filter).sort({ name: 1 });
+    const equipment = await Equipment.find(filter).sort({ name: 1 }).lean();
     res.json({ equipment });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
@@ -92,14 +92,14 @@ router.delete('/:id', auth, authorize('admin'), async (req, res) => {
 
 router.get('/stats', auth, authorize('admin'), async (req, res) => {
   try {
-    const total = await Equipment.countDocuments({ isActive: true });
-    const needsMaintenance = await Equipment.countDocuments({
-      isActive: true,
-      nextMaintenance: { $lte: new Date() }
-    });
-    const byCondition = await Equipment.aggregate([
-      { $match: { isActive: true } },
-      { $group: { _id: '$condition', count: { $sum: 1 } } }
+    const now = new Date();
+    const [total, needsMaintenance, byCondition] = await Promise.all([
+      Equipment.countDocuments({ isActive: true }),
+      Equipment.countDocuments({ isActive: true, nextMaintenance: { $lte: now } }),
+      Equipment.aggregate([
+        { $match: { isActive: true } },
+        { $group: { _id: '$condition', count: { $sum: 1 } } }
+      ])
     ]);
     res.json({ total, needsMaintenance, byCondition });
   } catch (error) {

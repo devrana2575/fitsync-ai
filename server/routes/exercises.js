@@ -11,7 +11,7 @@ router.get('/', auth, async (req, res) => {
     if (category) filter.category = category;
     if (muscleGroup) filter.muscleGroup = muscleGroup;
     if (search) filter.name = { $regex: escapeRegex(search), $options: 'i' };
-    const exercises = await Exercise.find(filter).sort({ name: 1 });
+    const exercises = await Exercise.find(filter).sort({ name: 1 }).lean();
     res.json({ exercises });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });

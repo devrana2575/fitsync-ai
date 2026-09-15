@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { CameraIcon } from '@heroicons/react/24/outline';
 import api from '../../services/api';
@@ -126,14 +126,14 @@ export default function Progress() {
     }
   };
 
-  const chartData = measurements.map((m) => ({
+  const chartData = useMemo(() => measurements.map((m) => ({
     date: new Date(m.createdAt || m.date).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' }),
     weight: m.weight || null,
     bmi: m.bmi || (m.weight && m.height ? Math.round((m.weight / ((m.height / 100) ** 2)) * 10) / 10 : null),
     chest: m.chest || null,
     waist: m.waist || null,
     hips: m.hips || null,
-  }));
+  })), [measurements]);
 
   const points = (key) => chartData.filter((d) => d[key] != null).length;
   const enough = (key, min = 2) => points(key) >= min;

@@ -15,11 +15,13 @@ router.get('/', auth, authorize('admin'), async (req, res) => {
 
     const total = await Membership.countDocuments(filter);
     const memberships = await Membership.find(filter)
+      .select('user plan startDate endDate status autoRenew')
       .populate('user', 'name email')
-      .populate('plan')
+      .populate('plan', 'name price duration')
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
-      .limit(limit);
+      .limit(limit)
+      .lean();
 
     res.json({ memberships, total, page, pages: Math.ceil(total / limit) });
   } catch (error) {
@@ -30,8 +32,9 @@ router.get('/', auth, authorize('admin'), async (req, res) => {
 router.get('/my', auth, async (req, res) => {
   try {
     const memberships = await Membership.find({ user: req.user._id })
-      .populate('plan')
-      .sort({ createdAt: -1 });
+      .populate('plan', 'name price duration')
+      .sort({ createdAt: -1 })
+      .lean();
     res.json({ memberships });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
@@ -40,7 +43,7 @@ router.get('/my', auth, async (req, res) => {
 
 router.get('/active/:userId', auth, authorize('admin', 'trainer'), async (req, res) => {
   try {
-    const membership = await Membership.findOne({ user: req.params.userId, status: 'ACTIVE' }).populate('plan');
+    const membership = await Membership.findOne({ user: req.params.userId, status: 'ACTIVE' }).populate('plan', 'name price duration').lean();
     res.json({ membership });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
@@ -116,20 +119,24 @@ router.put('/:id/cancel', auth, authorize('admin'), async (req, res) => {
 
 router.get('/stats', auth, authorize('admin'), async (req, res) => {
   try {
-    const active = await Membership.countDocuments({ status: 'ACTIVE' });
-    const expired = await Membership.countDocuments({ status: 'EXPIRED' });
-    const pending = await Membership.countDocuments({ status: 'PENDING' });
-    const cancelled = await Membership.countDocuments({ status: 'CANCELLED' });
-
     const now = new Date();
     const thirtyDays = new Date(now);
     thirtyDays.setDate(thirtyDays.getDate() + 30);
-    const expiringSoon = await Membership.countDocuments({
-      status: 'ACTIVE',
-      endDate: { $lte: thirtyDays, $gte: now }
-    });
 
-    res.json({ active, expired, pending, cancelled, expiringSoon });
+    const [statusCounts, expiringSoon] = await Promise.all([
+      Membership.aggregate([
+        { $group: { _id: '$status', count: { $sum: 1 } } }
+      ]),
+      Membership.countDocuments({ status: 'ACTIVE', endDate: { $lte: thirtyDays, $gte: now } })
+    ]);
+
+    const counts = { active: 0, expired: 0, pending: 0, cancelled: 0 };
+    for (const s of statusCounts) {
+      const key = String(s._id).toLowerCase();
+      if (key in counts) counts[key] = s.count;
+    }
+
+    res.json({ ...counts, expiringSoon });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }

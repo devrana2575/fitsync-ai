@@ -2,10 +2,22 @@ import axios from 'axios';
 
 const api = axios.create({
   baseURL: '/api',
+  timeout: 15000,
   headers: {
     'Content-Type': 'application/json',
   },
 });
+
+const inflightGets = new Map();
+const originalGet = api.get.bind(api);
+
+api.get = (url, config = {}) => {
+  const key = `GET:${url}:${JSON.stringify(config.params || {})}`;
+  if (inflightGets.has(key)) return inflightGets.get(key);
+  const request = originalGet(url, config).finally(() => inflightGets.delete(key));
+  inflightGets.set(key, request);
+  return request;
+};
 
 api.interceptors.request.use(
   (config) => {

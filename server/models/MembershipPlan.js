@@ -33,4 +33,7 @@ const membershipPlanSchema = new mongoose.Schema({
   timestamps: true
 });
 
+membershipPlanSchema.index({ isActive: 1, price: 1 });
+membershipPlanSchema.index({ createdAt: -1 });
+
 module.exports = mongoose.model('MembershipPlan', membershipPlanSchema);

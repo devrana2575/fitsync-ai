@@ -17,7 +17,8 @@ router.get('/', auth, authorize('admin', 'trainer'), async (req, res) => {
     const templates = await WorkoutTemplate.find(filter)
       .populate('createdBy', 'name')
       .populate('exercises.exercise', 'name muscleGroup')
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
     res.json({ templates });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
@@ -28,7 +29,8 @@ router.get('/:id', auth, authorize('admin', 'trainer'), async (req, res) => {
   try {
     const template = await WorkoutTemplate.findById(req.params.id)
       .populate('createdBy', 'name')
-      .populate('exercises.exercise', 'name muscleGroup category difficulty');
+      .populate('exercises.exercise', 'name muscleGroup category difficulty')
+      .lean();
     if (!template) return res.status(404).json({ message: 'Template not found' });
     res.json({ template });
   } catch (error) {
@@ -125,7 +127,7 @@ router.post('/:id/assign', auth, authorize('admin', 'trainer'), async (req, res)
     template.timesAssigned += 1;
     await template.save();
 
-    const populated = await WorkoutPlan.findById(plan._id).populate('member', 'name email');
+    const populated = await WorkoutPlan.findById(plan._id).populate('member', 'name email').lean();
     res.status(201).json({ plan: populated });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });

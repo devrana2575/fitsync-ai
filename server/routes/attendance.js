@@ -18,11 +18,42 @@ router.get('/', auth, authorize('admin', 'trainer'), async (req, res) => {
     }
     const total = await Attendance.countDocuments(filter);
     const records = await Attendance.find(filter)
+      .select('user date checkInTime checkOutTime method duration')
       .populate('user', 'name email role')
       .sort({ checkInTime: -1 })
       .skip((page - 1) * limit)
-      .limit(limit);
+      .limit(limit)
+      .lean();
     res.json({ records, total, page, pages: Math.ceil(total / limit) });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.get('/batch-today', auth, authorize('admin', 'trainer'), async (req, res) => {
+  try {
+    const { userIds, date } = req.query;
+    if (!userIds) return res.status(400).json({ message: 'userIds is required' });
+    const ids = userIds.split(',').filter(Boolean);
+    if (ids.length === 0) return res.json({ records: [], count: 0 });
+
+    const filter = { user: { $in: ids } };
+    if (date) {
+      const start = new Date(date);
+      if (!isNaN(start.getTime())) {
+        const end = new Date(start);
+        end.setDate(end.getDate() + 1);
+        filter.date = { $gte: start, $lt: end };
+      }
+    }
+
+    const records = await Attendance.find(filter)
+      .select('user date checkInTime checkOutTime method duration')
+      .populate('user', 'name email role')
+      .sort({ checkInTime: 1 })
+      .limit(500)
+      .lean();
+    res.json({ records, count: records.length });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }
@@ -32,9 +63,11 @@ router.get('/my', auth, async (req, res) => {
   try {
     const { page, limit } = parsePagination(req.query.page, req.query.limit, 1, 30, 100);
     const records = await Attendance.find({ user: req.user._id })
+      .select('date checkInTime checkOutTime method duration')
       .sort({ date: -1 })
       .skip((page - 1) * limit)
-      .limit(limit);
+      .limit(limit)
+      .lean();
     res.json({ records });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
@@ -47,8 +80,15 @@ router.get('/today', auth, authorize('admin', 'trainer'), async (req, res) => {
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
-    const records = await Attendance.find({ date: { $gte: today, $lt: tomorrow } }).populate('user', 'name email role');
-    res.json({ records, count: records.length });
+    const filter = { date: { $gte: today, $lt: tomorrow } };
+    const count = await Attendance.countDocuments(filter);
+    const records = await Attendance.find(filter)
+      .select('user date checkInTime checkOutTime')
+      .populate('user', 'name email role')
+      .sort({ checkInTime: 1 })
+      .limit(200)
+      .lean();
+    res.json({ records, count });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }
@@ -60,19 +100,21 @@ router.get('/stats', auth, authorize('admin'), async (req, res) => {
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
-    const todayCount = await Attendance.countDocuments({ date: { $gte: today, $lt: tomorrow } });
-
     const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-    const monthlyRecords = await Attendance.aggregate([
-      { $match: { date: { $gte: startOfMonth } } },
-      { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$date' } }, count: { $sum: 1 } } },
-      { $sort: { _id: 1 } }
-    ]);
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
-    const hourlyDistribution = await Attendance.aggregate([
-      { $match: { date: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } } },
-      { $group: { _id: { $hour: '$checkInTime' }, count: { $sum: 1 } } },
-      { $sort: { _id: 1 } }
+    const [todayCount, monthlyRecords, hourlyDistribution] = await Promise.all([
+      Attendance.countDocuments({ date: { $gte: today, $lt: tomorrow } }),
+      Attendance.aggregate([
+        { $match: { date: { $gte: startOfMonth } } },
+        { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$date' } }, count: { $sum: 1 } } },
+        { $sort: { _id: 1 } }
+      ]),
+      Attendance.aggregate([
+        { $match: { date: { $gte: thirtyDaysAgo } } },
+        { $group: { _id: { $hour: '$checkInTime' }, count: { $sum: 1 } } },
+        { $sort: { _id: 1 } }
+      ])
     ]);
 
     res.json({ todayCount, monthlyRecords, hourlyDistribution });
