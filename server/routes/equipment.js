@@ -24,7 +24,10 @@ router.get('/maintenance', auth, authorize('admin'), async (req, res) => {
     const upcoming = await Equipment.find({
       nextMaintenance: { $lte: new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000) },
       isActive: true
-    }).sort({ nextMaintenance: 1 });
+    })
+      .select('name category brand model condition status lastMaintenance nextMaintenance')
+      .sort({ nextMaintenance: 1 })
+      .lean();
     res.json({ equipment: upcoming });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });

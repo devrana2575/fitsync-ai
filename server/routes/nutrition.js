@@ -284,7 +284,11 @@ router.get('/stats', auth, authorize('member'), async (req, res) => {
   try {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const logs = await NutritionLog.find({ user: req.user._id, date: { $gte: new Date(today.getTime() - 6 * 24 * 60 * 60 * 1000) } });
+    const logs = await NutritionLog.find({ user: req.user._id, date: { $gte: new Date(today.getTime() - 6 * 24 * 60 * 60 * 1000) } })
+      .select('date totalCalories totalProtein totalCarbs totalFat')
+      .sort({ date: -1 })
+      .limit(21)
+      .lean();
     const avgCalories = logs.length ? Math.round(logs.reduce((s, l) => s + l.totalCalories, 0) / logs.length) : 0;
     const avgProtein = logs.length ? Math.round(logs.reduce((s, l) => s + l.totalProtein, 0) / logs.length) : 0;
     res.json({ totalDays: logs.length, avgCalories, avgProtein, sevenDay: logs });
