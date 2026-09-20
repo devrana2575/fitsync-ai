@@ -68,6 +68,7 @@ app.use('/api/templates', require('./routes/templates'));
 app.use('/api/photos', require('./routes/progressPhotos'));
 app.use('/api/announcements', require('./routes/announcements'));
 app.use('/api/recommendations', require('./routes/recommendations'));
+app.use('/api/admin', require('./routes/admin'));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.get('/api/health', (req, res) => {

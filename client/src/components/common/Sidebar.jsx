@@ -16,6 +16,7 @@ import {
   ClipboardDocumentCheckIcon,
   MegaphoneIcon,
   XMarkIcon,
+  ServerStackIcon,
 } from '@heroicons/react/24/outline';
 import { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
@@ -30,6 +31,7 @@ const adminMenu = [
   { to: '/admin/attendance', icon: ClipboardDocumentListIcon, label: 'Attendance' },
   { to: '/admin/equipment', icon: WrenchScrewdriverIcon, label: 'Equipment' },
   { to: '/admin/announcements', icon: MegaphoneIcon, label: 'Announcements' },
+  { to: '/admin/all-data', icon: ServerStackIcon, label: 'All Data' },
   { to: '/admin/analytics', icon: ChartPieIcon, label: 'Analytics' },
 ];
 
