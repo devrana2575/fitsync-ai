@@ -1,5 +1,6 @@
 const express = require('express');
 const crypto = require('crypto');
+const QRCode = require('qrcode');
 const router = express.Router();
 const Payment = require('../models/Payment');
 const Membership = require('../models/Membership');
@@ -11,6 +12,23 @@ let stripe = null;
 if (process.env.STRIPE_SECRET_KEY) {
   stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 }
+
+const UPI_ID = (process.env.UPI_ID || '').trim();
+const UPI_NAME = (process.env.UPI_NAME || 'FitSync AI').trim();
+const upiEnabled = () => UPI_ID && !UPI_ID.startsWith('#');
+
+const generateUpiUri = ({ upiId, upiName, amount, note, reference }) => {
+  const params = new URLSearchParams();
+  params.set('pa', upiId);
+  params.set('pn', upiName);
+  params.set('am', Number(amount).toFixed(2));
+  params.set('cu', 'INR');
+  params.set('tn', note);
+  params.set('tr', reference);
+  return `upi://pay?${params.toString()}`;
+};
+
+const makeUpiReference = (paymentId) => `FS${String(paymentId).slice(-10).toUpperCase()}`;
 
 const activateMembershipFromPayment = async (membershipId) => {
   if (!membershipId) return;
@@ -105,7 +123,30 @@ router.post('/create', auth, authorize('member'), async (req, res) => {
       return res.status(201).json({ url: session.url, mode: 'stripe', payment: payment._id, membership: membership._id });
     }
 
-    // Dev/demo mode: no Stripe keys configured.
+    if (upiEnabled()) {
+      const reference = makeUpiReference(payment._id);
+      const note = `${plan.name} - ${UPI_NAME}`;
+      const upiUri = generateUpiUri({ upiId: UPI_ID, upiName: UPI_NAME, amount: plan.price, note, reference });
+
+      payment.method = 'upi';
+      payment.transactionId = reference;
+      payment.notes = `UPI checkout for ${plan.name}`;
+      await payment.save();
+
+      return res.status(201).json({
+        mode: 'upi',
+        payment: payment._id,
+        membership: membership._id,
+        upiId: UPI_ID,
+        upiName: UPI_NAME,
+        amount: plan.price,
+        note,
+        reference,
+        planName: plan.name,
+      });
+    }
+
+    // Dev/demo mode: no gateway configured.
     res.status(201).json({ url: null, mode: 'demo', payment: payment._id, membership: membership._id, message: 'Demo mode. Confirm the payment to simulate a successful gateway.' });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
@@ -133,6 +174,63 @@ router.post('/confirm/:paymentId', auth, authorize('member'), async (req, res) =
     await notifyPaymentReceived(payment.user, payment.amount);
 
     res.json({ message: 'Payment confirmed', payment });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// ----------------------------------------------------------------
+// UPI: serve the scan-to-pay QR for a pending payment
+// ----------------------------------------------------------------
+router.get('/upi/qr/:paymentId', auth, authorize('member'), async (req, res) => {
+  try {
+    const payment = await Payment.findById(req.params.paymentId);
+    if (!payment) return res.status(404).json({ message: 'Payment not found' });
+    if (String(payment.user) !== String(req.user._id)) {
+      return res.status(403).json({ message: 'Not your payment' });
+    }
+    if (payment.method !== 'upi') return res.status(400).json({ message: 'Not a UPI payment' });
+    if (!upiEnabled()) return res.status(400).json({ message: 'UPI is not configured' });
+
+    const reference = payment.transactionId || makeUpiReference(payment._id);
+    const uri = generateUpiUri({
+      upiId: UPI_ID,
+      upiName: UPI_NAME,
+      amount: payment.amount,
+      note: payment.notes || `${UPI_NAME} membership`,
+      reference,
+    });
+
+    const svg = await QRCode.toString(uri, { type: 'svg', errorCorrectionLevel: 'H', margin: 1 });
+    res.type('image/svg+xml').send(svg);
+  } catch (error) {
+    console.error('[checkout/upi-qr] Error:', error.message);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// ----------------------------------------------------------------
+// UPI: member confirms they paid via their UPI app
+// ----------------------------------------------------------------
+router.post('/upi/confirm/:paymentId', auth, authorize('member'), async (req, res) => {
+  try {
+    const payment = await Payment.findById(req.params.paymentId);
+    if (!payment) return res.status(404).json({ message: 'Payment not found' });
+    if (String(payment.user) !== String(req.user._id)) {
+      return res.status(403).json({ message: 'Not your payment' });
+    }
+    if (payment.method !== 'upi') return res.status(400).json({ message: 'Not a UPI payment' });
+    if (payment.status === 'COMPLETED') return res.json({ message: 'Payment already completed', payment });
+
+    const reference = payment.transactionId || makeUpiReference(payment._id);
+    payment.status = 'COMPLETED';
+    payment.notes = `${payment.notes || 'UPI payment'} via ${UPI_ID} (ref ${reference})`;
+    await payment.save();
+
+    await activateMembershipFromPayment(payment.membership);
+    await notifyPaymentReceived(payment.user, payment.amount);
+
+    res.json({ message: 'Payment confirmed, membership activated', payment });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }

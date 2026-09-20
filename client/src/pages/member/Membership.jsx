@@ -22,6 +22,9 @@ export default function Membership() {
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [processing, setProcessing] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
+  const [upiInfo, setUpiInfo] = useState(null);
+  const [qrUrl, setQrUrl] = useState(null);
+  const [qrLoading, setQrLoading] = useState(false);
 
   const fetchData = async () => {
     try {
@@ -55,10 +58,44 @@ export default function Membership() {
       const { mode, url, payment } = res.data;
       if (mode === 'stripe' && url) {
         window.location.assign(url);
+      } else if (mode === 'upi') {
+        setSelectedPlan({ ...plan, paymentId: payment });
+        setUpiInfo(res.data);
+        setModalOpen(true);
+        setQrLoading(true);
+        try {
+          const qr = await api.get(`/checkout/upi/qr/${payment}`, { responseType: 'blob' });
+          setQrUrl(URL.createObjectURL(qr.data));
+        } catch (err) {
+          alert(err.message || 'Failed to load payment QR');
+        } finally {
+          setQrLoading(false);
+        }
       } else if (mode === 'demo') {
         setSelectedPlan({ ...plan, paymentId: payment });
         setModalOpen(true);
       }
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const closeModal = () => {
+    setModalOpen(false);
+    if (qrUrl) { URL.revokeObjectURL(qrUrl); setQrUrl(null); }
+    setSelectedPlan(null);
+    setUpiInfo(null);
+  };
+
+  const handleConfirmUpi = async () => {
+    try {
+      setProcessing(true);
+      await api.post(`/checkout/upi/confirm/${upiInfo.payment}`);
+      alert('Payment recorded! Your membership is now active.');
+      closeModal();
+      fetchData();
     } catch (err) {
       alert(err.message);
     } finally {
@@ -191,15 +228,59 @@ export default function Membership() {
           </div>
         )}
 
-        <Modal isOpen={modalOpen} onClose={() => { if (!processing) setModalOpen(false); }} title="Confirm Payment">
-          {selectedPlan && (
+        <Modal isOpen={modalOpen} onClose={() => { if (!processing) closeModal(); }} title={upiInfo ? 'Scan QR to Pay' : 'Confirm Payment'}>
+          {upiInfo ? (
+            <div className="flex flex-col items-center">
+              <p className="text-sm text-slate-500 mb-4">
+                Pay <span className="font-semibold text-slate-900">₹{Number(upiInfo.amount || selectedPlan?.price || 0).toLocaleString('en-IN')}</span> for {upiInfo.planName || selectedPlan?.name} using any UPI app (GPay, PhonePe, Paytm).
+              </p>
+              <div className="bg-white border border-slate-200 rounded-xl p-3 mb-4">
+                {qrLoading ? (
+                  <div className="h-56 w-56 flex items-center justify-center"><LoadingSpinner /></div>
+                ) : qrUrl ? (
+                  <img src={qrUrl} alt="UPI payment QR" className="h-56 w-56" />
+                ) : (
+                  <p className="h-56 w-56 flex items-center justify-center text-sm text-slate-400">QR unavailable</p>
+                )}
+              </div>
+              <table className="text-sm w-full max-w-sm mb-4">
+                <tbody className="divide-y divide-slate-100">
+                  <tr><td className="py-1.5 text-slate-500">Pay to</td><td className="py-1.5 text-right font-medium text-slate-900">{upiInfo.upiId}</td></tr>
+                  <tr><td className="py-1.5 text-slate-500">Name</td><td className="py-1.5 text-right font-medium text-slate-900">{upiInfo.upiName || '—'}</td></tr>
+                  <tr><td className="py-1.5 text-slate-500">Amount</td><td className="py-1.5 text-right font-medium text-slate-900">₹{Number(upiInfo.amount || 0).toLocaleString('en-IN')}</td></tr>
+                  <tr><td className="py-1.5 text-slate-500">Reference</td><td className="py-1.5 text-right font-mono text-xs text-slate-700">{upiInfo.reference}</td></tr>
+                  <tr><td className="py-1.5 text-slate-500">Note</td><td className="py-1.5 text-right text-slate-700">{upiInfo.note || '—'}</td></tr>
+                </tbody>
+              </table>
+              <p className="text-xs text-slate-500 text-center mb-4">
+                After you complete the payment in your UPI app, tap confirm below. Our team verifies the transaction against your UPI reference.
+              </p>
+              <div className="flex justify-end gap-3 w-full">
+                <button
+                  onClick={closeModal}
+                  disabled={processing}
+                  className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirmUpi}
+                  disabled={processing}
+                  className="rounded-lg bg-green-600 hover:bg-green-700 disabled:opacity-50 px-4 py-2 text-sm text-white"
+                >
+                  {processing ? 'Processing…' : 'I have paid'}
+                </button>
+              </div>
+            </div>
+          ) : (
+            selectedPlan && (
             <div>
               <p className="text-sm text-slate-600 mb-4">
                 Demo Mode – Your payment of ₹{Number(selectedPlan.price || 0).toLocaleString('en-IN')} for {selectedPlan.name} is ready. This simulates a successful payment gateway.
               </p>
               <div className="flex justify-end gap-3">
                 <button
-                  onClick={() => setModalOpen(false)}
+                  onClick={closeModal}
                   disabled={processing}
                   className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-50"
                 >
@@ -214,6 +295,7 @@ export default function Membership() {
                 </button>
               </div>
             </div>
+            )
           )}
         </Modal>
       </div>
