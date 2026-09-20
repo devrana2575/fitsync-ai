@@ -6,16 +6,23 @@ const Payment = require('../models/Payment');
 const Membership = require('../models/Membership');
 const MembershipPlan = require('../models/MembershipPlan');
 const Notification = require('../models/Notification');
+const User = require('../models/User');
 const { auth, authorize } = require('../middleware/auth');
+const { activateMembershipFromPayment } = require('../utils/membershipActivation');
+const {
+  getUpiId,
+  getUpiName,
+  upiConfigured,
+  stripeConfigured,
+  hasRealPaymentConfig
+} = require('../utils/paymentConfig');
 
 let stripe = null;
-if (process.env.STRIPE_SECRET_KEY) {
+if (process.env.STRIPE_SECRET_KEY && process.env.STRIPE_SECRET_KEY.startsWith('sk_')) {
   stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 }
 
-const UPI_ID = (process.env.UPI_ID || '').trim();
-const UPI_NAME = (process.env.UPI_NAME || 'FitSync AI').trim();
-const upiEnabled = () => UPI_ID && !UPI_ID.startsWith('#');
+const isProduction = () => process.env.NODE_ENV === 'production';
 
 const generateUpiUri = ({ upiId, upiName, amount, note, reference }) => {
   const params = new URLSearchParams();
@@ -30,30 +37,6 @@ const generateUpiUri = ({ upiId, upiName, amount, note, reference }) => {
 
 const makeUpiReference = (paymentId) => `FS${String(paymentId).slice(-10).toUpperCase()}`;
 
-const activateMembershipFromPayment = async (membershipId) => {
-  if (!membershipId) return;
-  const membership = await Membership.findById(membershipId).populate('plan');
-  if (!membership || membership.status === 'ACTIVE' || membership.status === 'CANCELLED') return;
-
-  await Membership.updateMany(
-    { user: membership.user, status: 'ACTIVE', _id: { $ne: membership._id } },
-    { status: 'CANCELLED' }
-  );
-
-  const now = new Date();
-  const start = new Date();
-  const end = new Date(start);
-  if (membership.plan && membership.plan.duration) {
-    end.setDate(end.getDate() + membership.plan.duration);
-  }
-  if (membership.status === 'EXPIRED' || !membership.endDate || membership.endDate <= now) {
-    membership.startDate = start;
-    membership.endDate = end;
-  }
-  membership.status = 'ACTIVE';
-  await membership.save();
-};
-
 const notifyPaymentReceived = async (userId, amount) => {
   if (!userId) return;
   await Notification.create({
@@ -62,6 +45,20 @@ const notifyPaymentReceived = async (userId, amount) => {
     message: `Your online payment of ₹${Number(amount || 0).toLocaleString('en-IN')} was successful.`,
     type: 'general'
   });
+};
+
+const notifyAdminsPaymentVerification = async (payment) => {
+  const admins = await User.find({ role: 'admin', isActive: true }).select('_id').lean();
+  if (admins.length === 0) return;
+  const member = await User.findById(payment.user).select('name email').lean();
+  await Notification.create(
+    admins.map((a) => ({
+      user: a._id,
+      title: 'Payment Verification Needed',
+      message: `${member?.name || 'A member'} confirmed a UPI payment of ₹${Number(payment.amount || 0).toLocaleString('en-IN')} (ref ${payment.transactionId || payment._id}). Please verify and approve it in Payments.`,
+      type: 'general'
+    }))
+  );
 };
 
 // ----------------------------------------------------------------
@@ -74,6 +71,42 @@ router.post('/create', auth, authorize('member'), async (req, res) => {
 
     const plan = await MembershipPlan.findOne({ _id: planId, isActive: true });
     if (!plan) return res.status(404).json({ message: 'Plan not found' });
+
+    if (!stripe && !upiConfigured()) {
+      if (isProduction()) {
+        return res.status(503).json({ message: 'Online payments are not configured. Please contact the gym to complete your purchase.' });
+      }
+      // Development/demo fallback - never reachable in production.
+      const start = new Date();
+      const end = new Date(start);
+      end.setDate(end.getDate() + plan.duration);
+
+      const membership = await Membership.create({
+        user: req.user._id,
+        plan: planId,
+        startDate: start,
+        endDate: end,
+        status: 'PENDING'
+      });
+
+      const payment = await Payment.create({
+        user: req.user._id,
+        membership: membership._id,
+        amount: plan.price,
+        method: 'online',
+        status: 'PENDING',
+        transactionId: `DEV-DEMO-${Date.now()}`,
+        notes: `DEMO/DEVELOPMENT checkout for ${plan.name}`,
+        date: new Date()
+      });
+
+      return res.status(201).json({
+        mode: 'demo',
+        payment: payment._id,
+        membership: membership._id,
+        message: 'DEMO/DEVELOPMENT mode. Confirm the payment to simulate a successful gateway. Not available in production.'
+      });
+    }
 
     const start = new Date();
     const end = new Date(start);
@@ -123,10 +156,10 @@ router.post('/create', auth, authorize('member'), async (req, res) => {
       return res.status(201).json({ url: session.url, mode: 'stripe', payment: payment._id, membership: membership._id });
     }
 
-    if (upiEnabled()) {
+    if (upiConfigured()) {
       const reference = makeUpiReference(payment._id);
-      const note = `${plan.name} - ${UPI_NAME}`;
-      const upiUri = generateUpiUri({ upiId: UPI_ID, upiName: UPI_NAME, amount: plan.price, note, reference });
+      const note = `${plan.name} - ${getUpiName()}`;
+      const upiUri = generateUpiUri({ upiId: getUpiId(), upiName: getUpiName(), amount: plan.price, note, reference });
 
       payment.method = 'upi';
       payment.transactionId = reference;
@@ -137,8 +170,8 @@ router.post('/create', auth, authorize('member'), async (req, res) => {
         mode: 'upi',
         payment: payment._id,
         membership: membership._id,
-        upiId: UPI_ID,
-        upiName: UPI_NAME,
+        upiId: getUpiId(),
+        upiName: getUpiName(),
         amount: plan.price,
         note,
         reference,
@@ -146,18 +179,22 @@ router.post('/create', auth, authorize('member'), async (req, res) => {
       });
     }
 
-    // Dev/demo mode: no gateway configured.
-    res.status(201).json({ url: null, mode: 'demo', payment: payment._id, membership: membership._id, message: 'Demo mode. Confirm the payment to simulate a successful gateway.' });
+    res.status(503).json({ message: 'Online payments are not configured.' });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }
 });
 
 // ----------------------------------------------------------------
-// Confirm a payment (demo mode simulation of a successful gateway)
+// Confirm a payment (development demo simulation only)
 // ----------------------------------------------------------------
 router.post('/confirm/:paymentId', auth, authorize('member'), async (req, res) => {
   try {
+    if (isProduction()) {
+      // A member click is never a legitimate payment confirmation.
+      return res.status(503).json({ message: 'Automatic payment confirmation is disabled in production.' });
+    }
+
     const payment = await Payment.findById(req.params.paymentId);
     if (!payment) return res.status(404).json({ message: 'Payment not found' });
     if (String(payment.user) !== String(req.user._id)) {
@@ -167,13 +204,13 @@ router.post('/confirm/:paymentId', auth, authorize('member'), async (req, res) =
     if (stripe) return res.status(400).json({ message: 'Use the Stripe checkout flow' });
 
     payment.status = 'COMPLETED';
-    payment.notes = `${payment.notes || 'Online payment'} (simulated gateway)`;
+    payment.notes = `${payment.notes || 'Online payment'} (DEMO/DEVELOPMENT simulated gateway)`;
     await payment.save();
 
     await activateMembershipFromPayment(payment.membership);
     await notifyPaymentReceived(payment.user, payment.amount);
 
-    res.json({ message: 'Payment confirmed', payment });
+    res.json({ message: 'Payment confirmed (DEMO)', payment });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }
@@ -190,14 +227,14 @@ router.get('/upi/qr/:paymentId', auth, authorize('member'), async (req, res) => 
       return res.status(403).json({ message: 'Not your payment' });
     }
     if (payment.method !== 'upi') return res.status(400).json({ message: 'Not a UPI payment' });
-    if (!upiEnabled()) return res.status(400).json({ message: 'UPI is not configured' });
+    if (!upiConfigured()) return res.status(400).json({ message: 'UPI is not configured' });
 
     const reference = payment.transactionId || makeUpiReference(payment._id);
     const uri = generateUpiUri({
-      upiId: UPI_ID,
-      upiName: UPI_NAME,
+      upiId: getUpiId(),
+      upiName: getUpiName(),
       amount: payment.amount,
-      note: payment.notes || `${UPI_NAME} membership`,
+      note: payment.notes || `${getUpiName()} membership`,
       reference,
     });
 
@@ -210,8 +247,11 @@ router.get('/upi/qr/:paymentId', auth, authorize('member'), async (req, res) => 
 });
 
 // ----------------------------------------------------------------
-// UPI: member confirms they paid via their UPI app
+// UPI: member says they paid via their UPI app
 // ----------------------------------------------------------------
+// Scanning a QR is NOT payment verification. A member click only records
+// their claim; the payment stays PENDING until an admin verifies the
+// transfer and approves it (see POST /api/payments/:id/verify).
 router.post('/upi/confirm/:paymentId', auth, authorize('member'), async (req, res) => {
   try {
     const payment = await Payment.findById(req.params.paymentId);
@@ -223,14 +263,15 @@ router.post('/upi/confirm/:paymentId', auth, authorize('member'), async (req, re
     if (payment.status === 'COMPLETED') return res.json({ message: 'Payment already completed', payment });
 
     const reference = payment.transactionId || makeUpiReference(payment._id);
-    payment.status = 'COMPLETED';
-    payment.notes = `${payment.notes || 'UPI payment'} via ${UPI_ID} (ref ${reference})`;
+    payment.notes = `${payment.notes || 'UPI payment'} via ${getUpiId()} (ref ${reference}) - member submitted for verification`;
     await payment.save();
 
-    await activateMembershipFromPayment(payment.membership);
-    await notifyPaymentReceived(payment.user, payment.amount);
+    await notifyAdminsPaymentVerification(payment);
 
-    res.json({ message: 'Payment confirmed, membership activated', payment });
+    res.json({
+      message: 'Payment submitted for verification. The gym will confirm once the payment is received.',
+      payment
+    });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }
@@ -265,7 +306,6 @@ const webhookHandler = async (req, res) => {
 
     res.json({ received: true });
   } catch (error) {
-    const raw = Buffer.isBuffer(req.body) ? null : req.body;
     res.status(400).json({ message: `Webhook error: ${error.message}` });
   }
 };

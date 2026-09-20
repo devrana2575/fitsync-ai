@@ -23,12 +23,18 @@ const ProgressPhoto = require('../models/ProgressPhoto');
 const GymSetting = require('../models/GymSetting');
 
 const EDITABLE_FIELDS = {
-  users: ['name', 'email', 'role', 'avatar', 'isActive', 'preferences'],
+  // role is deliberately not editable through AllData: authz decoupled from
+  // data debugging.
+  users: ['name', 'email', 'avatar', 'isActive', 'preferences'],
   memberProfiles: ['phone', 'dateOfBirth', 'gender', 'address', 'emergencyContact', 'assignedTrainer', 'joinDate', 'medicalConditions'],
   trainerProfiles: ['phone', 'specializations', 'certifications', 'experience', 'bio', 'maxMembers'],
   membershipPlans: ['name', 'price', 'duration', 'description', 'features', 'isActive'],
-  memberships: ['startDate', 'endDate', 'status', 'autoRenew'],
-  payments: ['amount', 'method', 'status', 'transactionId', 'notes', 'date'],
+  // status is not editable through AllData: activation must flow through the
+  // payment-verified paths (or explicit admin flows in the memberships API).
+  memberships: ['startDate', 'endDate', 'autoRenew'],
+  // status is not editable through AllData: completion/refund state is
+  // governed by payments/verify & payment lifecycle rules.
+  payments: ['amount', 'method', 'transactionId', 'notes', 'date'],
   attendances: ['date', 'checkInTime', 'checkOutTime', 'method', 'duration'],
   exercises: ['name', 'category', 'muscleGroup', 'difficulty', 'description', 'equipment', 'isActive'],
   equipment: ['name', 'category', 'brand', 'model', 'condition', 'status', 'purchaseDate', 'lastMaintenance', 'nextMaintenance', 'location', 'isActive', 'description', 'notes'],

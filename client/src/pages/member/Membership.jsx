@@ -93,7 +93,7 @@ export default function Membership() {
     try {
       setProcessing(true);
       await api.post(`/checkout/upi/confirm/${upiInfo.payment}`);
-      alert('Payment recorded! Your membership is now active.');
+      alert('Payment submitted for verification by the gym. Your membership will activate once the payment is confirmed.');
       closeModal();
       fetchData();
     } catch (err) {

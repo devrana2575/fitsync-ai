@@ -1,8 +1,42 @@
 const express = require('express');
 const router = express.Router();
 const Attendance = require('../models/Attendance');
+const Membership = require('../models/Membership');
+const User = require('../models/User');
 const { auth, authorize } = require('../middleware/auth');
 const { parsePagination } = require('../utils/helpers');
+const {
+  getGymDayStart,
+  getGymDayEnd,
+  getGymDayStartOnDateKey,
+  getGymDateKey,
+  getGymMonthStart,
+  getGymTimezone
+} = require('../utils/gymTime');
+
+// A member can only enter the gym with an ACTIVE membership that has not yet
+// expired. The endDate comparison is instant-based (timezone independent), so
+// a membership whose endDate is later today still passes.
+const requireActiveMembership = async (userId) => {
+  const membership = await Membership.findOne({
+    user: userId,
+    status: 'ACTIVE',
+    endDate: { $gte: new Date() }
+  }).select('_id status endDate').lean();
+  return membership || null;
+};
+
+const findTodayFilter = () => {
+  const dayKey = getGymDateKey();
+  const dayStart = getGymDayStart();
+  const dayEnd = getGymDayEnd();
+  return {
+    $or: [
+      { dayKey },
+      { date: { $gte: dayStart, $lt: dayEnd } }
+    ]
+  };
+};
 
 router.get('/', auth, authorize('admin', 'trainer'), async (req, res) => {
   try {
@@ -11,9 +45,8 @@ router.get('/', auth, authorize('admin', 'trainer'), async (req, res) => {
     const filter = {};
     if (userId) filter.user = userId;
     if (date) {
-      const start = new Date(date);
-      const end = new Date(date);
-      end.setDate(end.getDate() + 1);
+      const start = getGymDayStartOnDateKey(date);
+      const end = getGymDayEnd(new Date(start.getTime() + 1));
       filter.date = { $gte: start, $lt: end };
     }
     const total = await Attendance.countDocuments(filter);
@@ -39,12 +72,15 @@ router.get('/batch-today', auth, authorize('admin', 'trainer'), async (req, res)
 
     const filter = { user: { $in: ids } };
     if (date) {
-      const start = new Date(date);
-      if (!isNaN(start.getTime())) {
-        const end = new Date(start);
-        end.setDate(end.getDate() + 1);
-        filter.date = { $gte: start, $lt: end };
-      }
+      filter.date = {
+        $gte: getGymDayStartOnDateKey(date),
+        $lt: getGymDayEnd(new Date(getGymDayStartOnDateKey(date).getTime() + 1))
+      };
+    } else {
+      filter.$or = [
+        { dayKey: getGymDateKey() },
+        { date: { $gte: getGymDayStart(), $lt: getGymDayEnd() } }
+      ];
     }
 
     const records = await Attendance.find(filter)
@@ -76,14 +112,10 @@ router.get('/my', auth, async (req, res) => {
 
 router.get('/today', auth, authorize('admin', 'trainer'), async (req, res) => {
   try {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const filter = { date: { $gte: today, $lt: tomorrow } };
+    const filter = findTodayFilter();
     const count = await Attendance.countDocuments(filter);
     const records = await Attendance.find(filter)
-      .select('user date checkInTime checkOutTime')
+      .select('user date dayKey checkInTime checkOutTime')
       .populate('user', 'name email role')
       .sort({ checkInTime: 1 })
       .limit(200)
@@ -96,23 +128,19 @@ router.get('/today', auth, authorize('admin', 'trainer'), async (req, res) => {
 
 router.get('/stats', auth, authorize('admin'), async (req, res) => {
   try {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const monthStart = getGymMonthStart();
+    const tz = getGymTimezone();
 
     const [todayCount, monthlyRecords, hourlyDistribution] = await Promise.all([
-      Attendance.countDocuments({ date: { $gte: today, $lt: tomorrow } }),
+      Attendance.countDocuments(findTodayFilter()),
       Attendance.aggregate([
-        { $match: { date: { $gte: startOfMonth } } },
-        { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$date' } }, count: { $sum: 1 } } },
+        { $match: { date: { $gte: monthStart } } },
+        { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$date', timezone: tz } }, count: { $sum: 1 } } },
         { $sort: { _id: 1 } }
       ]),
       Attendance.aggregate([
-        { $match: { date: { $gte: thirtyDaysAgo } } },
-        { $group: { _id: { $hour: '$checkInTime' }, count: { $sum: 1 } } },
+        { $match: { date: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } } },
+        { $group: { _id: { $hour: { date: '$checkInTime', timezone: tz } }, count: { $sum: 1 } } },
         { $sort: { _id: 1 } }
       ])
     ]);
@@ -126,18 +154,43 @@ router.get('/stats', auth, authorize('admin'), async (req, res) => {
 router.post('/checkin', auth, authorize('admin', 'trainer'), async (req, res) => {
   try {
     const { userId, method } = req.body;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const existing = await Attendance.findOne({ user: userId, date: { $gte: today } });
+    if (!userId) return res.status(400).json({ message: 'userId is required' });
+
+    const target = await User.findById(userId).select('_id role isActive').lean();
+    if (!target || target.role !== 'member') {
+      return res.status(404).json({ message: 'Member not found' });
+    }
+    if (!target.isActive) {
+      return res.status(403).json({ message: 'Member is deactivated' });
+    }
+
+    const membership = await requireActiveMembership(userId);
+    if (!membership) {
+      return res.status(403).json({ message: 'Active membership required for check-in' });
+    }
+
+    const dayKey = getGymDateKey();
+    const existing = await Attendance.findOne({ user: userId, dayKey });
     if (existing) {
       return res.status(400).json({ message: 'Already checked in today' });
     }
-    const attendance = await Attendance.create({
-      user: userId,
-      date: new Date(),
-      checkInTime: new Date(),
-      method: method || 'manual'
-    });
+
+    const now = new Date();
+    let attendance;
+    try {
+      attendance = await Attendance.create({
+        user: userId,
+        date: now,
+        dayKey,
+        checkInTime: now,
+        method: method || 'manual'
+      });
+    } catch (error) {
+      if (error.code === 11000) {
+        return res.status(400).json({ message: 'Already checked in today' });
+      }
+      throw error;
+    }
     res.status(201).json({ attendance });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
@@ -166,18 +219,34 @@ router.post('/checkout/:id', auth, async (req, res) => {
 router.post('/qr-checkin', auth, async (req, res) => {
   try {
     const userId = req.user._id;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const existing = await Attendance.findOne({ user: userId, date: { $gte: today } });
+
+    const membership = await requireActiveMembership(userId);
+    if (!membership) {
+      return res.status(403).json({ message: 'Active membership required for check-in' });
+    }
+
+    const dayKey = getGymDateKey();
+    const existing = await Attendance.findOne({ user: userId, dayKey });
     if (existing) {
       return res.status(400).json({ message: 'Already checked in today' });
     }
-    const attendance = await Attendance.create({
-      user: userId,
-      date: new Date(),
-      checkInTime: new Date(),
-      method: 'qr'
-    });
+
+    const now = new Date();
+    let attendance;
+    try {
+      attendance = await Attendance.create({
+        user: userId,
+        date: now,
+        dayKey,
+        checkInTime: now,
+        method: 'qr'
+      });
+    } catch (error) {
+      if (error.code === 11000) {
+        return res.status(400).json({ message: 'Already checked in today' });
+      }
+      throw error;
+    }
     res.status(201).json({ attendance });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });

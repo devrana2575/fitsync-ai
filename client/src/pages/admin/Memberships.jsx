@@ -10,7 +10,7 @@ import DataTable from '../../components/common/DataTable';
 import StatCard from '../../components/common/StatCard';
 
 const initialPlan = { name: '', price: '', duration: '', features: '', description: '' };
-const initialAssignForm = { selectedMember: null, selectedPlan: null, startDate: new Date().toISOString().split('T')[0] };
+const initialAssignForm = { selectedMember: null, selectedPlan: null, startDate: new Date().toISOString().split('T')[0], complimentary: false };
 
 export default function Memberships() {
   const location = useLocation();
@@ -116,6 +116,7 @@ export default function Memberships() {
         userId: selectedMember._id,
         planId: selectedPlan._id,
         startDate,
+        complimentary: assignForm.complimentary,
       };
       await api.post('/memberships', payload);
       setShowAssignModal(false);
@@ -153,8 +154,14 @@ export default function Memberships() {
   };
 
   const renewMembership = async (m) => {
+    const proceed = confirm(
+      `Renew "${m.plan?.name || 'membership'}" for ${m.user?.name || 'this member'}?\n\n` +
+      'Renewing here grants ACTIVE status without an online payment. ' +
+      'Confirm the payment was collected at the counter (cash/UPI).'
+    );
+    if (!proceed) return;
     try {
-      await api.put(`/memberships/${m._id}/renew`);
+      await api.put(`/memberships/${m._id}/renew`, { acknowledged: true });
       fetchAll();
     } catch (err) {
       alert(err.message || 'Failed to renew');
@@ -337,6 +344,15 @@ export default function Memberships() {
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Start Date (optional)</label>
             <input type="date" value={assignForm.startDate} onChange={(e) => setAssignForm({ ...assignForm, startDate: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+          </div>
+          <div className="flex items-center gap-2">
+            <input id="complimentary" type="checkbox" checked={assignForm.complimentary} onChange={(e) => setAssignForm({ ...assignForm, complimentary: e.target.checked })} className="h-4 w-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500" />
+            <label htmlFor="complimentary" className="text-sm font-medium text-slate-700">Complementary / free grant (activate immediately)</label>
+          </div>
+          <div className={`rounded-lg px-3 py-2 text-xs ${assignForm.complimentary ? 'bg-amber-50 text-amber-800 border border-amber-200' : 'bg-slate-50 text-slate-500 border border-slate-200'}`}>
+            {assignForm.complimentary
+              ? 'A complimentary/offline grant activates the membership immediately — use only for free or counter-collected memberships.'
+              : 'This membership is created as PENDING and does not grant access yet. Record the payment on the Payments page (Plan-based entry) to activate it.'}
           </div>
           <div className="flex justify-end gap-3 pt-2">
             <button type="button" onClick={() => setShowAssignModal(false)} className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 font-medium">Cancel</button>

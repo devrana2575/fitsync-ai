@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { BanknotesIcon, CalendarDaysIcon, CreditCardIcon, ClockIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
+import { BanknotesIcon, CalendarDaysIcon, CreditCardIcon, ClockIcon, ArrowPathIcon, CheckBadgeIcon } from '@heroicons/react/24/outline';
 import api from '../../services/api';
 import useDebounce from '../../hooks/useDebounce';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
@@ -10,7 +10,7 @@ import Modal from '../../components/common/Modal';
 import DataTable from '../../components/common/DataTable';
 import StatCard from '../../components/common/StatCard';
 
-const initialForm = { userId: '', membershipId: '', amount: '', method: 'cash', status: 'completed', notes: '' };
+const initialForm = { userId: '', membershipId: '', planId: '', amount: '', method: 'cash', status: 'completed', notes: '' };
 
 export default function Payments() {
   const location = useLocation();
@@ -33,6 +33,7 @@ export default function Payments() {
   const [memberMemberships, setMemberMemberships] = useState([]);
   const [error, setError] = useState(null);
   const [loadingMemberships, setLoadingMemberships] = useState(false);
+  const [plans, setPlans] = useState([]);
 
   const fetchAll = async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
@@ -80,7 +81,16 @@ export default function Payments() {
         console.error(err);
       }
     };
+    const fetchPlans = async () => {
+      try {
+        const res = await api.get('/membership-plans');
+        setPlans(res.data.plans || res.data.data || []);
+      } catch (err) {
+        console.error(err);
+      }
+    };
     fetchMembers();
+    fetchPlans();
   }, []);
 
   const fetchMemberMemberships = async (memberId) => {
@@ -106,14 +116,37 @@ export default function Payments() {
   const handleMemberSelect = (member) => {
     setSelectedMember(member);
     setMemberSearch('');
-    setForm((f) => ({ ...f, userId: member._id, membershipId: '' }));
+    setForm((f) => ({ ...f, userId: member._id, membershipId: '', planId: '' }));
     fetchMemberMemberships(member._id);
   };
 
   const handleSubmittedMemberChange = () => {
     setSelectedMember(null);
     setMemberMemberships([]);
-    setForm((f) => ({ ...f, userId: '', membershipId: '' }));
+    setForm((f) => ({ ...f, userId: '', membershipId: '', planId: '' }));
+  };
+
+  const handlePlanChange = (e) => {
+    const planId = e.target.value;
+    const plan = plans.find((p) => p._id === planId) || null;
+    setForm((f) => ({
+      ...f,
+      planId,
+      membershipId: '',
+      // Auto-fill the exact plan price - the server rejects a completed
+      // plan payment whose amount differs from the plan price.
+      amount: plan ? String(plan.price) : f.amount,
+    }));
+  };
+
+  const handleVerify = async (payment) => {
+    if (!window.confirm('Verify and complete this pending payment?\n\nThe member\'s membership will be activated.')) return;
+    try {
+      await api.post(`/payments/${payment._id}/verify`);
+      fetchAll();
+    } catch (err) {
+      alert(err.message || 'Failed to verify payment');
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -210,9 +243,10 @@ export default function Payments() {
           <button onClick={() => { setForm(initialForm); setSelectedMember(null); setMemberMemberships([]); setMemberSearch(''); setShowModal(true); }} className="text-indigo-600 hover:text-indigo-800 font-medium">Add first payment</button>
         } />
       ) : (
-        <DataTable headers={['Member', 'Amount', 'Method', 'Status', 'Date', 'Notes']}>
+        <DataTable headers={['Receipt', 'Member', 'Amount', 'Method', 'Status', 'Date', 'Actions']}>
           {payments.map((p, i) => (
             <tr key={p._id} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
+              <td className="px-6 py-4 font-mono text-xs text-slate-600">{p.transactionId || '—'}</td>
               <td className="px-6 py-4 font-medium text-slate-900">{p.user?.name || p.member?.name || '—'}</td>
               <td className="px-6 py-4 font-semibold text-slate-900">{fmtCurrency(p.amount)}</td>
               <td className="px-6 py-4 text-slate-600 capitalize">{p.method || '—'}</td>
@@ -220,7 +254,14 @@ export default function Payments() {
                 <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColor(p.status)}`}>{p.status}</span>
               </td>
               <td className="px-6 py-4 text-slate-600">{p.createdAt ? new Date(p.createdAt).toLocaleDateString('en-IN') : '—'}</td>
-              <td className="px-6 py-4 text-slate-500 text-sm max-w-[200px] truncate">{p.notes || '—'}</td>
+              <td className="px-6 py-4">
+                {p.status === 'PENDING' && (
+                  <button onClick={() => handleVerify(p)} className="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-800 font-medium text-sm">
+                    <CheckBadgeIcon className="h-4 w-4" aria-hidden="true" />
+                    Verify
+                  </button>
+                )}
+              </td>
             </tr>
           ))}
         </DataTable>
@@ -262,7 +303,7 @@ export default function Payments() {
             ) : memberMemberships.length === 0 ? (
               <div className="px-3 py-2 border border-slate-300 rounded-lg bg-slate-50 text-sm text-slate-500">No memberships found for this member</div>
             ) : (
-              <select value={form.membershipId} onChange={(e) => setForm({ ...form, membershipId: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+              <select value={form.membershipId} onChange={(e) => setForm({ ...form, membershipId: e.target.value, planId: '' })} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
                 <option value="">None</option>
                 {memberMemberships.map((m) => (
                   <option key={m._id} value={m._id}>{m.plan?.name || 'Membership'} — {(m.status || '').toUpperCase()}</option>
@@ -271,8 +312,25 @@ export default function Payments() {
             )}
           </div>
           <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Plan (optional — creates new membership)</label>
+            {!selectedMember ? (
+              <input disabled placeholder="Select a member first" className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-slate-50 text-slate-400" />
+            ) : (
+              <select value={form.planId} onChange={handlePlanChange} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                <option value="">None</option>
+                {plans.map((pla) => (
+                  <option key={pla._id} value={pla._id}>{pla.name} — ₹{Number(pla.price || 0).toLocaleString('en-IN')} / {pla.duration} days</option>
+                ))}
+              </select>
+            )}
+            <p className="text-xs text-slate-400 mt-1">Pick this when the member is buying a plan at the counter — a new membership is created automatically and activated on a completed payment.</p>
+          </div>
+          <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Amount (₹)</label>
             <input required type="number" min="0" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+            {form.planId && form.status === 'completed' && (
+              <p className="text-xs text-slate-400 mt-1">Plan-based completed payments must match the plan price exactly.</p>
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Method</label>

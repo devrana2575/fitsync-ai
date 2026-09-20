@@ -6,17 +6,23 @@ const Membership = require('../models/Membership');
 const Payment = require('../models/Payment');
 const WorkoutLog = require('../models/WorkoutLog');
 const { auth, authorize } = require('../middleware/auth');
+const {
+  getGymDayStart,
+  getGymDayEnd,
+  getGymMonthStart,
+  getGymTimezone,
+  getGymWeekdayName,
+  getGymDateKey
+} = require('../utils/gymTime');
 
 router.get('/admin/dashboard', auth, authorize('admin'), async (req, res) => {
   try {
     const now = new Date();
     const thirtyDays = new Date(now);
     thirtyDays.setDate(thirtyDays.getDate() + 30);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const today = getGymDayStart();
+    const tomorrow = getGymDayEnd();
+    const startOfMonth = getGymMonthStart();
     const oneMonthAgo = new Date(now);
     oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
 
@@ -61,19 +67,24 @@ router.get('/admin/dashboard', auth, authorize('admin'), async (req, res) => {
 
 router.get('/admin/revenue-trend', auth, authorize('admin'), async (req, res) => {
   try {
+    const tz = getGymTimezone();
     const trend = await Payment.aggregate([
       { $match: { status: 'COMPLETED' } },
       {
         $group: {
-          _id: { year: { $year: '$date' }, month: { $month: '$date' } },
+          _id: { year: { $year: { date: '$date', timezone: tz } }, month: { $month: { date: '$date', timezone: tz } } },
           total: { $sum: '$amount' },
           count: { $sum: 1 }
         }
       },
-      { $sort: { '_id.year': 1, '_id.month': 1 } },
+      // Latest 12 months by gym-local calendar, then reversed to ascending
+      // display order (fixes the previous oldest-12 bug).
+      { $sort: { '_id.year': -1, '_id.month': -1 } },
       { $limit: 12 }
     ]);
-    res.json({ trend });
+    // Convert to ascending display order (oldest of the last 12 first).
+    const sorted = trend.sort((a, b) => (a._id.year - b._id.year) || (a._id.month - b._id.month));
+    res.json({ trend: sorted });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }
@@ -81,11 +92,11 @@ router.get('/admin/revenue-trend', auth, authorize('admin'), async (req, res) =>
 
 router.get('/admin/attendance-trend', auth, authorize('admin'), async (req, res) => {
   try {
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const tz = getGymTimezone();
+    const thirtyDaysAgo = getGymDayStart(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000));
     const trend = await Attendance.aggregate([
       { $match: { date: { $gte: thirtyDaysAgo } } },
-      { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$date' } }, count: { $sum: 1 } } },
+      { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$date', timezone: tz } }, count: { $sum: 1 } } },
       { $sort: { _id: 1 } }
     ]);
     res.json({ trend });
@@ -107,9 +118,11 @@ router.get('/admin/membership-distribution', auth, authorize('admin'), async (re
 
 router.get('/admin/peak-hours', auth, authorize('admin'), async (req, res) => {
   try {
+    const tz = getGymTimezone();
+    const start = getGymDayStart(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000));
     const peakHours = await Attendance.aggregate([
-      { $match: { date: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } } },
-      { $group: { _id: { $hour: '$checkInTime' }, count: { $sum: 1 } } },
+      { $match: { date: { $gte: start } } },
+      { $group: { _id: { $hour: { date: '$checkInTime', timezone: tz } }, count: { $sum: 1 } } },
       { $sort: { count: -1 } }
     ]);
     res.json({ peakHours });
@@ -120,11 +133,12 @@ router.get('/admin/peak-hours', auth, authorize('admin'), async (req, res) => {
 
 router.get('/admin/monthly-revenue', auth, authorize('admin'), async (req, res) => {
   try {
+    const tz = getGymTimezone();
     const data = await Payment.aggregate([
       { $match: { status: 'COMPLETED' } },
       {
         $group: {
-          _id: { year: { $year: '$date' }, month: { $month: '$date' } },
+          _id: { year: { $year: { date: '$date', timezone: tz } }, month: { $month: { date: '$date', timezone: tz } } },
           total: { $sum: '$amount' }
         }
       },
@@ -144,12 +158,10 @@ router.get('/member/dashboard', auth, async (req, res) => {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    const startOfToday = new Date();
-    startOfToday.setHours(0, 0, 0, 0);
-    const startOfTomorrow = new Date(startOfToday);
-    startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
+    const startOfToday = getGymDayStart();
+    const startOfTomorrow = getGymDayEnd();
 
-    const todayName = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][new Date().getDay()];
+    const todayName = getGymWeekdayName();
     const WorkoutPlan = require('../models/WorkoutPlan');
     const BodyMeasurement = require('../models/BodyMeasurement');
 
@@ -195,10 +207,8 @@ router.get('/trainer/dashboard', auth, authorize('trainer'), async (req, res) =>
     const memberIds = assignedMembers.map(m => m.user._id);
     const memberIdStrings = memberIds.map(String);
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    const today = getGymDayStart();
+    const tomorrow = getGymDayEnd();
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 

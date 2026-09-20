@@ -36,6 +36,18 @@ const paymentSchema = new mongoose.Schema({
   date: {
     type: Date,
     default: Date.now
+  },
+  // Authorized confirmation audit trail for manually verified payments
+  // (e.g. UPI scan-to-pay confirmed by gym staff, or cash taken at the
+  // counter). Populated when a payment transitions to COMPLETED through the
+  // verify/admin path; Stripe webhook confirmations are attributed to the
+  // gateway and leave these blank.
+  confirmedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  confirmedAt: {
+    type: Date
   }
 }, {
   timestamps: true

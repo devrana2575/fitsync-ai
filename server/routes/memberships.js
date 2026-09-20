@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Membership = require('../models/Membership');
 const MembershipPlan = require('../models/MembershipPlan');
+const User = require('../models/User');
 const { auth, authorize } = require('../middleware/auth');
 const { parsePagination } = require('../utils/helpers');
 
@@ -50,21 +51,32 @@ router.get('/active/:userId', auth, authorize('admin', 'trainer'), async (req, r
   }
 });
 
+// Memberships can only become ACTIVE through a completed payment or an
+// explicit admin-authorized complimentary grant (complimentary: true). Any
+// other creation lands in PENDING so it cannot grant gym access silently.
 router.post('/', auth, authorize('admin'), async (req, res) => {
   try {
-    const { userId, planId, startDate, autoRenew } = req.body;
+    const { userId, planId, startDate, autoRenew, complimentary } = req.body;
+
+    const target = await User.findById(userId).select('role').lean();
+    if (!target || target.role !== 'member') {
+      return res.status(400).json({ message: 'Selected user is not a member' });
+    }
 
     const plan = await MembershipPlan.findById(planId);
     if (!plan) return res.status(404).json({ message: 'Plan not found' });
 
+    const isComplimentary = complimentary === true;
     const start = startDate ? new Date(startDate) : new Date();
     const end = new Date(start);
     end.setDate(end.getDate() + plan.duration);
 
-    const existingActive = await Membership.findOne({ user: userId, status: 'ACTIVE' });
-    if (existingActive) {
-      existingActive.status = 'CANCELLED';
-      await existingActive.save();
+    if (isComplimentary) {
+      const existingActive = await Membership.findOne({ user: userId, status: 'ACTIVE' });
+      if (existingActive) {
+        existingActive.status = 'CANCELLED';
+        await existingActive.save();
+      }
     }
 
     const membership = await Membership.create({
@@ -72,8 +84,8 @@ router.post('/', auth, authorize('admin'), async (req, res) => {
       plan: planId,
       startDate: start,
       endDate: end,
-      status: 'ACTIVE',
-      autoRenew: autoRenew || false
+      status: isComplimentary ? 'ACTIVE' : 'PENDING',
+      autoRenew: Boolean(autoRenew)
     });
 
     const populated = await membership.populate(['plan', 'user']);
@@ -83,8 +95,19 @@ router.post('/', auth, authorize('admin'), async (req, res) => {
   }
 });
 
+// Renewal is an offline/counter-legacy action: it grants ACTIVE status
+// without an online payment, so the admin MUST explicitly acknowledge that
+// the renewal is handled outside the system (counter/cash/complimentary).
+// Without `acknowledged: true` the request is rejected rather than silently
+// activating a membership.
 router.put('/:id/renew', auth, authorize('admin'), async (req, res) => {
   try {
+    if (req.body.acknowledged !== true) {
+      return res.status(400).json({
+        message: 'Renewing a membership requires explicit acknowledgement. Pass acknowledged: true to confirm the renewal is handled at the counter.'
+      });
+    }
+
     const membership = await Membership.findById(req.params.id).populate('plan');
     if (!membership) return res.status(404).json({ message: 'Membership not found' });
 

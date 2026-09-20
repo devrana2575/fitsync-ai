@@ -11,6 +11,12 @@ const attendanceSchema = new mongoose.Schema({
     required: true,
     default: Date.now
   },
+  // Business day key (YYYY-MM-DD in the gym timezone). Uniqueness for
+  // check-ins is keyed on user + dayKey so that two rapid check-ins on the
+  // same gym day collapse into a single record.
+  dayKey: {
+    type: String
+  },
   checkInTime: {
     type: Date,
     required: true,
@@ -33,6 +39,9 @@ const attendanceSchema = new mongoose.Schema({
 });
 
 attendanceSchema.index({ user: 1, date: 1 }, { unique: true });
+// One check-in per member per gym day. Partial so pre-dayKey legacy rows
+// remain untouched while new records get the full uniqueness guarantee.
+attendanceSchema.index({ user: 1, dayKey: 1 }, { unique: true, partialFilterExpression: { dayKey: { $type: 'string' } } });
 attendanceSchema.index({ date: -1 });
 attendanceSchema.index({ user: 1 });
 attendanceSchema.index({ user: 1, checkInTime: -1 });

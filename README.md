@@ -146,7 +146,12 @@ cd client
 npm install
 ```
 
-### 4. ML Service Setup
+### 4. ML Service Setup (optional)
+
+> The Express backend does **not** expose `/api/ml/*` routes and does not call
+> this service. `ml-service/` is a standalone experiments service on port 8001.
+> Nothing in the app depends on it; the fitness recommendation endpoint is a
+> local rule-based implementation in `server/routes/recommendations.js`.
 
 ```bash
 cd ml-service
@@ -158,14 +163,20 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 5. Seed Database
+### 5. Seed Database (development demo data only)
 
 ```bash
 cd server
 npm run seed
 ```
 
-### 6. Train ML Models
+> The seed injects demo admin/trainer/member accounts and demo plans. It is for
+> local development **only** - production must not rely on it. On a fresh,
+> empty database the server instead bootstraps a single admin automatically from
+> `ADMIN_EMAIL` / `ADMIN_PASSWORD` (startup fails clearly if they are missing or
+> too weak).
+
+### 6. Train ML Models (optional - see ML service note above)
 
 ```bash
 cd ml-service
@@ -181,9 +192,21 @@ PORT=5000
 MONGODB_URI=mongodb://localhost:27017/fitsync-ai
 JWT_SECRET=your_secret_key_here
 JWT_EXPIRE=7d
-ML_SERVICE_URL=http://localhost:8001
 CORS_ORIGIN=http://localhost:5173
+CLIENT_URL=http://localhost:5173
+
+# Fresh-install admin (empty DB only)
+ADMIN_EMAIL=
+ADMIN_PASSWORD=
+
+# Payment gateway (production REQUIRES one of these, else startup fails)
+STRIPE_SECRET_KEY=
+STRIPE_WEBHOOK_SECRET=
+UPI_ID=
+UPI_NAME=FitSync AI Gym
 ```
+
+`ML_SERVICE_URL` is present for compatibility but is **not consumed** by the API.
 
 ## Running the Application
 
@@ -198,7 +221,7 @@ npm run dev
 cd client
 npm run dev
 
-# Terminal 3 - ML Service
+# Terminal 3 (optional) - standalone ML experiments service
 cd ml-service
 venv\Scripts\python main.py    # Windows
 venv/bin/python main.py         # Linux/Mac
@@ -241,12 +264,11 @@ Additional demo accounts (trainers, members) are seeded automatically. See `.env
 - `GET /api/attendance/stats` - Attendance statistics
 
 ### ML Predictions
-- `POST /api/ml/predict/segment-all` - Run segmentation on all members
-- `POST /api/ml/predict/engagement-risk-all` - Run engagement risk on all
-- `POST /api/ml/predict/progress-anomaly` - Detect progress anomalies
-- `POST /api/ml/predict/attendance` - Attendance forecasting
-- `GET /api/ml/predictions` - Get stored predictions
-- `GET /api/ml/insights` - Get AI insights
+
+⚠️ **Not wired.** The Express API exposes **no** `/api/ml/*` endpoints and does
+not integrate the ML service. The recommendation feature is served locally by
+`GET /api/recommendations`. See `ml-service/` for the standalone experiments
+pipeline.
 
 ### Diet
 - `GET /api/diet/types` - List available diet types
