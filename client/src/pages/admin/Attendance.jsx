@@ -20,6 +20,7 @@ export default function Attendance() {
   const [error, setError] = useState(null);
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedMember, setSelectedMember] = useState('');
+  const [memberSearch, setMemberSearch] = useState('');
   const [checkInLoading, setCheckInLoading] = useState(false);
   const [checkOutId, setCheckOutId] = useState('');
   const [todayStats, setTodayStats] = useState(null);
@@ -82,6 +83,19 @@ export default function Attendance() {
     }
   };
 
+  const checkedTodayIds = new Set(todayRecords.map((r) => String(r.user?._id || r.member?._id || '')));
+  const availableMembers = members.filter((m) => !checkedTodayIds.has(String(m._id)));
+  const filteredMembers = memberSearch
+    ? availableMembers.filter((m) =>
+        `${m.name || ''} ${m.email || ''} ${m.phone || ''}`.toLowerCase().includes(memberSearch.toLowerCase())
+      )
+    : [];
+
+  const handleMemberSelect = (m) => {
+    setSelectedMember(m._id);
+    setMemberSearch('');
+  };
+
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-slate-900">Attendance</h1>
@@ -97,12 +111,35 @@ export default function Attendance() {
         <form onSubmit={handleCheckIn} className="flex items-end gap-4">
           <div className="flex-1">
             <label className="block text-sm font-medium text-slate-700 mb-1">Select Member</label>
-            <select required value={selectedMember} onChange={(e) => setSelectedMember(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
-              <option value="">Choose a member...</option>
-              {members.map((m) => (
-                <option key={m._id} value={m._id}>{m.name} ({m.email})</option>
-              ))}
-            </select>
+            <div className="relative">
+              {selectedMember ? (
+                <div className="flex items-center gap-2 px-3 py-2 border border-slate-300 rounded-lg bg-slate-50">
+                  <span className="flex-1 text-sm text-slate-900">
+                    {availableMembers.find((m) => String(m._id) === String(selectedMember))?.name || 'Member selected'}
+                  </span>
+                  <button type="button" onClick={() => setSelectedMember('')} className="text-slate-400 hover:text-slate-600 text-lg leading-none">&times;</button>
+                </div>
+              ) : (
+                <input
+                  value={memberSearch}
+                  onChange={(e) => setMemberSearch(e.target.value)}
+                  placeholder="Search member (name, email or phone)..."
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                />
+              )}
+              {memberSearch && !selectedMember && filteredMembers.length > 0 && (
+                <ul className="absolute z-10 mt-1 w-full bg-white border border-slate-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                  {filteredMembers.slice(0, 20).map((m) => (
+                    <li key={m._id} onClick={() => handleMemberSelect(m)} className="px-3 py-2 text-sm hover:bg-indigo-50 cursor-pointer">
+                      {m.name} <span className="text-slate-500">({m.email})</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {memberSearch && !selectedMember && filteredMembers.length === 0 && (
+                <div className="absolute z-10 mt-1 w-full bg-white border border-slate-300 rounded-lg shadow-lg px-3 py-2 text-sm text-slate-500">No matching member found</div>
+              )}
+            </div>
           </div>
           <button type="submit" disabled={checkInLoading || !selectedMember} className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 whitespace-nowrap">
             {checkInLoading ? 'Checking in...' : 'Check In'}

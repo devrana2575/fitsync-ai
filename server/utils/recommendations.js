@@ -127,22 +127,25 @@ async function getWorkoutRecommendations(memberId, limit = 5) {
       return { score: Math.round(score * 100) / 100, tpl, reasons };
     })
     .sort((a, b) => b.score - a.score)
-    .slice(0, limit)
-    .map(({ score, tpl, reasons }) => ({
-      id: tpl._id,
-      name: tpl.name,
-      description: tpl.description,
-      goal: tpl.goal,
-      difficulty: tpl.difficulty,
-      dayOfWeek: tpl.dayOfWeek,
-      exerciseCount: tpl.exercises.length,
-      createdBy: tpl.createdBy?.name || 'FitSync',
-      timesAssigned: tpl.timesAssigned || 0,
-      score,
-      reasons: reasons.slice(0, 3)
-    }));
+    .slice(0, limit);
 
-  return { recommendations: scored, context: ctx };
+  const maxScore = scored.length > 0 ? Math.max(...scored.map((s) => s.score)) : 0;
+
+  const recommendations = scored.map(({ score, tpl, reasons }) => ({
+    id: tpl._id,
+    name: tpl.name,
+    description: tpl.description,
+    goal: tpl.goal,
+    difficulty: tpl.difficulty,
+    dayOfWeek: tpl.dayOfWeek,
+    exerciseCount: tpl.exercises.length,
+    createdBy: tpl.createdBy?.name || 'FitSync',
+    timesAssigned: tpl.timesAssigned || 0,
+    score: maxScore > 0 ? Math.min(100, Math.round((score / maxScore) * 100)) : 0,
+    reasons: reasons.slice(0, 3)
+  }));
+
+  return { recommendations, context: ctx };
 }
 
 module.exports = { getWorkoutRecommendations, buildMemberContext };

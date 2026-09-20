@@ -19,9 +19,7 @@ const WorkoutLog = require('../models/WorkoutLog');
 const BodyMeasurement = require('../models/BodyMeasurement');
 const FitnessGoal = require('../models/FitnessGoal');
 const Notification = require('../models/Notification');
-const FoodItem = require('../models/FoodItem');
-const MealPlan = require('../models/MealPlan');
-const NutritionLog = require('../models/NutritionLog');
+const DietLog = require('../models/DietLog');
 const WorkoutTemplate = require('../models/WorkoutTemplate');
 const Announcement = require('../models/Announcement');
 const GymSetting = require('../models/GymSetting');
@@ -525,173 +523,27 @@ const seedDatabase = async () => {
     }
 
     // ============================================================
-    // FOOD DATABASE + MEAL PLANS + NUTRITION LOGS
+    // DIET CHECKLIST LOGS (recent days per member)
     // ============================================================
-    const foodDefs = [
-      { name: 'Oats', category: 'grains', servingSize: 100, servingUnit: 'g', calories: 389, protein: 16.9, carbs: 66.3, fat: 6.9 },
-      { name: 'Brown Rice', category: 'grains', servingSize: 100, servingUnit: 'g', calories: 123, protein: 2.7, carbs: 25.2, fat: 1.0 },
-      { name: 'Chicken Breast', category: 'protein', servingSize: 100, servingUnit: 'g', calories: 165, protein: 31.0, carbs: 0, fat: 3.6 },
-      { name: 'Egg', category: 'protein', servingSize: 1, servingUnit: 'piece', calories: 78, protein: 6.3, carbs: 0.6, fat: 5.3 },
-      { name: 'Banana', category: 'fruit', servingSize: 1, servingUnit: 'piece', calories: 105, protein: 1.3, carbs: 27.0, fat: 0.4 },
-      { name: 'Apple', category: 'fruit', servingSize: 1, servingUnit: 'piece', calories: 95, protein: 0.5, carbs: 25.0, fat: 0.3 },
-      { name: 'Greek Yogurt', category: 'dairy', servingSize: 100, servingUnit: 'g', calories: 59, protein: 10.0, carbs: 3.6, fat: 0.4 },
-      { name: 'Milk', category: 'dairy', servingSize: 100, servingUnit: 'ml', calories: 42, protein: 3.4, carbs: 5.0, fat: 1.0 },
-      { name: 'Broccoli', category: 'vegetable', servingSize: 100, servingUnit: 'g', calories: 34, protein: 2.8, carbs: 6.6, fat: 0.4 },
-      { name: 'Spinach', category: 'vegetable', servingSize: 100, servingUnit: 'g', calories: 23, protein: 2.9, carbs: 3.6, fat: 0.4 },
-      { name: 'Peanut Butter', category: 'protein', servingSize: 1, servingUnit: 'tbsp', calories: 94, protein: 4.0, carbs: 3.1, fat: 8.1 },
-      { name: 'Almonds', category: 'snack', servingSize: 1, servingUnit: 'handful', calories: 164, protein: 6.0, carbs: 6.1, fat: 14.2 },
-      { name: 'Whey Protein', category: 'protein', servingSize: 1, servingUnit: 'scoop', calories: 120, protein: 24.0, carbs: 3.0, fat: 1.5 },
-      { name: 'Whole Wheat Bread', category: 'grains', servingSize: 1, servingUnit: 'slice', calories: 80, protein: 4.0, carbs: 15.0, fat: 1.0 },
-      { name: 'Sweet Potato', category: 'vegetable', servingSize: 100, servingUnit: 'g', calories: 86, protein: 1.6, carbs: 20.1, fat: 0.1 },
-      { name: 'Salmon', category: 'protein', servingSize: 100, servingUnit: 'g', calories: 208, protein: 20.0, carbs: 0, fat: 13.0 },
-      { name: 'Green Tea', category: 'beverage', servingSize: 1, servingUnit: 'cup', calories: 2, protein: 0, carbs: 0, fat: 0 },
-      { name: 'Coconut Water', category: 'beverage', servingSize: 250, servingUnit: 'ml', calories: 45, protein: 0, carbs: 11.0, fat: 0 },
-      { name: 'Hummus', category: 'snack', servingSize: 100, servingUnit: 'g', calories: 166, protein: 7.9, carbs: 14.3, fat: 9.6 },
-      { name: 'Quinoa', category: 'grains', servingSize: 100, servingUnit: 'g', calories: 120, protein: 4.4, carbs: 21.3, fat: 1.9 },
-    ];
-
-    let foodCount = 0;
-    for (const fd of foodDefs) {
-      let food = await FoodItem.findOne({ name: fd.name });
-      if (!food) {
-        await FoodItem.create(fd);
-        foodCount++;
-      }
-    }
-    console.log(`Food items: ${foodCount} created, ${foodDefs.length} total`);
-
-    // Meal plans
-    const mealPlanDefs = [
-      {
-        name: 'Muscle Gain 3000', createdByIdx: 1, assignedIdx: 2, desc: 'High calorie, high protein plan for lean muscle growth',
-        meals: [
-          { mealType: 'breakfast', items: [[0, 1], [13, 2], [6, 1]], notes: 'Oats with milk and whole wheat toast' },
-          { mealType: 'lunch', items: [[1, 1.5], [2, 1.5], [8, 1]], notes: 'Rice, chicken and broccoli' },
-          { mealType: 'snack', items: [[11, 1], [4, 1]], notes: 'Almonds and banana' },
-          { mealType: 'dinner', items: [[2, 1.5], [15, 1], [14, 1]], notes: 'Chicken with salmon and sweet potato' },
-        ]
-      },
-      {
-        name: 'Fat Loss 1800', createdByIdx: 4, assignedIdx: 8, desc: 'Balanced deficit plan with high protein for fat loss',
-        meals: [
-          { mealType: 'breakfast', items: [[0, 0.5], [7, 1], [4, 1]], notes: 'Light oats with milk and banana' },
-          { mealType: 'lunch', items: [[1, 0.75], [2, 1], [9, 1]], notes: 'Small rice portion with chicken and spinach' },
-          { mealType: 'snack', items: [[6, 1], [3, 1]], notes: 'Greek yogurt and boiled egg' },
-          { mealType: 'dinner', items: [[15, 0.75], [8, 1]], notes: 'Salmon with broccoli' },
-        ]
-      },
-      {
-        name: 'Endurance Fuel', createdByIdx: 3, assignedIdx: 6, desc: 'Carb-focused plan for cardio athletes',
-        meals: [
-          { mealType: 'breakfast', items: [[19, 1], [4, 1]], notes: 'Quinoa porridge with banana' },
-          { mealType: 'lunch', items: [[1, 1.5], [2, 1], [8, 1]], notes: 'Rice, chicken and broccoli' },
-          { mealType: 'snack', items: [[17, 1], [13, 1]], notes: 'Coconut water with toast' },
-          { mealType: 'dinner', items: [[14, 2], [2, 0.75], [9, 1]], notes: 'Sweet potato, chicken and spinach' },
-        ]
-      },
-      {
-        name: 'Lean Bulk 2800', createdByIdx: 0, assignedIdx: 0, desc: 'High-calorie muscle-building plan with clean carbs and protein',
-        meals: [
-          { mealType: 'breakfast', items: [[0, 1], [7, 1.5], [4, 1], [11, 1]], notes: 'Oats with milk, banana and almonds' },
-          { mealType: 'lunch', items: [[1, 2], [2, 1.5], [9, 1]], notes: 'Generous rice with chicken and spinach' },
-          { mealType: 'snack', items: [[13, 2], [10, 1]], notes: 'Peanut butter toast' },
-          { mealType: 'dinner', items: [[14, 1.5], [2, 1.5], [8, 1]], notes: 'Sweet potato with chicken and broccoli' },
-        ]
-      },
-      {
-        name: 'Keto Fat Burner', createdByIdx: 0, assignedIdx: 1, desc: 'Low-carb ketogenic plan to accelerate fat loss',
-        meals: [
-          { mealType: 'breakfast', items: [[3, 3], [6, 1]], notes: 'Eggs with Greek yogurt' },
-          { mealType: 'lunch', items: [[2, 2], [9, 1.5]], notes: 'Grilled chicken with spinach' },
-          { mealType: 'snack', items: [[11, 2]], notes: 'Handful of almonds' },
-          { mealType: 'dinner', items: [[15, 1.5], [8, 1]], notes: 'Pan-seared salmon with broccoli' },
-        ]
-      },
-      {
-        name: 'Balanced Wellness Plan', createdByIdx: 0, assignedIdx: 9, desc: 'Moderate all-rounder plan for maintenance and general health',
-        meals: [
-          { mealType: 'breakfast', items: [[0, 0.75], [7, 1], [5, 1]], notes: 'Small oats porridge with milk and apple' },
-          { mealType: 'lunch', items: [[1, 1], [2, 1], [8, 1]], notes: 'Rice with chicken and broccoli' },
-          { mealType: 'snack', items: [[6, 1], [11, 1]], notes: 'Greek yogurt with almonds' },
-          { mealType: 'dinner', items: [[19, 0.75], [15, 1], [9, 1]], notes: 'Quinoa with salmon and spinach' },
-        ]
-      },
-    ];
-
-    const existingPlans = await MealPlan.countDocuments();
-    if (existingPlans === 0) {
-      for (const pd of mealPlanDefs) {
-        const meals = [];
-        for (const meal of pd.meals) {
-          const items = meal.items.map(async ([foodIdx, qty]) => ({
-              food: (await FoodItem.findOne({ name: foodDefs[foodIdx].name }))._id,
-              quantity: qty
-            }));
-            const resolvedItems = await Promise.all(items);
-          meals.push({ mealType: meal.mealType, items: resolvedItems, notes: meal.notes });
-        }
-        const plan = await MealPlan.create({
-          name: pd.name,
-          description: pd.desc,
-          createdBy: trainers[pd.createdByIdx]._id,
-          assignedTo: members[pd.assignedIdx]._id,
-          meals,
-          startDate: DAYS_AGO(30),
-          endDate: DAYS_AGO(-30),
-          isActive: true
-        });
-        const populated = await MealPlan.populate(plan, { path: 'meals.items.food', select: 'calories protein carbs fat' });
-        let c = 0, p = 0, ca = 0, f = 0;
-        for (const meal of populated.meals) {
-          for (const item of meal.items) {
-            c += (item.food.calories || 0) * item.quantity;
-            p += (item.food.protein || 0) * item.quantity;
-            ca += (item.food.carbs || 0) * item.quantity;
-            f += (item.food.fat || 0) * item.quantity;
-          }
-        }
-        plan.dailyCalories = Math.round(c);
-        plan.dailyProtein = Math.round(p);
-        plan.dailyCarbs = Math.round(ca);
-        plan.dailyFat = Math.round(f);
-        await plan.save();
-      }
-      console.log(`Meal plans: ${mealPlanDefs.length} created`);
-    } else {
-      console.log(`Meal plans: ${existingPlans} already exist, skipping`);
-    }
-
-    // Nutrition logs (recent days for members)
-    const existingNutritionLogCount = await NutritionLog.countDocuments();
-    if (existingNutritionLogCount < 30) {
-      let logCount = 0;
+    const { DIET_TYPES } = DietLog;
+    const dietKeys = Object.keys(DIET_TYPES);
+    const existingDietLogCount = await DietLog.countDocuments();
+    if (existingDietLogCount < 30) {
+      let dietLogCount = 0;
       for (const member of members) {
-        for (let d = 0; d < 7; d++) {
-          if (Math.random() < 0.6) {
-            const date = new Date(DAYS_AGO(d));
-            const log = await NutritionLog.create({ user: member._id, date, waterGlasses: 4 + Math.floor(Math.random() * 6) });
-            const numEntries = 2 + Math.floor(Math.random() * 3);
-            const entries = await FoodItem.find({});
-            for (let e = 0; e < numEntries; e++) {
-              log.meals.push({
-                mealType: ['breakfast', 'lunch', 'snack', 'dinner'][Math.floor(Math.random() * 4)],
-                food: entries[Math.floor(Math.random() * entries.length)]._id,
-                quantity: 0.5 + Math.random() * 1.5
-              });
-            }
-            const populated = await NutritionLog.populate(log, { path: 'meals.food', select: 'calories protein carbs fat' });
-            for (const item of populated.meals) {
-              log.totalCalories += (item.food.calories || 0) * item.quantity;
-              log.totalProtein += (item.food.protein || 0) * item.quantity;
-            }
-            await log.save();
-            logCount++;
+        for (let d = 0; d < 14; d++) {
+          if (Math.random() < 0.5) {
+            const date = DAYS_AGO(d);
+            date.setHours(0, 0, 0, 0);
+            const completedDiets = dietKeys.filter(() => Math.random() < 0.4);
+            await DietLog.create({ user: member._id, date, completedDiets });
+            dietLogCount++;
           }
         }
       }
-      console.log(`Nutrition logs: ${logCount} created`);
+      console.log(`Diet logs: ${dietLogCount} created`);
     } else {
-      console.log(`Nutrition logs: ${existingNutritionLogCount} already exist, skipping`);
+      console.log(`Diet logs: ${existingDietLogCount} already exist, skipping`);
     }
 
     // ============================================================

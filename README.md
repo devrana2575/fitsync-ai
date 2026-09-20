@@ -14,7 +14,7 @@ A comprehensive full-stack gym management system with integrated machine learnin
 - **Workout Plans** - Trainers create plans, assign exercises with sets/reps/weight
 - **Exercise Library** - 20+ pre-built exercises across categories
 - **Workout Templates** - Pre-built templates with one-click member assignment
-- **Nutrition Tracking** - Food database, meal plans, calorie/macro logging, water tracker
+- **Diet Checklist** - Daily check-off of completed diet types (keto, vegan, etc.)
 - **Fitness Goals** - Weight loss, muscle gain, strength, endurance goals
 - **Body Measurements** - Weight, BMI, body fat, circumferences tracking
 - **Equipment Management** - Track equipment condition and maintenance schedules
@@ -109,9 +109,7 @@ fitsync-ai/
 | workouttemplates | Pre-built workout templates reusable across members |
 | exercises | Exercise library with categories and muscle groups |
 | workoutlogs | Member workout completion records |
-| fooditems | Food database with per-serving macros |
-| mealplans | Trainer-created meal plans with calculated daily macros |
-| nutritionlogs | Member daily calorie/macros/water logs |
+| dietlogs | Member daily diet completion checklists |
 | fitnessgoals | Member fitness goals with progress tracking |
 | bodymeasurements | Weight, height, BMI, body circumferences |
 | equipment | Gym equipment with condition and maintenance |
@@ -250,6 +248,12 @@ Additional demo accounts (trainers, members) are seeded automatically. See `.env
 - `GET /api/ml/predictions` - Get stored predictions
 - `GET /api/ml/insights` - Get AI insights
 
+### Diet
+- `GET /api/diet/types` - List available diet types
+- `GET /api/diet/log?date=YYYY-MM-DD` - Get a member's diet checklist log for a day
+- `PUT /api/diet/log` - Toggle completion of a diet type for a day
+- `GET /api/diet/stats` - Weekly diet completion stats and streak
+
 ### Analytics
 - `GET /api/analytics/admin/dashboard` - Admin dashboard stats
 - `GET /api/analytics/admin/revenue-trend` - Revenue trend
@@ -295,7 +299,7 @@ The ML models are trained on **synthetic data** generated to simulate realistic 
 5. **No Real-time**: WebSocket implemented for notifications only, not live dashboards
 6. **Payment Gateway**: Stripe integrated but demo-mode is the default fallback
 7. **QR Check-in**: Basic implementation, not camera-based scanner
-8. **Nutrition**: Food database is crowd-seeded by admins/members; no barcode scanning
+8. **Diet Tracking**: Fixed list of diet types (keto, vegan, etc.) as a daily completion checklist
 
 ## Future Scope
 
@@ -305,7 +309,6 @@ The ML models are trained on **synthetic data** generated to simulate realistic 
 - Mobile app (React Native)
 - Body composition analysis with camera
 - Class scheduling
-- Nutrition barcode scanning
 
 ## Project Report
 

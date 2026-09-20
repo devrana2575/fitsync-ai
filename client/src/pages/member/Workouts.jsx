@@ -119,16 +119,20 @@ export default function Workouts() {
                 <EmptyState message="No recommendations available right now. Check back once you have more workout history." />
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-                {recommendations.map((rec) => (
-                  <div key={rec.id} className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
-                    <h3 className="font-semibold text-slate-900">{rec.name}</h3>
-                    {rec.description && <p className="text-sm text-slate-500 mt-1">{rec.description}</p>}
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {rec.goal && <span className="bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full">{rec.goal}</span>}
-                      {rec.difficulty && <span className="bg-emerald-100 text-emerald-700 text-xs px-2 py-0.5 rounded-full">{rec.difficulty}</span>}
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 items-stretch">
+                {recommendations.map((rec) => {
+                  const pct = Math.min(100, Math.max(0, Math.round(Number(rec.score) || 0)));
+                  return (
+                  <div key={rec.id} className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 flex flex-col">
+                    <div>
+                      <h3 className="font-semibold text-slate-900">{rec.name}</h3>
+                      {rec.description && <p className="text-sm text-slate-500 mt-1">{rec.description}</p>}
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {rec.goal && <span className="bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full">{rec.goal}</span>}
+                        {rec.difficulty && <span className="bg-emerald-100 text-emerald-700 text-xs px-2 py-0.5 rounded-full">{rec.difficulty}</span>}
+                      </div>
+                      <p className="text-xs text-slate-500 mt-2">{rec.exerciseCount ?? 0} exercises · assigned {rec.timesAssigned ?? 0} times</p>
                     </div>
-                    <p className="text-xs text-slate-500 mt-2">{rec.exerciseCount ?? 0} exercises · assigned {rec.timesAssigned ?? 0} times</p>
                     {rec.reasons && rec.reasons.length > 0 && (
                       <div className="mt-3">
                         <p className="text-xs font-medium text-slate-600">Why recommended</p>
@@ -143,18 +147,19 @@ export default function Workouts() {
                       </div>
                     )}
                     {typeof rec.score === 'number' && (
-                      <div className="mt-3">
+                      <div className="mt-auto pt-3">
                         <div className="flex justify-between items-center mb-1">
                           <span className="text-xs text-slate-500">Match</span>
-                          <span className="text-xs font-semibold text-indigo-600">{Math.round(rec.score * 10)}%</span>
+                          <span className="text-xs font-semibold text-indigo-600">{pct}%</span>
                         </div>
-                        <div className="bg-slate-100 rounded-full h-1.5">
-                          <div className="bg-indigo-600 h-1.5 rounded-full" style={{ width: `${Math.round(rec.score * 10)}%` }} />
+                        <div className="bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                          <div className="bg-indigo-600 h-1.5 rounded-full" style={{ width: `${pct}%` }} />
                         </div>
                       </div>
                     )}
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

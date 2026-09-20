@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { BoltIcon, UserPlusIcon } from '@heroicons/react/24/outline';
+import { BoltIcon, UserPlusIcon, UserGroupIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '../../context/AuthContext';
 
 const inputClass =
@@ -73,6 +73,15 @@ export default function Register() {
           <div className="mb-8">
             <h2 className="text-2xl font-semibold text-slate-900 tracking-tight">Create account</h2>
             <p className="text-sm text-slate-500 mt-1">Get started in under a minute.</p>
+            <div className="mt-3 flex items-center gap-2.5 px-3 py-2.5 rounded-lg bg-slate-50 border border-slate-200">
+              <span className="h-6 w-6 rounded-full bg-indigo-100 flex items-center justify-center">
+                <UserGroupIcon className="h-3.5 w-3.5 text-indigo-600" aria-hidden="true" />
+              </span>
+              <p className="text-xs text-slate-500">
+                You're signing up as{' '}
+                <span className="font-semibold text-indigo-600">Member</span>
+              </p>
+            </div>
           </div>
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 text-sm">

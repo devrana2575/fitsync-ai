@@ -13,7 +13,7 @@ import {
   TrophyIcon,
   ClockIcon,
   IdentificationIcon,
-  CakeIcon,
+  ClipboardDocumentCheckIcon,
   MegaphoneIcon,
   XMarkIcon,
 } from '@heroicons/react/24/outline';
@@ -29,7 +29,6 @@ const adminMenu = [
   { to: '/admin/payments', icon: BanknotesIcon, label: 'Payments' },
   { to: '/admin/attendance', icon: ClipboardDocumentListIcon, label: 'Attendance' },
   { to: '/admin/equipment', icon: WrenchScrewdriverIcon, label: 'Equipment' },
-  { to: '/admin/foods', icon: CakeIcon, label: 'Food Database' },
   { to: '/admin/announcements', icon: MegaphoneIcon, label: 'Announcements' },
   { to: '/admin/analytics', icon: ChartPieIcon, label: 'Analytics' },
 ];
@@ -40,7 +39,6 @@ const trainerMenu = [
   { to: '/trainer/attendance', icon: ClipboardDocumentListIcon, label: 'Attendance' },
   { to: '/trainer/workouts', icon: BoltIcon, label: 'Workouts' },
   { to: '/trainer/templates', icon: ClipboardDocumentListIcon, label: 'Templates' },
-  { to: '/trainer/meal-plans', icon: CakeIcon, label: 'Meal Plans' },
 ];
 
 const memberMenu = [
@@ -49,7 +47,7 @@ const memberMenu = [
   { to: '/member/payments', icon: BanknotesIcon, label: 'Payments' },
   { to: '/member/attendance', icon: ClockIcon, label: 'Attendance' },
   { to: '/member/workouts', icon: BoltIcon, label: 'Workouts' },
-  { to: '/member/nutrition', icon: CakeIcon, label: 'Nutrition' },
+  { to: '/member/diet', icon: ClipboardDocumentCheckIcon, label: 'Diet' },
   { to: '/member/goals', icon: TrophyIcon, label: 'Goals' },
   { to: '/member/announcements', icon: MegaphoneIcon, label: 'Announcements' },
   { to: '/member/progress', icon: ChartBarSquareIcon, label: 'Progress' },

@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
-  CheckCircleIcon,
   UserGroupIcon,
   ChartBarIcon,
   BoltIcon,
@@ -121,19 +120,6 @@ export default function Login() {
               Sign Up
             </Link>
           </div>
-          {import.meta.env.DEV && (
-            <div className="mt-8 p-4 bg-white border border-slate-200 rounded-lg">
-              <div className="flex items-center gap-1.5 mb-2">
-                <CheckCircleIcon className="h-4 w-4 text-emerald-500" aria-hidden="true" />
-                <p className="text-xs font-medium text-slate-600">Demo accounts</p>
-              </div>
-              <div className="text-xs text-slate-500 space-y-1">
-                <p>admin@fitsync.ai</p>
-                <p>trainer@fitsync.ai</p>
-                <p>member@fitsync.ai</p>
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>

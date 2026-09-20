@@ -62,7 +62,7 @@ app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/analytics', require('./routes/analytics'));
 app.use('/api/reports', require('./routes/reports'));
 app.use('/api/settings', require('./routes/settings'));
-app.use('/api/nutrition', require('./routes/nutrition'));
+app.use('/api/diet', require('./routes/diet'));
 app.use('/api/checkout', checkout.router);
 app.use('/api/templates', require('./routes/templates'));
 app.use('/api/photos', require('./routes/progressPhotos'));

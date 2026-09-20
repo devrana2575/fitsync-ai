@@ -17,18 +17,16 @@ const AdminAttendance = lazy(() => import('./pages/admin/Attendance'));
 const AdminEquipment = lazy(() => import('./pages/admin/Equipment'));
 const AdminAnnouncements = lazy(() => import('./pages/admin/Announcements'));
 const AdminAnalytics = lazy(() => import('./pages/admin/Analytics'));
-const AdminFoodDatabase = lazy(() => import('./pages/admin/FoodDatabase'));
 const TrainerDashboard = lazy(() => import('./pages/trainer/Dashboard'));
 const TrainerMembers = lazy(() => import('./pages/trainer/Members'));
 const TrainerWorkouts = lazy(() => import('./pages/trainer/Workouts'));
 const TrainerAttendance = lazy(() => import('./pages/trainer/Attendance'));
-const TrainerMealPlans = lazy(() => import('./pages/trainer/MealPlans'));
 const TrainerTemplates = lazy(() => import('./pages/trainer/Templates'));
 const MemberAnnouncements = lazy(() => import('./pages/member/Announcements'));
 const MemberDashboard = lazy(() => import('./pages/member/Dashboard'));
 const MemberAttendance = lazy(() => import('./pages/member/Attendance'));
 const MemberWorkouts = lazy(() => import('./pages/member/Workouts'));
-const MemberNutrition = lazy(() => import('./pages/member/Nutrition'));
+const MemberDiet = lazy(() => import('./pages/member/Diet'));
 const MemberGoals = lazy(() => import('./pages/member/Goals'));
 const MemberProgress = lazy(() => import('./pages/member/Progress'));
 const MemberMembership = lazy(() => import('./pages/member/Membership'));
@@ -90,7 +88,6 @@ export default function App() {
             <Route path="equipment" element={<AdminEquipment />} />
             <Route path="announcements" element={<AdminAnnouncements />} />
             <Route path="analytics" element={<AdminAnalytics />} />
-            <Route path="foods" element={<AdminFoodDatabase />} />
           </Route>
 
           <Route
@@ -106,7 +103,6 @@ export default function App() {
             <Route path="members/:id" element={<MemberDetail />} />
             <Route path="attendance" element={<TrainerAttendance />} />
             <Route path="workouts" element={<TrainerWorkouts />} />
-            <Route path="meal-plans" element={<TrainerMealPlans />} />
             <Route path="templates" element={<TrainerTemplates />} />
           </Route>
 
@@ -121,7 +117,7 @@ export default function App() {
             <Route index element={<MemberDashboard />} />
             <Route path="attendance" element={<MemberAttendance />} />
             <Route path="workouts" element={<MemberWorkouts />} />
-            <Route path="nutrition" element={<MemberNutrition />} />
+            <Route path="diet" element={<MemberDiet />} />
             <Route path="goals" element={<MemberGoals />} />
             <Route path="progress" element={<MemberProgress />} />
             <Route path="membership" element={<MemberMembership />} />
