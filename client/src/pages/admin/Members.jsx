@@ -12,11 +12,15 @@ import DataTable from '../../components/common/DataTable';
 const initialForm = {
   name: '', email: '', password: '', phone: '', gender: '',
   phoneNumbers: [], dateOfBirth: '', address: '', heightCm: '', weightKg: '',
-  goals: '', medicalConditions: '', medicalNotes: '', allergies: '', medicalRestrictions: '', doctorRecommendation: '',
+  goals: '', activityLevel: '', preferredWorkoutDays: [], preferredWorkoutDuration: '', injuries: '',
+  medicalConditions: '', medicalNotes: '', allergies: '', medicalRestrictions: '', doctorRecommendation: '',
 };
 
 const join = (arr) => (Array.isArray(arr) ? arr.join(', ') : arr || '');
 const split = (val) => (typeof val === 'string' ? val.split(',').map((s) => s.trim()).filter(Boolean) : Array.isArray(val) ? val : []);
+
+const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+const ACTIVITY_LEVELS = ['sedentary', 'light', 'moderate', 'active', 'very_active'];
 
 const toForm = (m) => {
   const p = m.profile || {};
@@ -30,6 +34,10 @@ const toForm = (m) => {
     heightCm: p.heightCm ?? '',
     weightKg: p.weightKg ?? '',
     goals: join(p.goals),
+    activityLevel: p.activityLevel || '',
+    preferredWorkoutDays: Array.isArray(p.preferredWorkoutDays) ? p.preferredWorkoutDays : [],
+    preferredWorkoutDuration: p.preferredWorkoutDuration ?? '',
+    injuries: p.injuries || '',
     medicalConditions: p.medicalConditions || '',
     medicalNotes: p.medicalNotes || '',
     allergies: join(p.allergies),
@@ -133,6 +141,10 @@ export default function Members() {
         heightCm: form.heightCm === '' ? undefined : Number(form.heightCm),
         weightKg: form.weightKg === '' ? undefined : Number(form.weightKg),
         goals: split(form.goals),
+        activityLevel: form.activityLevel || undefined,
+        preferredWorkoutDays: form.preferredWorkoutDays,
+        preferredWorkoutDuration: form.preferredWorkoutDuration === '' ? undefined : Number(form.preferredWorkoutDuration),
+        injuries: form.injuries,
         medicalConditions: form.medicalConditions,
         medicalNotes: form.medicalNotes,
         allergies: split(form.allergies),
@@ -341,6 +353,45 @@ export default function Members() {
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Goals (comma-separated)</label>
             <input value={form.goals} onChange={(e) => setForm({ ...form, goals: e.target.value })} placeholder="e.g. Fat loss, Strength" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Activity Level</label>
+            <select value={form.activityLevel} onChange={(e) => setForm({ ...form, activityLevel: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+              <option value="">Select</option>
+              {ACTIVITY_LEVELS.map((l) => <option key={l} value={l}>{l.replace('_', ' ')}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Preferred Workout Days</label>
+            <div className="flex flex-wrap gap-2">
+              {WEEKDAYS.map((d) => (
+                <button
+                  key={d}
+                  type="button"
+                  onClick={() => setForm({
+                    ...form,
+                    preferredWorkoutDays: form.preferredWorkoutDays.includes(d)
+                      ? form.preferredWorkoutDays.filter((x) => x !== d)
+                      : [...form.preferredWorkoutDays, d],
+                  })}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+                    form.preferredWorkoutDays.includes(d)
+                      ? 'bg-indigo-600 text-white border-indigo-600'
+                      : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'
+                  }`}
+                >
+                  {d.slice(0, 3)}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Preferred Workout Duration (minutes)</label>
+            <input type="number" min="15" max="300" value={form.preferredWorkoutDuration} onChange={(e) => setForm({ ...form, preferredWorkoutDuration: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Current Injuries</label>
+            <input value={form.injuries} onChange={(e) => setForm({ ...form, injuries: e.target.value })} placeholder="e.g. Knee strain" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
           </div>
           <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2">
             <p className="text-xs font-semibold text-red-700 mb-2">Health & Safety (informational)</p>

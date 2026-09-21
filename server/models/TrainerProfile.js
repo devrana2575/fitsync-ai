@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { WEEKDAYS } = require('../utils/profileCompletion');
 
 const trainerProfileSchema = new mongoose.Schema({
   user: {
@@ -11,6 +12,29 @@ const trainerProfileSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  dateOfBirth: {
+    type: Date
+  },
+  gender: {
+    type: String,
+    enum: ['male', 'female', 'other'],
+  },
+  address: {
+    type: String,
+    trim: true
+  },
+  // Body data is informational for trainers (e.g. fitness credentials) and
+  // is never part of member health checks.
+  heightCm: {
+    type: Number,
+    min: 40,
+    max: 300
+  },
+  weightKg: {
+    type: Number,
+    min: 2,
+    max: 500
+  },
   specializations: [{
     type: String,
     trim: true
@@ -22,12 +46,24 @@ const trainerProfileSchema = new mongoose.Schema({
   }],
   experience: {
     type: Number,
-    default: 0
+    min: 0
   },
   bio: {
     type: String,
     trim: true,
     maxlength: 500
+  },
+  languages: [{
+    type: String,
+    trim: true
+  }],
+  workingDays: [{
+    type: String,
+    enum: WEEKDAYS
+  }],
+  workingHours: {
+    start: { type: String, trim: true },
+    end: { type: String, trim: true }
   },
   maxMembers: {
     type: Number,

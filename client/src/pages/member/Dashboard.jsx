@@ -15,6 +15,7 @@ import { useAuth } from '../../context/AuthContext';
 import StatCard from '../../components/common/StatCard';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import ErrorState from '../../components/common/ErrorState';
+import ProfileCompletionCard from '../../components/common/ProfileCompletionCard';
 
 export default function MemberDashboard() {
   const { user } = useAuth();
@@ -22,6 +23,7 @@ export default function MemberDashboard() {
   const [dashboard, setDashboard] = useState(null);
   const [measurements, setMeasurements] = useState([]);
   const [goals, setGoals] = useState([]);
+  const [completion, setCompletion] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [errors, setErrors] = useState({});
@@ -29,10 +31,11 @@ export default function MemberDashboard() {
   const fetchData = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
 
-    const [dashResult, measResult, goalsResult] = await Promise.allSettled([
+    const [dashResult, measResult, goalsResult, meResult] = await Promise.allSettled([
       api.get('/analytics/member/dashboard'),
       api.get('/measurements/my'),
       api.get('/goals/my'),
+      api.get('/auth/me'),
     ]);
 
     const newErrors = {};
@@ -54,6 +57,10 @@ export default function MemberDashboard() {
       setGoals(goalsResult.value.data?.goals || goalsResult.value.data || []);
     } else {
       newErrors.goals = goalsResult.reason?.message;
+    }
+
+    if (meResult.status === 'fulfilled') {
+      setCompletion(meResult.value.data?.completion || null);
     }
 
     setErrors(newErrors);
@@ -131,6 +138,12 @@ export default function MemberDashboard() {
             Refresh
           </button>
         </div>
+
+        {completion && !completion.allRequiredComplete && (
+          <div className="mb-6">
+            <ProfileCompletionCard completion={completion} member />
+          </div>
+        )}
 
         {errors.dashboard ? (
           <ErrorState message="Failed to load dashboard data" onRetry={handleRefresh} />

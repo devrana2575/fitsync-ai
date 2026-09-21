@@ -38,8 +38,9 @@ const validatePhoneNumbers = (phoneNumbers) => {
 const pickProfileFields = (body) => {
   const fields = {};
   for (const key of ['phone', 'phoneNumbers', 'gender', 'dateOfBirth', 'address',
-    'emergencyContact', 'heightCm', 'weightKg', 'goals', 'medicalConditions',
-    'medicalNotes', 'allergies', 'medicalRestrictions', 'doctorRecommendation']) {
+    'emergencyContact', 'heightCm', 'weightKg', 'goals', 'activityLevel',
+    'preferredWorkoutDays', 'preferredWorkoutDuration', 'medicalConditions',
+    'injuries', 'medicalNotes', 'allergies', 'medicalRestrictions', 'doctorRecommendation']) {
     if (body[key] !== undefined) fields[key] = body[key];
   }
   return fields;
@@ -219,12 +220,18 @@ router.post('/', auth, authorize('admin'), [
     if (existing) return res.status(400).json({ message: 'Email already exists' });
 
     const user = await User.create({ name, email, password, role: 'member' });
-    await MemberProfile.create({
-      user: user._id,
-      ...pickProfileFields(req.body),
-      joinDate: joinDate ? new Date(joinDate) : new Date(),
-      trainerAssignmentStatus: 'NONE'
-    });
+    try {
+      await MemberProfile.create({
+        user: user._id,
+        ...pickProfileFields(req.body),
+        joinDate: joinDate ? new Date(joinDate) : new Date(),
+        trainerAssignmentStatus: 'NONE'
+      });
+    } catch (profileError) {
+      // Never leave a User without its member profile (orphaned record).
+      await User.deleteOne({ _id: user._id });
+      throw profileError;
+    }
 
     res.status(201).json({ member: user });
   } catch (error) {

@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { WEEKDAYS, ACTIVITY_LEVELS } = require('../utils/profileCompletion');
 
 const memberProfileSchema = new mongoose.Schema({
   user: {
@@ -58,11 +59,28 @@ const memberProfileSchema = new mongoose.Schema({
     type: String,
     trim: true
   }],
+  activityLevel: {
+    type: String,
+    enum: ACTIVITY_LEVELS
+  },
+  preferredWorkoutDays: [{
+    type: String,
+    enum: WEEKDAYS
+  }],
+  preferredWorkoutDuration: {
+    type: Number,
+    min: 15,
+    max: 300
+  },
   // --- Health information ---------------------------------------------------
   // Informational only. Never used to synthesise medical advice. A doctor's
   // recommendation may be recorded verbatim and is visually distinct from
   // trainer recommendations and system suggestions.
   medicalConditions: {
+    type: String,
+    trim: true
+  },
+  injuries: {
     type: String,
     trim: true
   },

@@ -43,6 +43,7 @@ const trainerMenu = [
   { to: '/trainer/attendance', icon: ClipboardDocumentListIcon, label: 'Attendance' },
   { to: '/trainer/workouts', icon: BoltIcon, label: 'Workouts' },
   { to: '/trainer/templates', icon: ClipboardDocumentListIcon, label: 'Templates' },
+  { to: '/trainer/profile', icon: IdentificationIcon, label: 'Profile' },
 ];
 
 const memberMenu = [

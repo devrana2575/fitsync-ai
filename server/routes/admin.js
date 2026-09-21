@@ -29,8 +29,8 @@ const EDITABLE_FIELDS = {
   // assignedTrainer / trainerAssignmentStatus / pendingTrainerReason are NOT
   // editable through AllData: trainer allocation flows through the allocation
   // service or the admin assign-trainer business route so status stays coherent.
-  memberProfiles: ['phone', 'phoneNumbers', 'dateOfBirth', 'gender', 'address', 'emergencyContact', 'joinDate', 'medicalConditions', 'medicalNotes', 'allergies', 'medicalRestrictions', 'doctorRecommendation', 'trainerRecommendation', 'goals', 'heightCm', 'weightKg'],
-  trainerProfiles: ['phone', 'specializations', 'certifications', 'experience', 'bio', 'maxMembers', 'isAvailable', 'absenceReason', 'absenceFrom', 'absenceTo'],
+  memberProfiles: ['phone', 'phoneNumbers', 'dateOfBirth', 'gender', 'address', 'emergencyContact', 'joinDate', 'medicalConditions', 'injuries', 'medicalNotes', 'allergies', 'medicalRestrictions', 'doctorRecommendation', 'trainerRecommendation', 'goals', 'activityLevel', 'preferredWorkoutDays', 'preferredWorkoutDuration', 'heightCm', 'weightKg'],
+  trainerProfiles: ['phone', 'dateOfBirth', 'gender', 'address', 'heightCm', 'weightKg', 'specializations', 'certifications', 'experience', 'bio', 'languages', 'workingDays', 'workingHours', 'maxMembers', 'isAvailable', 'absenceReason', 'absenceFrom', 'absenceTo'],
   membershipPlans: ['name', 'price', 'duration', 'description', 'features', 'isActive', 'trainerIncluded', 'trainerAllocationMode', 'requiredSpecialization', 'workoutPlanIncluded', 'paymentMode', 'installments'],
   // status is not editable through AllData: activation must flow through the
   // payment-verified paths (or explicit admin flows in the memberships API).
@@ -78,6 +78,25 @@ const COLLECTIONS = [
 const MAX_ROWS = 100;
 
 const getCollection = (key) => COLLECTIONS.find((c) => c.key === key);
+
+// Referential-integrity guards for the AllData debug delete button. Parent
+// records that other entities reference may not be physically deleted: doing
+// so would create orphaned/broken relationships. Users and role profiles are
+// never hard-deletable (deactivate instead); plans/memberships are deletable
+// only while nothing references them. Leaf records delete freely.
+const DELETE_GUARDS = {
+  users: async () => 'Users cannot be deleted - deactivate them instead so all history stays intact',
+  memberProfiles: async () => 'Member profiles cannot be deleted - the linked user must keep a profile (deactivate instead)',
+  trainerProfiles: async () => 'Trainer profiles cannot be deleted - the linked user must keep a profile (deactivate instead)',
+  membershipPlans: async (doc) => {
+    const refs = await Membership.countDocuments({ plan: doc._id });
+    return refs > 0 ? `Cannot delete: ${refs} membership record(s) reference this plan` : null;
+  },
+  memberships: async (doc) => {
+    const refs = await Payment.countDocuments({ membership: doc._id });
+    return refs > 0 ? `Cannot delete: ${refs} payment record(s) reference this membership` : null;
+  },
+};
 
 router.get('/all', auth, authorize('admin'), async (req, res) => {
   try {
@@ -129,6 +148,14 @@ router.delete('/all/:collectionKey/:id', auth, authorize('admin'), async (req, r
   const doc = await collection.model.findById(req.params.id);
   if (!doc) {
     return res.status(404).json({ message: 'Record not found' });
+  }
+
+  const guard = DELETE_GUARDS[collection.key];
+  if (guard) {
+    const reason = await guard(doc);
+    if (reason) {
+      return res.status(400).json({ message: reason });
+    }
   }
 
   await doc.deleteOne();

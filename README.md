@@ -17,6 +17,7 @@ A comprehensive full-stack gym management system with integrated machine learnin
 - **Diet Checklist** - Daily check-off of completed diet types (keto, vegan, etc.)
 - **Fitness Goals** - Weight loss, muscle gain, strength, endurance goals
 - **Body Measurements** - Weight, BMI, body fat, circumferences tracking
+- **Member & Trainer Profiles** - Self-serve "Complete Your Profile": profile photo, personal/contact/body/fitness details for members and personal/professional/availability details for trainers, with a deterministic per-role completion score shown on the dashboard and profile pages
 - **Equipment Management** - Track equipment condition and maintenance schedules
 - **Notifications** - In-app notifications for membership, attendance, risk alerts
 - **Announcements** - Poster board with priority levels, pinning and expiry
@@ -242,6 +243,65 @@ UPI_NAME=FitSync AI Gym
 - Gateway refunds (`payments` collection → a Razorpay payment) first issue the refund through
   Razorpay and mark the payment `REFUNDED` only after the gateway confirms it; the linked
   membership is cancelled.
+
+### Profile completion
+
+- Members and trainers can complete their own profile from the **Profile** page (photo,
+  personal details, fitness/business info) and the dashboard shows a completion card until
+  the required fields are filled.
+- Completion is computed **deterministically on the server** from the actual profile fields
+  (`GET /api/auth/me` → `completion`): `percent`, `allRequiredComplete`, the list of
+  `missing` fields, and the per-section `requiredSections` breakdown.
+- Required (needed for 100%): **member** - full name, date of birth, phone, height, weight;
+  **trainer** - full name, phone, specializations, years of experience, working days and
+  working hours. Everything else (goals, emergency contact, medical info, certifications,
+  bio, physical stats, etc.) is optional and never blocks 100%.
+- Profile photo upload (`POST /api/auth/me/avatar`) and removal (`DELETE /api/auth/me/avatar`)
+  store files under `server/uploads/avatars` (JPEG/PNG/WebP/GIF, max 2 MB). Members can only
+  ever change their **own** profile; role/status fields are never accepted through the
+  self-update endpoint.
+
+### Database relationships
+
+The system uses **User as the single identity/authentication entity**. All role data,
+business records and audit trails reference `user → User` (ObjectId). There is no separate
+Member/Trainer auth record, only role-specific profiles:
+
+```
+User  ──1:1── MemberProfile   (user → User, unique)   email/password live only on User
+User  ──1:1── TrainerProfile  (user → User, unique)   email/password live only on User
+
+User (member)  1→N  Membership   (user → User, plan → MembershipPlan)
+User (member)  1→N  Payment      (user → User, membership → Membership, confirmedBy → User)
+User (member)  1→N  Attendance   (user → User — same collection used for trainer check-ins)
+User (member)  1→N  BodyMeasurement (user → User)
+User (member)  1→N  FitnessGoal  (user → User)
+User (member)  1→N  WorkoutLog   (user → User, workoutPlan → WorkoutPlan, exercise → Exercise)
+User (member)  1→N  DietLog      (user → User)
+User (member)  1→N  Notification (user → User — recipient, never a name/email field)
+User (member)  1→N  ProgressPhoto(user → User)
+User (member)  1→1  Medical & emergency info (embedded in MemberProfile)
+
+Membership ──N:1── MembershipPlan  (plan → MembershipPlan)
+Payment    ──N:1── Membership      (membership → Membership; plan is resolved via the membership)
+
+WorkoutPlan ── trainer → User, member → User (both required; no name fields)
+WorkoutPlan exercises ── embedded list ref'ing Exercise by id (intentionally embedded architecture)
+
+Trainer assignment: MemberProfile.assignedTrainer → User (the trainer), with status + assignedAt.
+  Set through the allocation service or the admin assign-trainer route; never client-supplied.
+
+Announcement ── createdBy → User   WorkoutTemplate ── createdBy → User   Equipment ── reportedBy → User
+```
+
+Integrity rules enforced by the routes (never trusted from the frontend): refs are set from the
+authenticated session or re-validated server-side; a member's `trade`-gated records (plans,
+attendance, payments, measurements, goals) are scoped to the owner; trainer allocation verifies
+the member, the trainer's active/eligibility and capacity; deleting a user is a **soft deactivate**
+(`DELETE /api/users/:id`) that preserves all history; the AllData debug page refuses to hard-delete
+any record that is still referenced (users, profiles, plans with memberships, memberships with
+payments) and instead tells the admin to deactivate; a recorded measurement keeps the member
+profile's current weight/height in sync with the measurement history (single source of truth).
 
 ## Running the Application
 

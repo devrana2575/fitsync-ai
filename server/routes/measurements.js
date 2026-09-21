@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const BodyMeasurement = require('../models/BodyMeasurement');
+const MemberProfile = require('../models/MemberProfile');
 const { auth, authorize } = require('../middleware/auth');
 
 router.get('/my', auth, async (req, res) => {
@@ -36,6 +37,17 @@ router.post('/', auth, async (req, res) => {
       thighs,
       date: date || new Date()
     });
+
+    // Keep the member profile's current body data in sync with the recorded
+    // measurement so profile completion and the measurement history share the
+    // same source of truth (no second, drifting copy of weight/height).
+    const profileSet = {};
+    if (weight !== undefined) profileSet.weightKg = weight;
+    if (height !== undefined) profileSet.heightCm = height;
+    if (Object.keys(profileSet).length > 0) {
+      await MemberProfile.updateOne({ user: req.user._id }, { $set: profileSet });
+    }
+
     res.status(201).json({ measurement });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });

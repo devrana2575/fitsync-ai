@@ -1,8 +1,6 @@
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
-const MemberProfile = require('../models/MemberProfile');
-const TrainerProfile = require('../models/TrainerProfile');
 const { auth, authorize } = require('../middleware/auth');
 const { escapeRegex, parsePagination } = require('../utils/helpers');
 
@@ -71,11 +69,17 @@ router.put('/:id/deactivate', auth, authorize('admin'), async (req, res) => {
 
 router.delete('/:id', auth, authorize('admin'), async (req, res) => {
   try {
-    const user = await User.findByIdAndDelete(req.params.id);
+    // Soft-delete: the user (and therefore their memberships, payments,
+    // attendance, workout plans, goals, measurements and notifications)
+    // stays in the database so no referencing record is ever orphaned and
+    // history remains traceable. Reactivate with PUT /:id/activate.
+    const user = await User.findByIdAndUpdate(
+      req.params.id,
+      { isActive: false },
+      { new: true }
+    );
     if (!user) return res.status(404).json({ message: 'User not found' });
-    await MemberProfile.deleteOne({ user: req.params.id });
-    await TrainerProfile.deleteOne({ user: req.params.id });
-    res.json({ message: 'User deleted' });
+    res.json({ message: 'User deactivated. All history is preserved; use /activate to restore.', user });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }

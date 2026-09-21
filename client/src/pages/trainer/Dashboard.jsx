@@ -3,21 +3,38 @@ import { UsersIcon, BoltIcon, ArrowPathIcon, ClipboardDocumentCheckIcon } from '
 import { useAuth } from '../../context/AuthContext';
 import StatCard from '../../components/common/StatCard';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
+import ProfileCompletionCard from '../../components/common/ProfileCompletionCard';
 import useTrainerDashboard from '../../hooks/useTrainerDashboard';
+import api from '../../services/api';
 
 export default function TrainerDashboard() {
   const { user } = useAuth();
   const [refreshing, setRefreshing] = useState(false);
+  const [completion, setCompletion] = useState(null);
   const { data, loading, error, reload } = useTrainerDashboard({ forceRefresh: true });
+
+  const loadCompletion = useCallback(async () => {
+    try {
+      const res = await api.get('/auth/me');
+      setCompletion(res.data?.completion || null);
+    } catch {
+      setCompletion(null);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadCompletion();
+  }, [loadCompletion]);
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
       await reload();
+      await loadCompletion();
     } finally {
       setRefreshing(false);
     }
-  }, [reload]);
+  }, [reload, loadCompletion]);
 
   useEffect(() => {
     const handleVisibility = () => {
@@ -54,6 +71,12 @@ export default function TrainerDashboard() {
             Refresh
           </button>
         </div>
+
+        {completion && !completion.allRequiredComplete && (
+          <div className="mb-8">
+            <ProfileCompletionCard completion={completion} member={false} />
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <StatCard icon={UsersIcon} label="Total Assigned Members" value={data?.totalAssigned ?? 0} color="indigo" />

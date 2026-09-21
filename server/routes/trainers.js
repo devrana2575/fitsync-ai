@@ -123,14 +123,20 @@ router.post('/', auth, authorize('admin'), [
     if (existing) return res.status(400).json({ message: 'Email already exists' });
 
     const user = await User.create({ name, email, password, role: 'trainer' });
-    await TrainerProfile.create({
-      user: user._id,
-      phone,
-      specializations: specializations || [],
-      experience: experience || 0,
-      bio,
-      certifications: certifications || []
-    });
+    try {
+      await TrainerProfile.create({
+        user: user._id,
+        phone,
+        specializations: specializations || [],
+        experience: experience || 0,
+        bio,
+        certifications: certifications || []
+      });
+    } catch (profileError) {
+      // Never leave a User without its trainer profile (orphaned record).
+      await User.deleteOne({ _id: user._id });
+      throw profileError;
+    }
 
     res.status(201).json({ trainer: user });
   } catch (error) {
@@ -140,7 +146,7 @@ router.post('/', auth, authorize('admin'), [
 
 router.put('/:id', auth, authorize('admin'), async (req, res) => {
   try {
-    const { name, email, phone, specializations, experience, bio, certifications, maxMembers, isAvailable, absenceReason, absenceFrom, absenceTo } = req.body;
+    const { name, email, phone, dateOfBirth, gender, address, heightCm, weightKg, specializations, experience, bio, certifications, languages, workingDays, workingHours, maxMembers, isAvailable, absenceReason, absenceFrom, absenceTo } = req.body;
 
     const user = await User.findByIdAndUpdate(
       req.params.id,
@@ -149,7 +155,11 @@ router.put('/:id', auth, authorize('admin'), async (req, res) => {
     );
     if (!user) return res.status(404).json({ message: 'Trainer not found' });
 
-    const update = { phone, specializations, experience, bio, certifications, maxMembers };
+    const update = {
+      phone, dateOfBirth, gender, address, heightCm, weightKg,
+      specializations, experience, bio, certifications, languages,
+      workingDays, workingHours, maxMembers
+    };
     if (isAvailable !== undefined) update.isAvailable = isAvailable === true;
     if (absenceReason !== undefined) update.absenceReason = absenceReason;
     if (absenceFrom !== undefined) update.absenceFrom = absenceFrom ? new Date(absenceFrom) : undefined;

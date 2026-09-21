@@ -24,6 +24,7 @@ const TrainerMembers = lazy(() => import('./pages/trainer/Members'));
 const TrainerWorkouts = lazy(() => import('./pages/trainer/Workouts'));
 const TrainerAttendance = lazy(() => import('./pages/trainer/Attendance'));
 const TrainerTemplates = lazy(() => import('./pages/trainer/Templates'));
+const TrainerProfile = lazy(() => import('./pages/trainer/Profile'));
 const MemberAnnouncements = lazy(() => import('./pages/member/Announcements'));
 const MemberDashboard = lazy(() => import('./pages/member/Dashboard'));
 const MemberAttendance = lazy(() => import('./pages/member/Attendance'));
@@ -108,6 +109,7 @@ export default function App() {
             <Route path="attendance" element={<TrainerAttendance />} />
             <Route path="workouts" element={<TrainerWorkouts />} />
             <Route path="templates" element={<TrainerTemplates />} />
+            <Route path="profile" element={<TrainerProfile />} />
           </Route>
 
           <Route
