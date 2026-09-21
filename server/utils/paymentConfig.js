@@ -21,25 +21,56 @@ const upiConfigured = () => {
 const stripeConfigured = () =>
   Boolean(process.env.STRIPE_SECRET_KEY && process.env.STRIPE_SECRET_KEY.startsWith('sk_live_'));
 
-const hasRealPaymentConfig = () => stripeConfigured() || upiConfigured();
+const getRazorpayKeyId = () => (process.env.RAZORPAY_KEY_ID || '').trim();
+const getRazorpayKeySecret = () => (process.env.RAZORPAY_KEY_SECRET || '').trim();
+const getRazorpayWebhookSecret = () => (process.env.RAZORPAY_WEBHOOK_SECRET || '').trim();
+
+const razorpayConfigured = () => {
+  const keyId = getRazorpayKeyId();
+  return Boolean(keyId && getRazorpayKeySecret() && !keyId.startsWith('#'));
+};
+
+// Test keys (rzp_test_) are fine for development but never acceptable as a
+// production checkout gateway - members would be unable to complete a payment.
+const razorpayLiveConfigured = () =>
+  Boolean(getRazorpayKeyId().startsWith('rzp_live_') && getRazorpayKeySecret());
+
+const razorpayWebhookConfigured = () => Boolean(getRazorpayWebhookSecret());
+
+const hasRealPaymentConfig = () => stripeConfigured() || razorpayLiveConfigured() || upiConfigured();
 
 // Described by consumers when they need to communicate the current state
-// without exposing any secret/provider credentials.
+// without exposing any secret/provider credentials. Razorpay wins because it
+// offers the richest checkout experience when both it and UPI are configured.
+// keyId is deliberately public (Razorpay Checkout needs it), but neither the
+// key secret nor the webhook secret ever leaves the server.
 const describePaymentConfig = () => {
-  if (stripeConfigured()) return { method: 'stripe' };
+  if (razorpayConfigured()) {
+    return {
+      method: 'razorpay',
+      keyId: getRazorpayKeyId(),
+      live: razorpayLiveConfigured(),
+      webhookConfigured: razorpayWebhookConfigured()
+    };
+  }
+  if (stripeConfigured()) {
+    return { method: 'stripe', live: true, webhookConfigured: Boolean(process.env.STRIPE_WEBHOOK_SECRET) };
+  }
   if (upiConfigured()) return { method: 'upi', upiId: getUpiId() };
-  return { method: 'unconfigured' };
+  return { method: 'unconfigured', live: false, webhookConfigured: false };
 };
 
 // Called at startup. In production the server must not boot without a real
-// gateway configured - the placeholder UPI id is explicitly rejected.
+// gateway configured - the placeholder UPI id and razorpay test keys are
+// explicitly rejected.
 const ensureProductionPaymentConfig = () => {
   if (process.env.NODE_ENV !== 'production') return;
   if (hasRealPaymentConfig()) return;
   throw new Error(
     '[payment-config] NODE_ENV=production requires a real payment configuration. ' +
-    'Set STRIPE_SECRET_KEY (sk_...) or UPI_ID to a real UPI id. The placeholder ' +
-    '(e.g. fitsync@okaxis) is not a valid production identity.'
+    'Set RAZORPAY_KEY_ID (rzp_live_...) with RAZORPAY_KEY_SECRET, STRIPE_SECRET_KEY ' +
+    '(sk_live_...), or UPI_ID to a real UPI id. Test/placeholder keys are never ' +
+    'acceptable as a production checkout gateway.'
   );
 };
 
@@ -49,6 +80,12 @@ module.exports = {
   isUpiPlaceholder,
   upiConfigured,
   stripeConfigured,
+  getRazorpayKeyId,
+  getRazorpayKeySecret,
+  getRazorpayWebhookSecret,
+  razorpayConfigured,
+  razorpayLiveConfigured,
+  razorpayWebhookConfigured,
   hasRealPaymentConfig,
   describePaymentConfig,
   ensureProductionPaymentConfig

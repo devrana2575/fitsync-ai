@@ -133,9 +133,10 @@ export default function Payments() {
       ...f,
       planId,
       membershipId: '',
-      // Auto-fill the exact plan price - the server rejects a completed
-      // plan payment whose amount differs from the plan price.
-      amount: plan ? String(plan.price) : f.amount,
+      // Auto-fill the exact required amount - the server rejects a completed
+      // plan payment whose amount differs from the plan price (or, for
+      // installment plans, from the fixed per-installment amount).
+      amount: plan ? String(plan.paymentMode === 'INSTALLMENT' && plan.installmentAmount ? plan.installmentAmount : plan.price) : f.amount,
     }));
   };
 
@@ -243,23 +244,56 @@ export default function Payments() {
           <button onClick={() => { setForm(initialForm); setSelectedMember(null); setMemberMemberships([]); setMemberSearch(''); setShowModal(true); }} className="text-indigo-600 hover:text-indigo-800 font-medium">Add first payment</button>
         } />
       ) : (
-        <DataTable headers={['Receipt', 'Member', 'Amount', 'Method', 'Status', 'Date', 'Actions']}>
+        <DataTable headers={['Receipt', 'Member', 'Membership / Plan', 'Amount', 'Method', 'Gateway', 'Status', 'Date', 'Actions']}>
           {payments.map((p, i) => (
             <tr key={p._id} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
-              <td className="px-6 py-4 font-mono text-xs text-slate-600">{p.transactionId || '—'}</td>
+              <td className="px-6 py-4 font-mono text-xs text-slate-600">{p.transactionId || p._id || '—'}</td>
               <td className="px-6 py-4 font-medium text-slate-900">{p.user?.name || p.member?.name || '—'}</td>
+              <td className="px-6 py-4 text-slate-600">
+                {p.membership ? (
+                  <div>
+                    <p className="font-medium text-slate-900">{p.membership.plan?.name || 'Membership'}</p>
+                    <p className="text-xs text-slate-400 capitalize">{p.membership.status || ''}</p>
+                  </div>
+                ) : (
+                  <span className="text-slate-400">—</span>
+                )}
+              </td>
               <td className="px-6 py-4 font-semibold text-slate-900">{fmtCurrency(p.amount)}</td>
               <td className="px-6 py-4 text-slate-600 capitalize">{p.method || '—'}</td>
+              <td className="px-6 py-4">
+                {p.gateway ? (
+                  <div>
+                    <span className="inline-flex items-center gap-1 text-xs font-medium text-indigo-700">
+                      {p.gateway === 'razorpay' ? 'Razorpay' : p.gateway}
+                    </span>
+                    {p.gatewayOrderId && (
+                      <p className="font-mono text-[10px] text-slate-400">{p.gatewayOrderId}</p>
+                    )}
+                  </div>
+                ) : (
+                  <span className="text-xs text-slate-400">—</span>
+                )}
+              </td>
               <td className="px-6 py-4">
                 <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColor(p.status)}`}>{p.status}</span>
               </td>
               <td className="px-6 py-4 text-slate-600">{p.createdAt ? new Date(p.createdAt).toLocaleDateString('en-IN') : '—'}</td>
               <td className="px-6 py-4">
-                {p.status === 'PENDING' && (
+                {p.status === 'PENDING' && !p.gateway && (
                   <button onClick={() => handleVerify(p)} className="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-800 font-medium text-sm">
                     <CheckBadgeIcon className="h-4 w-4" aria-hidden="true" />
                     Verify
                   </button>
+                )}
+                {p.status === 'PENDING' && p.gateway && (
+                  <span className="text-xs text-slate-400">Gateway pending</span>
+                )}
+                {p.status === 'COMPLETED' && p.gateway && (
+                  <span className="inline-flex items-center gap-1 text-xs font-medium text-green-600">
+                    <CheckBadgeIcon className="h-4 w-4" aria-hidden="true" />
+                    Gateway verified
+                  </span>
                 )}
               </td>
             </tr>
@@ -319,17 +353,20 @@ export default function Payments() {
               <select value={form.planId} onChange={handlePlanChange} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
                 <option value="">None</option>
                 {plans.map((pla) => (
-                  <option key={pla._id} value={pla._id}>{pla.name} — ₹{Number(pla.price || 0).toLocaleString('en-IN')} / {pla.duration} days</option>
+                  <option key={pla._id} value={pla._id}>
+                    {pla.name} — ₹{Number(pla.price || 0).toLocaleString('en-IN')} / {pla.duration} days
+                    {pla.paymentMode === 'INSTALLMENT' && pla.installments > 1 ? ` (${pla.installments} × ₹${Number(pla.installmentAmount || 0).toLocaleString('en-IN')})` : ''}
+                  </option>
                 ))}
               </select>
             )}
-            <p className="text-xs text-slate-400 mt-1">Pick this when the member is buying a plan at the counter — a new membership is created automatically and activated on a completed payment.</p>
+            <p className="text-xs text-slate-400 mt-1">Pick this when the member is buying a plan at the counter — a new membership is created automatically and activated when the cumulative paid amount reaches the plan price.</p>
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Amount (₹)</label>
             <input required type="number" min="0" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
             {form.planId && form.status === 'completed' && (
-              <p className="text-xs text-slate-400 mt-1">Plan-based completed payments must match the plan price exactly.</p>
+              <p className="text-xs text-slate-400 mt-1">Plan-based completed payments must match the plan price exactly (or the fixed installment amount for installment plans).</p>
             )}
           </div>
           <div>

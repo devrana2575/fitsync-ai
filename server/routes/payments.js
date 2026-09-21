@@ -8,7 +8,9 @@ const Notification = require('../models/Notification');
 const User = require('../models/User');
 const { auth, authorize } = require('../middleware/auth');
 const { parsePagination } = require('../utils/helpers');
-const { activateMembershipFromPayment } = require('../utils/membershipActivation');
+const { activateMembershipFromPayment, cancelLinkedMembership } = require('../utils/membershipActivation');
+const { validateManualPaymentAmount, isMembershipFullyPaid } = require('../utils/paymentTerms');
+const razorpayGateway = require('../utils/razorpayGateway');
 const { getGymMonthStart, getGymTimezone } = require('../utils/gymTime');
 
 const makeReceiptNumber = () => `INV-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${crypto.randomBytes(2).toString('hex').toUpperCase()}`;
@@ -19,33 +21,17 @@ const notifyPaymentReceived = async (userId, amount) => {
     user: userId,
     title: 'Payment Received',
     message: `We received a payment of ₹${Number(amount || 0).toLocaleString('en-IN')}. Thank you!`,
-    type: 'general'
+    type: 'payment'
   });
 };
 
-// Amount must match the plan price for plan-based completions, otherwise a
-// zero/typo amount could activate a membership for free.
-const validatePlanAmount = async ({ membershipId, planId, amount, status }) => {
-  if (status !== 'COMPLETED') return null;
-
-  let plan = null;
-  if (planId) {
-    plan = await MembershipPlan.findById(planId);
-  } else if (membershipId) {
-    const membership = await Membership.findById(membershipId).populate('plan');
-    plan = membership?.plan || null;
+// Activate only when the plan is actually covered. FULL plans always are after
+// a single exact-price payment; INSTALLMENT plans stay PENDING until the
+// cumulative COMPLETED total reaches the plan price.
+const activateWhenFullyPaid = async (membershipId) => {
+  if (await isMembershipFullyPaid(membershipId)) {
+    await activateMembershipFromPayment(membershipId);
   }
-
-  if (!plan) return null; // member-directed amount without a linked plan - not enforced
-
-  const value = Number(amount);
-  if (!Number.isFinite(value) || value <= 0) {
-    return { error: 'Amount must be greater than zero' };
-  }
-  if (value !== Number(plan.price)) {
-    return { error: `Amount does not match the ${plan.name} plan price (₹${plan.price})` };
-  }
-  return null;
 };
 
 const markAsConfirmed = async (payment, req) => {
@@ -69,9 +55,9 @@ router.get('/', auth, authorize('admin'), async (req, res) => {
 
     const total = await Payment.countDocuments(filter);
     const payments = await Payment.find(filter)
-      .select('user amount method status date membership transactionId notes confirmedBy confirmedAt')
+      .select('user amount method status date membership transactionId notes confirmedBy confirmedAt gateway gatewayOrderId gatewayPaymentId gatewayStatus gatewayVerifiedAt')
       .populate('user', 'name email')
-      .populate('membership', 'plan startDate endDate status')
+      .populate({ path: 'membership', select: 'plan startDate endDate status', populate: { path: 'plan', select: 'name price' } })
       .sort({ date: -1 })
       .skip((page - 1) * limit)
       .limit(limit)
@@ -86,7 +72,7 @@ router.get('/', auth, authorize('admin'), async (req, res) => {
 router.get('/my', auth, async (req, res) => {
   try {
     const payments = await Payment.find({ user: req.user._id })
-      .select('user amount method status date membership')
+      .select('user amount method status date membership gateway gatewayStatus gatewayOrderId gatewayPaymentId')
       .populate({ path: 'membership', populate: { path: 'plan', select: 'name' } })
       .sort({ date: -1 })
       .limit(100)
@@ -110,9 +96,6 @@ router.post('/', auth, authorize('admin'), async (req, res) => {
 
     const normalizedStatus = (status || 'COMPLETED').toUpperCase();
 
-    const amountError = await validatePlanAmount({ membershipId, planId, amount, status: normalizedStatus });
-    if (amountError) return res.status(400).json({ message: amountError.error });
-
     let targetMembership = membershipId || null;
 
     if (!targetMembership && planId) {
@@ -125,6 +108,15 @@ router.post('/', auth, authorize('admin'), async (req, res) => {
       if (existingPending) {
         targetMembership = existingPending._id;
       } else {
+        // Open-ended planId payments would mint a fresh membership every time.
+        // For installment plans, once the price is covered the plan is closed;
+        // further installments must not start a new membership.
+        if (plan.paymentMode === 'INSTALLMENT') {
+          const alreadyCovered = await Membership.findOne({ user: userId, plan: plan._id, status: 'ACTIVE' });
+          if (alreadyCovered) {
+            return res.status(400).json({ message: 'Overpayment rejected: this installment plan is already fully covered by an active membership' });
+          }
+        }
         const start = new Date();
         const end = new Date(start);
         end.setDate(end.getDate() + plan.duration);
@@ -143,6 +135,11 @@ router.post('/', auth, authorize('admin'), async (req, res) => {
       }
     }
 
+    if (normalizedStatus === 'COMPLETED') {
+      const amountError = await validateManualPaymentAmount({ membershipId: targetMembership, planId, amount });
+      if (amountError) return res.status(400).json({ message: amountError.error });
+    }
+
     const payment = await Payment.create({
       user: userId,
       membership: targetMembership,
@@ -157,7 +154,7 @@ router.post('/', auth, authorize('admin'), async (req, res) => {
     });
 
     if (payment.status === 'COMPLETED') {
-      await activateMembershipFromPayment(targetMembership);
+      await activateWhenFullyPaid(targetMembership);
       await notifyPaymentReceived(userId, amount);
     }
 
@@ -181,7 +178,11 @@ router.post('/:id/verify', auth, authorize('admin'), async (req, res) => {
       return res.status(400).json({ message: 'A refunded payment cannot be approved' });
     }
 
-    const amountError = await validatePlanAmount({ membershipId: String(payment.membership || ''), amount: payment.amount, status: 'COMPLETED' });
+    const amountError = await validateManualPaymentAmount({
+      membershipId: String(payment.membership || ''),
+      amount: payment.amount,
+      excludePaymentId: payment._id
+    });
     if (amountError) return res.status(400).json({ message: amountError.error });
 
     payment.status = 'COMPLETED';
@@ -190,7 +191,7 @@ router.post('/:id/verify', auth, authorize('admin'), async (req, res) => {
     payment.notes = `${payment.notes || ''} (verified by ${req.user.name || req.user._id})`.trim();
     await payment.save();
 
-    await activateMembershipFromPayment(payment.membership);
+    await activateWhenFullyPaid(payment.membership);
     await notifyPaymentReceived(payment.user, payment.amount);
 
     res.json({ message: 'Payment verified and completed', payment });
@@ -213,18 +214,40 @@ router.put('/:id', auth, authorize('admin'), async (req, res) => {
 
     const nextStatus = status !== undefined ? status.toUpperCase() : existing.status;
     if (nextStatus === 'COMPLETED') {
-      const amountError = await validatePlanAmount({ membershipId: String(existing.membership || ''), amount: amount ?? existing.amount, status: 'COMPLETED' });
+      const amountError = await validateManualPaymentAmount({
+        membershipId: String(existing.membership || ''),
+        amount: amount ?? existing.amount,
+        excludePaymentId: existing._id
+      });
       if (amountError) return res.status(400).json({ message: amountError.error });
       update.status = 'COMPLETED';
       update.confirmedBy = req.user._id;
       update.confirmedAt = new Date();
     } else if (status !== undefined) {
-      update.status = nextStatus;
       if (nextStatus === 'REFUNDED') {
+        // Online Razorpay captures are refunded at the gateway FIRST - FitSync
+        // never claims a refund succeeded until Razorpay actually confirms it.
+        if (existing.gateway === 'razorpay' && existing.gatewayPaymentId) {
+          let refund;
+          try {
+            refund = await razorpayGateway.createRefund(existing.gatewayPaymentId, {
+              amount: razorpayGateway.toPaise(existing.amount),
+              notes: `FitSync AI admin refund (${req.user.name || req.user._id})`
+            });
+          } catch (error) {
+            console.error('[payments/refund] Razorpay refund failed:', error.message);
+            return res.status(502).json({ message: 'Razorpay did not confirm the refund. The payment was not marked refunded.' });
+          }
+          update.gatewayStatus = 'refunded';
+          update.notes = `${existing.notes || ''} (Razorpay refund ${refund && refund.id ? refund.id : ''})`.trim();
+        }
+        update.status = 'REFUNDED';
         update.confirmedBy = req.user._id;
         update.confirmedAt = new Date();
       } else if (nextStatus !== 'PENDING' && nextStatus !== 'FAILED') {
         return res.status(400).json({ message: 'Invalid payment status' });
+      } else {
+        update.status = nextStatus;
       }
     }
 
@@ -235,17 +258,13 @@ router.put('/:id', auth, authorize('admin'), async (req, res) => {
     );
 
     if (payment.status === 'COMPLETED' && existing.status !== 'COMPLETED') {
-      await activateMembershipFromPayment(payment.membership);
+      await activateWhenFullyPaid(payment.membership);
       await notifyPaymentReceived(payment.user, payment.amount);
     }
 
     if (payment.status === 'REFUNDED' && payment.membership) {
       // A refunded payment must not leave the member with active access.
-      const membership = await Membership.findById(payment.membership);
-      if (membership && membership.status === 'ACTIVE') {
-        membership.status = 'CANCELLED';
-        await membership.save();
-      }
+      await cancelLinkedMembership(payment.membership);
     }
 
     res.json({ payment });

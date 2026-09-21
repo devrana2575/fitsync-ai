@@ -13,6 +13,18 @@ const statusMeta = {
   CANCELLED: { label: 'Cancelled', cls: 'bg-red-100 text-red-700' },
 };
 
+const RAZORPAY_SCRIPT = 'https://checkout.razorpay.com/v1/checkout.js';
+
+const loadRazorpayCheckout = () =>
+  new Promise((resolve, reject) => {
+    if (window.Razorpay) return resolve(window.Razorpay);
+    const script = document.createElement('script');
+    script.src = RAZORPAY_SCRIPT;
+    script.onload = () => (window.Razorpay ? resolve(window.Razorpay) : reject(new Error('Razorpay failed to load')));
+    script.onerror = () => reject(new Error('Razorpay failed to load. Check your connection and try again.'));
+    document.body.appendChild(script);
+  });
+
 export default function Membership() {
   const [memberships, setMemberships] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -25,6 +37,9 @@ export default function Membership() {
   const [upiInfo, setUpiInfo] = useState(null);
   const [qrUrl, setQrUrl] = useState(null);
   const [qrLoading, setQrLoading] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState(null);
+  const [myProfile, setMyProfile] = useState(null);
+  const [myPayments, setMyPayments] = useState([]);
 
   const fetchData = async () => {
     try {
@@ -35,6 +50,24 @@ export default function Membership() {
       setError(err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchProfile = async () => {
+    try {
+      const res = await api.get('/auth/me');
+      setMyProfile(res.data.profile || null);
+    } catch {
+      setMyProfile(null);
+    }
+  };
+
+  const fetchMyPayments = async () => {
+    try {
+      const res = await api.get('/payments/my');
+      setMyPayments(res.data.payments || []);
+    } catch {
+      setMyPayments([]);
     }
   };
 
@@ -49,15 +82,107 @@ export default function Membership() {
     }
   };
 
-  useEffect(() => { fetchData(); fetchPlans(); }, []);
+  const fetchPaymentMethod = async () => {
+    try {
+      const res = await api.get('/settings');
+      setPaymentMethod(res.data.payment?.method || null);
+    } catch {
+      setPaymentMethod(null);
+    }
+  };
+
+  useEffect(() => { fetchData(); fetchPlans(); fetchPaymentMethod(); fetchProfile(); fetchMyPayments(); }, []);
+
+  const planById = new Map(plans.map((p) => [p._id, p]));
+
+  const paidForMembership = (membershipId) =>
+    myPayments
+      .filter((p) => String(p.membership?._id || p.membership) === String(membershipId) && p.status === 'COMPLETED')
+      .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+
+  const isCounterUpMode = paymentMethod === 'upi';
+
+  const allocationLabel = (mode) => {
+    const map = {
+      SHARED: 'Shared trainer pool',
+      ASSIGNED: 'Assigned trainer',
+      DEDICATED: 'Dedicated trainer',
+      NONE: 'No trainer included',
+    };
+    return map[mode] || 'No trainer included';
+  };
+
+  const openRazorpayCheckout = (order) => {
+    const options = {
+      key: order.keyId,
+      amount: order.amount,
+      currency: order.currency || 'INR',
+      order_id: order.orderId,
+      name: 'FitSync AI',
+      description: `${order.planName} Membership`,
+      handler: async (response) => {
+        try {
+          setProcessing(true);
+          const res = await api.post('/checkout/razorpay/verify', {
+            razorpay_payment_id: response.razorpay_payment_id,
+            razorpay_order_id: response.razorpay_order_id,
+            razorpay_signature: response.razorpay_signature,
+          });
+          alert(res.data.message || 'Payment successful! Your membership is now active.');
+          fetchData();
+        } catch (err) {
+          alert(err.message);
+          fetchData();
+        } finally {
+          setProcessing(false);
+        }
+      },
+      theme: { color: '#16a34a' },
+    };
+    const rzp = new window.Razorpay(options);
+    rzp.on('payment.failed', (failed) => {
+      const code = failed?.error?.code || '';
+      if (code === 'PAYMENT_CANCELLED') {
+        alert('Payment cancelled. No charge was made.');
+      } else {
+        alert('Payment was not completed at the gateway. No charge was made.');
+      }
+      fetchData();
+    });
+    rzp.open();
+  };
+
+  const handleRazorpayPay = async (plan) => {
+    try {
+      try {
+        await loadRazorpayCheckout();
+      } catch (err) {
+        alert(err.message);
+        return;
+      }
+      setProcessing(true);
+      const res = await api.post('/checkout/razorpay/order', { planId: plan._id });
+      openRazorpayCheckout(res.data);
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setProcessing(false);
+    }
+  };
 
   const handlePay = async (plan) => {
     try {
       setProcessing(true);
+      if (paymentMethod === 'razorpay') {
+        await handleRazorpayPay(plan);
+        return;
+      }
       const res = await api.post('/checkout/create', { planId: plan._id });
       const { mode, url, payment } = res.data;
       if (mode === 'stripe' && url) {
         window.location.assign(url);
+      } else if (mode === 'razorpay') {
+        await handleRazorpayPay(plan);
       } else if (mode === 'upi') {
         setSelectedPlan({ ...plan, paymentId: payment });
         setUpiInfo(res.data);
@@ -160,7 +285,32 @@ export default function Membership() {
                         <p className="text-slate-500">Auto-renew</p>
                         <p className="font-medium text-slate-900">{m.autoRenew ? 'On' : 'Off'}</p>
                       </div>
+                      <div>
+                        <p className="text-slate-500">Your trainer</p>
+                        <p className="font-medium text-slate-900">{myProfile?.assignedTrainer?.name || '—'}</p>
+                      </div>
+                      <div>
+                        <p className="text-slate-500">Workout plans</p>
+                        <p className="font-medium text-slate-900">
+                          {planById.get(m.plan?._id)?.workoutPlanIncluded ? 'Included' : '—'}
+                        </p>
+                      </div>
                     </div>
+                    {(planById.get(m.plan?._id)?.paymentMode === 'INSTALLMENT' &&
+                      Number(planById.get(m.plan?._id)?.price) > 0) && (
+                      <div className="mt-4">
+                        <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
+                          <span>Paid via installments</span>
+                          <span>₹{paidForMembership(m._id).toLocaleString('en-IN')} / ₹{Number(m.plan?.price || 0).toLocaleString('en-IN')}</span>
+                        </div>
+                        <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-green-500"
+                            style={{ width: `${Math.min(100, (paidForMembership(m._id) / Number(m.plan?.price || 1)) * 100)}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -178,15 +328,44 @@ export default function Membership() {
                     <div key={plan._id} className="border border-slate-200 rounded-xl p-5 flex flex-col">
                       <h4 className="font-semibold text-slate-900 mb-1">{plan.name}</h4>
                       <p className="text-2xl font-bold text-slate-900 mb-1">₹{Number(plan.price || 0).toLocaleString('en-IN')}</p>
+                      {plan.paymentMode === 'INSTALLMENT' && Number(plan.installments) > 1 ? (
+                        <p className="text-sm text-amber-700 mb-1">
+                          Pay in {plan.installments} installments of ₹{Number(plan.installmentAmount || 0).toLocaleString('en-IN')}
+                        </p>
+                      ) : (
+                        <p className="text-sm text-slate-500 mb-1">Payable in full</p>
+                      )}
                       <p className="text-sm text-slate-500 mb-2">{plan.duration} days</p>
+                      <div className="flex flex-wrap gap-1.5 mb-3">
+                        {plan.trainerIncluded && (
+                          <span className="px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 text-xs font-medium">
+                            {allocationLabel(plan.trainerAllocationMode)}
+                          </span>
+                        )}
+                        {plan.workoutPlanIncluded && (
+                          <span className="px-2 py-0.5 rounded-full bg-green-50 text-green-700 text-xs font-medium">
+                            Workout plans included
+                          </span>
+                        )}
+                        {plan.paymentMode === 'INSTALLMENT' && (
+                          <span className="px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 text-xs font-medium">
+                            Installments
+                          </span>
+                        )}
+                      </div>
                       <p className="text-sm text-slate-600 mb-4 flex-1">{plan.description}</p>
                       <button
                         onClick={() => handlePay(plan)}
                         disabled={processing}
                         className="w-full rounded-lg bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-sm font-medium py-2 transition-colors"
                       >
-                        Pay Online
+                        {isCounterUpMode ? 'Pay at Gym / Direct UPI' : 'Pay Online'}
                       </button>
+                      <p className="mt-2 text-xs text-slate-400 text-center">
+                        {plan.paymentMode === 'INSTALLMENT'
+                          ? (isCounterUpMode ? 'At the gym, this plan is paid in fixed installments' : 'Online payment charges the full plan price in one go')
+                          : (isCounterUpMode ? 'Pay directly to the gym UPI account' : 'Pay securely with the gateway')}
+                      </p>
                     </div>
                   ))}
                 </div>
@@ -228,7 +407,7 @@ export default function Membership() {
           </div>
         )}
 
-        <Modal isOpen={modalOpen} onClose={() => { if (!processing) closeModal(); }} title={upiInfo ? 'Scan QR to Pay' : 'Confirm Payment'}>
+        <Modal isOpen={modalOpen} onClose={() => { if (!processing) closeModal(); }} title={upiInfo ? (isCounterUpMode ? 'Pay at Gym / Direct UPI' : 'Scan QR to Pay') : 'Confirm Payment'}>
           {upiInfo ? (
             <div className="flex flex-col items-center">
               <p className="text-sm text-slate-500 mb-4">

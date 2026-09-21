@@ -27,6 +27,7 @@ const COMMON_TIMEZONES = [
 const initialForm = { name: '', address: '', phone: '', email: '', currency: 'INR', timezone: 'Asia/Kolkata', operatingHours: '' };
 
 const paymentMeta = {
+  razorpay: { label: 'Razorpay (online payments)', cls: 'bg-blue-100 text-blue-700' },
   stripe: { label: 'Stripe (card payments)', cls: 'bg-green-100 text-green-700' },
   upi: { label: 'UPI (scan-to-pay)', cls: 'bg-sky-100 text-sky-700' },
   unconfigured: { label: 'Not configured — online payments disabled', cls: 'bg-amber-100 text-amber-700' },
@@ -102,6 +103,29 @@ export default function Settings() {
           <p className="text-base font-semibold text-slate-900">
             {payment ? paymentMeta[payment.method]?.label : '—'}
           </p>
+          {payment && payment.method === 'razorpay' && (
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+              <span className={`inline-flex items-center rounded-full px-2 py-0.5 font-medium ${payment.live ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                {payment.live ? 'Live keys' : 'Test keys'}
+              </span>
+              <span className={`inline-flex items-center rounded-full px-2 py-0.5 font-medium ${payment.webhookConfigured ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                {payment.webhookConfigured ? 'Webhook configured' : 'Webhook NOT configured'}
+              </span>
+              {payment.keyId && (
+                <span className="font-mono text-slate-400">{payment.keyId}</span>
+              )}
+            </div>
+          )}
+          {payment && payment.method !== 'razorpay' && payment.webhookConfigured !== undefined && (
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+              <span className={`inline-flex items-center rounded-full px-2 py-0.5 font-medium ${payment.live ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                {payment.live ? 'Live' : 'Not live'}
+              </span>
+              <span className={`inline-flex items-center rounded-full px-2 py-0.5 font-medium ${payment.webhookConfigured ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                {payment.webhookConfigured ? 'Webhook configured' : 'Webhook NOT configured'}
+              </span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -113,7 +137,7 @@ export default function Settings() {
 
       {payment && payment.method === 'unconfigured' && (
         <div className="bg-amber-50 border border-amber-200 text-amber-800 rounded-xl px-4 py-3 text-sm">
-          Online payments are not configured, so members cannot complete UPI/Stripe checkout online.
+          Online payments are not configured, so members cannot complete Razorpay/UPI/Stripe checkout online.
           Counter payments are still supported — record them from the Payments page. In production the
           server refuses to start without a real gateway.
         </div>

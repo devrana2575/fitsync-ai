@@ -9,12 +9,16 @@ const Notification = require('../models/Notification');
 const User = require('../models/User');
 const { auth, authorize } = require('../middleware/auth');
 const { activateMembershipFromPayment } = require('../utils/membershipActivation');
+const razorpayGateway = require('../utils/razorpayGateway');
+const { completeGatewayPayment, failGatewayPayment } = require('../utils/paymentLifecycle');
 const {
   getUpiId,
   getUpiName,
   upiConfigured,
   stripeConfigured,
-  hasRealPaymentConfig
+  hasRealPaymentConfig,
+  razorpayConfigured,
+  getRazorpayKeyId
 } = require('../utils/paymentConfig');
 
 let stripe = null;
@@ -72,7 +76,7 @@ router.post('/create', auth, authorize('member'), async (req, res) => {
     const plan = await MembershipPlan.findOne({ _id: planId, isActive: true });
     if (!plan) return res.status(404).json({ message: 'Plan not found' });
 
-    if (!stripe && !upiConfigured()) {
+    if (!stripe && !upiConfigured() && !razorpayConfigured()) {
       if (isProduction()) {
         return res.status(503).json({ message: 'Online payments are not configured. Please contact the gym to complete your purchase.' });
       }
@@ -106,6 +110,14 @@ router.post('/create', auth, authorize('member'), async (req, res) => {
         membership: membership._id,
         message: 'DEMO/DEVELOPMENT mode. Confirm the payment to simulate a successful gateway. Not available in production.'
       });
+    }
+
+    // Razorpay owns the online checkout whenever it is configured. It mints its
+    // own order (with idempotent dedupe in /checkout/razorpay/order), so don't
+    // create the membership/payment here - the client calls the order endpoint
+    // and then verifies the real gateway callback.
+    if (razorpayConfigured()) {
+      return res.status(201).json({ mode: 'razorpay', planId: plan._id });
     }
 
     const start = new Date();
@@ -202,6 +214,15 @@ router.post('/confirm/:paymentId', auth, authorize('member'), async (req, res) =
     }
     if (payment.status === 'COMPLETED') return res.json({ message: 'Payment already completed', payment });
     if (stripe) return res.status(400).json({ message: 'Use the Stripe checkout flow' });
+    // A gateway payment (Razorpay/Stripe) can only ever be completed by the
+    // gateway itself - a member endpoint must never try to confirm it, even in
+    // development. Manual/UPI payments stay PENDING until an admin verifies.
+    if (payment.gateway) {
+      return res.status(400).json({ message: 'Online gateway payments are confirmed only by the payment gateway' });
+    }
+    if (payment.method === 'upi') {
+      return res.status(400).json({ message: 'UPI payments are verified by the gym, not self-confirmed' });
+    }
 
     payment.status = 'COMPLETED';
     payment.notes = `${payment.notes || 'Online payment'} (DEMO/DEVELOPMENT simulated gateway)`;
@@ -212,6 +233,219 @@ router.post('/confirm/:paymentId', auth, authorize('member'), async (req, res) =
 
     res.json({ message: 'Payment confirmed (DEMO)', payment });
   } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// ----------------------------------------------------------------
+// Razorpay: create a gateway order for a plan
+// ----------------------------------------------------------------
+// The amount is always derived server-side from the plan price in paise -
+// whatever the frontend sends is ignored. The PENDING membership + PENDING
+// payment follow the same PENDING-first rules as every other checkout path.
+router.post('/razorpay/order', auth, authorize('member'), async (req, res) => {
+  try {
+    const { planId } = req.body;
+    if (!planId) return res.status(400).json({ message: 'Plan is required' });
+
+    if (!razorpayConfigured()) {
+      return res.status(503).json({ message: 'Online payments are not configured. Please contact the gym to complete your purchase.' });
+    }
+
+    const plan = await MembershipPlan.findOne({ _id: planId, isActive: true });
+    if (!plan) return res.status(404).json({ message: 'Plan not found' });
+
+    const paise = razorpayGateway.toPaise(plan.price);
+    if (!Number.isInteger(paise) || paise <= 0) {
+      return res.status(400).json({ message: 'Plan does not have a valid configurable price' });
+    }
+
+    // Reuse an existing PENDING razorpay payment for the same plan so two
+    // tabs / repeated clicks never mint a second gateway order. Other statuses
+    // are left alone (a previous FAILED/REFUNDED attempt starts fresh).
+    const pendingMembership = await Membership.findOne({
+      user: req.user._id,
+      plan: plan._id,
+      status: 'PENDING'
+    }).sort({ createdAt: -1 }).lean();
+
+    let payment = pendingMembership
+      ? await Payment.findOne({ membership: pendingMembership._id, gateway: 'razorpay', status: 'PENDING' }).sort({ createdAt: -1 })
+      : null;
+
+    if (!payment) {
+      const start = new Date();
+      const end = new Date(start);
+      end.setDate(end.getDate() + plan.duration);
+
+      const membership = await Membership.create({
+        user: req.user._id,
+        plan: plan._id,
+        startDate: start,
+        endDate: end,
+        status: 'PENDING'
+      });
+
+      payment = await Payment.create({
+        user: req.user._id,
+        membership: membership._id,
+        amount: plan.price,
+        method: 'online',
+        status: 'PENDING',
+        gateway: 'razorpay',
+        notes: `Razorpay checkout for ${plan.name}`,
+        date: new Date()
+      });
+    }
+
+    if (!payment.gatewayOrderId) {
+      const receipt = `FS${String(payment._id).slice(-10).toUpperCase()}`;
+      const order = await razorpayGateway.createOrder({
+        amount: paise,
+        currency: 'INR',
+        receipt,
+        notes: {
+          fitsyncPaymentId: String(payment._id),
+          fitsyncMembershipId: String(payment.membership),
+          fitsyncPlanId: String(plan._id)
+        }
+      });
+      if (!order || !order.id) {
+        throw new Error('Razorpay did not return an order id');
+      }
+      payment.gatewayOrderId = order.id;
+      payment.gatewayStatus = 'created';
+      payment.transactionId = order.id;
+      await payment.save();
+    }
+
+    res.status(201).json({
+      mode: 'razorpay',
+      payment: payment._id,
+      membership: payment.membership,
+      keyId: getRazorpayKeyId(),
+      orderId: payment.gatewayOrderId,
+      amount: paise,
+      currency: 'INR',
+      planName: plan.name,
+      planPrice: plan.price
+    });
+  } catch (error) {
+    console.error('[checkout/razorpay-order] Error:', error.message);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// ----------------------------------------------------------------
+// Razorpay: verify a checkout callback
+// ----------------------------------------------------------------
+// The frontend never declares a payment successful on its own. This endpoint
+// re-validates the signature, the order, the amount/currency and the real
+// capture state from Razorpay before the payment may become COMPLETED. The
+// completed transition uses the shared activateMembershipFromPayment() path.
+router.post('/razorpay/verify', auth, authorize('member'), async (req, res) => {
+  try {
+    const { razorpay_payment_id, razorpay_order_id, razorpay_signature } = req.body || {};
+    if (!razorpay_payment_id || !razorpay_order_id || !razorpay_signature) {
+      return res.status(400).json({ message: 'Missing payment verification data' });
+    }
+    if (!razorpayConfigured()) {
+      return res.status(503).json({ message: 'Online payments are not configured.' });
+    }
+
+    const payment = await Payment.findOne({ gatewayOrderId: razorpay_order_id });
+    if (!payment) return res.status(404).json({ message: 'Payment not found' });
+    if (String(payment.user) !== String(req.user._id)) {
+      return res.status(403).json({ message: 'Not your payment' });
+    }
+    if (payment.gateway !== 'razorpay') {
+      return res.status(400).json({ message: 'Payment was not created through Razorpay' });
+    }
+    if (payment.status === 'COMPLETED') {
+      return res.json({ message: 'Payment already completed', payment });
+    }
+    if (payment.status === 'FAILED') {
+      return res.status(400).json({ message: 'Payment was not successful', payment });
+    }
+    if (payment.status === 'REFUNDED') {
+      return res.status(400).json({ message: 'Payment has been refunded', payment });
+    }
+
+    // 1. Cryptographic signature - only Razorpay can produce a valid one for
+    //    this order+payment pair using the server-side key secret.
+    const signatureValid = razorpayGateway.verifyPaymentSignature({
+      orderId: razorpay_order_id,
+      paymentId: razorpay_payment_id,
+      signature: razorpay_signature
+    });
+    if (!signatureValid) {
+      return res.status(400).json({ message: 'Payment signature verification failed' });
+    }
+
+    const expectedPaise = razorpayGateway.toPaise(payment.amount);
+
+    // 2. Order must exist on the gateway and carry the expected amount/currency.
+    let order;
+    try {
+      order = await razorpayGateway.fetchOrder(payment.gatewayOrderId);
+    } catch (error) {
+      console.error('[checkout/razorpay-verify] order fetch failed:', error.message);
+      return res.status(502).json({ message: 'Could not verify the payment with the gateway. Please try again shortly.' });
+    }
+    if (!order || order.id !== payment.gatewayOrderId
+      || Number(order.amount) !== expectedPaise
+      || String(order.currency).toUpperCase() !== 'INR') {
+      return res.status(400).json({ message: 'Order verification failed' });
+    }
+
+    // 3. Actual capture state from the gateway - never trust the callback alone.
+    let gatewayPayment;
+    try {
+      gatewayPayment = await razorpayGateway.fetchPayment(razorpay_payment_id);
+    } catch (error) {
+      console.error('[checkout/razorpay-verify] payment fetch failed:', error.message);
+      return res.status(502).json({ message: 'Could not verify the payment with the gateway. Please try again shortly.' });
+    }
+    if (!gatewayPayment || gatewayPayment.id !== razorpay_payment_id
+      || String(gatewayPayment.order_id) !== payment.gatewayOrderId) {
+      return res.status(400).json({ message: 'Payment verification failed' });
+    }
+    if (Number(gatewayPayment.amount) !== expectedPaise
+      || String(gatewayPayment.currency || '').toUpperCase() !== 'INR') {
+      return res.status(400).json({ message: 'Payment amount verification failed' });
+    }
+
+    if (gatewayPayment.status === 'failed') {
+      await failGatewayPayment(payment._id, {
+        gatewayStatus: String(gatewayPayment.status),
+        gatewayPaymentId: String(gatewayPayment.id)
+      });
+      return res.status(400).json({ message: 'Payment failed at the gateway', payment });
+    }
+
+    if (gatewayPayment.status !== 'captured') {
+      // authorized/pending - not collected yet. Membership must NOT activate.
+      return res.status(202).json({
+        message: 'Payment received but not yet captured. Your membership will activate automatically once the gateway confirms it.',
+        payment
+      });
+    }
+
+    const result = await completeGatewayPayment(payment._id, {
+      gateway: 'razorpay',
+      gatewayPaymentId: String(gatewayPayment.id),
+      gatewayStatus: String(gatewayPayment.status),
+      gatewaySignature: razorpay_signature,
+      notes: `${payment.notes || 'Online payment'} (Razorpay gateway verified)`
+    });
+
+    if (result.outcome === 'completed') {
+      await notifyPaymentReceived(payment.user, payment.amount);
+    }
+
+    res.json({ message: 'Payment verified', payment: result.payment });
+  } catch (error) {
+    console.error('[checkout/razorpay-verify] Error:', error.message);
     res.status(500).json({ message: 'Server error' });
   }
 });

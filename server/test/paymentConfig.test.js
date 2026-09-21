@@ -5,7 +5,11 @@ const {
   isUpiPlaceholder,
   upiConfigured,
   stripeConfigured,
+  razorpayConfigured,
+  razorpayLiveConfigured,
+  razorpayWebhookConfigured,
   hasRealPaymentConfig,
+  describePaymentConfig,
   ensureProductionPaymentConfig,
 } = require('../utils/paymentConfig');
 
@@ -66,5 +70,58 @@ test('non-production boot never blocks', () => {
   withEnv({ NODE_ENV: 'test', UPI_ID: '', STRIPE_SECRET_KEY: '' }, () => {
     assert.equal(hasRealPaymentConfig(), false);
     assert.doesNotThrow(() => ensureProductionPaymentConfig());
+  });
+});
+
+test('razorpayConfigured requires a key id AND a key secret', () => {
+  withEnv({ RAZORPAY_KEY_ID: '', RAZORPAY_KEY_SECRET: '' }, () => assert.equal(razorpayConfigured(), false));
+  withEnv({ RAZORPAY_KEY_ID: 'rzp_test_abc', RAZORPAY_KEY_SECRET: '' }, () => assert.equal(razorpayConfigured(), false));
+  withEnv({ RAZORPAY_KEY_ID: '', RAZORPAY_KEY_SECRET: 'secret' }, () => assert.equal(razorpayConfigured(), false));
+  withEnv({ RAZORPAY_KEY_ID: 'rzp_test_abc', RAZORPAY_KEY_SECRET: 'secret' }, () => assert.equal(razorpayConfigured(), true));
+  withEnv({ RAZORPAY_KEY_ID: '#rzp_test_disabled', RAZORPAY_KEY_SECRET: 'secret' }, () => assert.equal(razorpayConfigured(), false));
+});
+
+test('razorpayLiveConfigured distinguishes test keys from live keys', () => {
+  withEnv({ RAZORPAY_KEY_ID: 'rzp_test_abc', RAZORPAY_KEY_SECRET: 's' }, () => assert.equal(razorpayLiveConfigured(), false));
+  withEnv({ RAZORPAY_KEY_ID: 'rzp_live_abc', RAZORPAY_KEY_SECRET: 's' }, () => assert.equal(razorpayLiveConfigured(), true));
+  withEnv({ RAZORPAY_KEY_ID: '', RAZORPAY_KEY_SECRET: 's' }, () => assert.equal(razorpayLiveConfigured(), false));
+});
+
+test('razorpayWebhookConfigured requires the webhook secret', () => {
+  withEnv({ RAZORPAY_WEBHOOK_SECRET: '' }, () => assert.equal(razorpayWebhookConfigured(), false));
+  withEnv({ RAZORPAY_WEBHOOK_SECRET: 'whsec_abc' }, () => assert.equal(razorpayWebhookConfigured(), true));
+});
+
+test('describePaymentConfig never exposes razorpay credentials and marks modality', () => {
+  withEnv({ RAZORPAY_KEY_ID: 'rzp_test_abc', RAZORPAY_KEY_SECRET: 'secret', RAZORPAY_WEBHOOK_SECRET: 'whsec' }, () => {
+    const cfg = describePaymentConfig();
+    assert.equal(cfg.method, 'razorpay');
+    assert.equal(cfg.keyId, 'rzp_test_abc');
+    assert.equal(cfg.live, false, 'test keys are not live');
+    assert.equal(cfg.webhookConfigured, true);
+    assert.equal('RAZORPAY_KEY_SECRET' in cfg, false, 'never expose the key secret');
+    assert.equal(JSON.stringify(cfg).includes('secret'), false, 'webhook secret must not leak');
+  });
+  withEnv({ RAZORPAY_KEY_ID: 'rzp_live_abc', RAZORPAY_KEY_SECRET: 'secret', RAZORPAY_WEBHOOK_SECRET: '' }, () => {
+    const cfg = describePaymentConfig();
+    assert.equal(cfg.live, true, 'live keys are live');
+    assert.equal(cfg.webhookConfigured, false);
+  });
+});
+
+test('production boot refuses razorpay TEST keys but accepts LIVE keys (no silent demo fallback)', () => {
+  withEnv({ NODE_ENV: 'production', RAZORPAY_KEY_ID: 'rzp_test_abc', RAZORPAY_KEY_SECRET: 's', UPI_ID: '', STRIPE_SECRET_KEY: '' }, () => {
+    assert.equal(razorpayConfigured(), true, 'test keys configure the gateway for dev');
+    assert.throws(() => ensureProductionPaymentConfig(), /real payment configuration/);
+  });
+  withEnv({ NODE_ENV: 'production', RAZORPAY_KEY_ID: 'rzp_live_abc', RAZORPAY_KEY_SECRET: 's', UPI_ID: '', STRIPE_SECRET_KEY: '' }, () => {
+    assert.equal(razorpayLiveConfigured(), true);
+    assert.doesNotThrow(() => ensureProductionPaymentConfig());
+  });
+});
+
+test('production boot refuses missing razorpay credentials', () => {
+  withEnv({ NODE_ENV: 'production', RAZORPAY_KEY_ID: '', RAZORPAY_KEY_SECRET: '', UPI_ID: '', STRIPE_SECRET_KEY: '' }, () => {
+    assert.throws(() => ensureProductionPaymentConfig(), /real payment configuration/);
   });
 });

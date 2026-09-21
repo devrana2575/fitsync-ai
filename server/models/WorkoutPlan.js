@@ -46,7 +46,28 @@ const workoutPlanSchema = new mongoose.Schema({
   dayOfWeek: [{
     type: String,
     enum: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
-  }]
+  }],
+  // Business context for the plan. hoursPerDay/totalHours reflect the intended
+  // volume of the plan (e.g. 1 hour/day, 20 total hours). goal loosely maps to
+  // a fitness goal type. recommendationSource says who shaped the plan so a
+  // system-generated suggestion is never mistaken for a doctor's prescription.
+  goal: {
+    type: String,
+    trim: true
+  },
+  hoursPerDay: {
+    type: Number,
+    min: 0
+  },
+  totalHours: {
+    type: Number,
+    min: 0
+  },
+  recommendationSource: {
+    type: String,
+    enum: ['trainer', 'doctor', 'system'],
+    default: 'trainer'
+  }
 }, {
   timestamps: true
 });

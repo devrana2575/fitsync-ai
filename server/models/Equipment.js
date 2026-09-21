@@ -27,8 +27,23 @@ const equipmentSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['available', 'in_use', 'under_maintenance', 'out_of_order'],
+    enum: ['available', 'in_use', 'under_maintenance', 'out_of_order', 'issue_reported'],
     default: 'available'
+  },
+  // When a piece of equipment is reported with a problem (status:
+  // issue_reported), the admin/staff who reported it and their description
+  // are captured so the operational issue is auditable and can generate an
+  // admin notification.
+  reportedIssue: {
+    type: String,
+    trim: true
+  },
+  reportedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  reportedAt: {
+    type: Date
   },
   purchaseDate: {
     type: Date

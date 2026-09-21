@@ -3,9 +3,37 @@ const router = express.Router();
 const User = require('../models/User');
 const TrainerProfile = require('../models/TrainerProfile');
 const MemberProfile = require('../models/MemberProfile');
+const Notification = require('../models/Notification');
 const { auth, authorize } = require('../middleware/auth');
 const { body, validationResult } = require('express-validator');
 const { escapeRegex, parsePagination } = require('../utils/helpers');
+
+// When a trainer goes unavailable the members assigned to them and the admins
+// must know. Notifications are informational - the assignment is preserved and
+// training resumes when the trainer returns.
+const notifyAbsence = async (trainer, trainerProfile, reason) => {
+  const members = await MemberProfile.find({ assignedTrainer: trainer._id }).select('user').lean();
+  const notifications = [];
+  for (const m of members) {
+    notifications.push({
+      user: m.user,
+      title: 'Trainer unavailable',
+      message: `Your trainer ${trainer.name} is currently unavailable${reason ? ` (${reason})` : ''}.`,
+      type: 'trainer_absent'
+    });
+  }
+  const admins = await User.find({ role: 'admin', isActive: true }).select('_id').lean();
+  for (const a of admins) {
+    notifications.push({
+      user: a._id,
+      title: 'Trainer unavailable',
+      message: `${trainer.name} (${trainer.email}) is marked unavailable${reason ? `: ${reason}` : ''}.`,
+      type: 'trainer_absent'
+    });
+  }
+  if (notifications.length > 0) await Notification.insertMany(notifications);
+  return trainerProfile;
+};
 
 router.get('/', auth, authorize('admin'), async (req, res) => {
   try {
@@ -112,7 +140,7 @@ router.post('/', auth, authorize('admin'), [
 
 router.put('/:id', auth, authorize('admin'), async (req, res) => {
   try {
-    const { name, email, phone, specializations, experience, bio, certifications, maxMembers } = req.body;
+    const { name, email, phone, specializations, experience, bio, certifications, maxMembers, isAvailable, absenceReason, absenceFrom, absenceTo } = req.body;
 
     const user = await User.findByIdAndUpdate(
       req.params.id,
@@ -121,13 +149,91 @@ router.put('/:id', auth, authorize('admin'), async (req, res) => {
     );
     if (!user) return res.status(404).json({ message: 'Trainer not found' });
 
-    await TrainerProfile.findOneAndUpdate(
+    const update = { phone, specializations, experience, bio, certifications, maxMembers };
+    if (isAvailable !== undefined) update.isAvailable = isAvailable === true;
+    if (absenceReason !== undefined) update.absenceReason = absenceReason;
+    if (absenceFrom !== undefined) update.absenceFrom = absenceFrom ? new Date(absenceFrom) : undefined;
+    if (absenceTo !== undefined) update.absenceTo = absenceTo ? new Date(absenceTo) : undefined;
+    for (const key of Object.keys(update)) {
+      if (update[key] === undefined) delete update[key];
+    }
+
+    const profile = await TrainerProfile.findOneAndUpdate(
       { user: req.params.id },
-      { phone, specializations, experience, bio, certifications, maxMembers },
+      update,
       { new: true }
     );
 
-    res.json({ trainer: user });
+    if (update.isAvailable === false) {
+      await notifyAbsence(user, profile, update.absenceReason || profile.absenceReason);
+    }
+
+    res.json({ trainer: user, profile });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Trainers mark their own availability (planning their absence). Declared
+// before /:id/availability so /me is never treated as a trainer id.
+router.put('/me/availability', auth, authorize('trainer'), async (req, res) => {
+  try {
+    const { isAvailable, reason, from, to } = req.body;
+    if (typeof isAvailable !== 'boolean') {
+      return res.status(400).json({ message: 'isAvailable must be a boolean' });
+    }
+
+    const user = await User.findById(req.user._id);
+    const profile = await TrainerProfile.findOneAndUpdate(
+      { user: user._id },
+      {
+        isAvailable: isAvailable === true,
+        absenceReason: isAvailable === false ? (reason || 'Unavailable') : undefined,
+        absenceFrom: isAvailable === false && from ? new Date(from) : undefined,
+        absenceTo: isAvailable === false && to ? new Date(to) : undefined
+      },
+      { new: true }
+    );
+
+    if (isAvailable === false) {
+      await notifyAbsence(user, profile, reason || profile.absenceReason);
+    }
+
+    res.json({ profile });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Admin marks a trainer unavailable (leave / absence) or available again.
+router.put('/:id/availability', auth, authorize('admin'), async (req, res) => {
+  try {
+    const { isAvailable, reason, from, to } = req.body;
+    if (typeof isAvailable !== 'boolean') {
+      return res.status(400).json({ message: 'isAvailable must be a boolean' });
+    }
+
+    const user = await User.findById(req.params.id);
+    if (!user || user.role !== 'trainer') {
+      return res.status(404).json({ message: 'Trainer not found' });
+    }
+
+    const profile = await TrainerProfile.findOneAndUpdate(
+      { user: user._id },
+      {
+        isAvailable: isAvailable === true,
+        absenceReason: isAvailable === false ? (reason || 'Unavailable') : undefined,
+        absenceFrom: isAvailable === false && from ? new Date(from) : undefined,
+        absenceTo: isAvailable === false && to ? new Date(to) : undefined
+      },
+      { new: true }
+    );
+
+    if (isAvailable === false) {
+      await notifyAbsence(user, profile, reason || profile.absenceReason);
+    }
+
+    res.json({ trainer: user, profile });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }

@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const MemberProfile = require('../models/MemberProfile');
+const TrainerProfile = require('../models/TrainerProfile');
+const Notification = require('../models/Notification');
 const Membership = require('../models/Membership');
 const Attendance = require('../models/Attendance');
 const Payment = require('../models/Payment');
@@ -12,6 +14,36 @@ const BodyMeasurement = require('../models/BodyMeasurement');
 const { auth, authorize } = require('../middleware/auth');
 const { body, validationResult } = require('express-validator');
 const { escapeRegex, parsePagination } = require('../utils/helpers');
+
+const PHONE_RE = /^[\+]?[\d\s\-\(\)]{7,15}$/;
+
+const validatePhoneNumbers = (phoneNumbers) => {
+  if (phoneNumbers === undefined) return null;
+  if (!Array.isArray(phoneNumbers) || phoneNumbers.length === 0) {
+    return 'At least one phone number is required';
+  }
+  const seen = new Set();
+  for (const entry of phoneNumbers) {
+    const number = String(entry && entry.number || '').trim();
+    if (!number) return 'Phone number is required';
+    if (!PHONE_RE.test(number)) return 'Please provide a valid phone number';
+    if (seen.has(number)) return 'Duplicate phone numbers are not allowed';
+    seen.add(number);
+  }
+  return null;
+};
+
+// Pull the extended member-profile fields off the request body so the member
+// profile (phones, body data, health info) is stored exactly once and central.
+const pickProfileFields = (body) => {
+  const fields = {};
+  for (const key of ['phone', 'phoneNumbers', 'gender', 'dateOfBirth', 'address',
+    'emergencyContact', 'heightCm', 'weightKg', 'goals', 'medicalConditions',
+    'medicalNotes', 'allergies', 'medicalRestrictions', 'doctorRecommendation']) {
+    if (body[key] !== undefined) fields[key] = body[key];
+  }
+  return fields;
+};
 
 router.get('/', auth, authorize('admin', 'trainer'), async (req, res) => {
   try {
@@ -178,7 +210,10 @@ router.post('/', auth, authorize('admin'), [
       return res.status(400).json({ message: errors.array()[0].msg });
     }
 
-    const { name, email, password, phone, gender, dateOfBirth, address, emergencyContact } = req.body;
+    const phoneError = validatePhoneNumbers(req.body.phoneNumbers);
+    if (phoneError) return res.status(400).json({ message: phoneError });
+
+    const { name, email, password, joinDate } = req.body;
 
     const existing = await User.findOne({ email });
     if (existing) return res.status(400).json({ message: 'Email already exists' });
@@ -186,12 +221,9 @@ router.post('/', auth, authorize('admin'), [
     const user = await User.create({ name, email, password, role: 'member' });
     await MemberProfile.create({
       user: user._id,
-      phone,
-      gender,
-      dateOfBirth,
-      address,
-      emergencyContact,
-      joinDate: new Date()
+      ...pickProfileFields(req.body),
+      joinDate: joinDate ? new Date(joinDate) : new Date(),
+      trainerAssignmentStatus: 'NONE'
     });
 
     res.status(201).json({ member: user });
@@ -202,7 +234,16 @@ router.post('/', auth, authorize('admin'), [
 
 router.put('/:id', auth, authorize('admin'), async (req, res) => {
   try {
-    const { name, email, phone, gender, dateOfBirth, address, emergencyContact, assignedTrainer, medicalConditions } = req.body;
+    if (req.body.assignedTrainer !== undefined) {
+      // Trainer allocation must go through assign-trainer or the allocation
+      // service so the assignment status stays coherent.
+      delete req.body.assignedTrainer;
+    }
+
+    const phoneError = validatePhoneNumbers(req.body.phoneNumbers);
+    if (phoneError) return res.status(400).json({ message: phoneError });
+
+    const { name, email } = req.body;
 
     const user = await User.findByIdAndUpdate(
       req.params.id,
@@ -211,11 +252,14 @@ router.put('/:id', auth, authorize('admin'), async (req, res) => {
     );
     if (!user) return res.status(404).json({ message: 'Member not found' });
 
-    await MemberProfile.findOneAndUpdate(
-      { user: req.params.id },
-      { phone, gender, dateOfBirth, address, emergencyContact, assignedTrainer, medicalConditions },
-      { new: true }
-    );
+    const profileFields = pickProfileFields(req.body);
+    if (Object.keys(profileFields).length > 0) {
+      await MemberProfile.findOneAndUpdate(
+        { user: req.params.id },
+        profileFields,
+        { new: true }
+      );
+    }
 
     res.json({ member: user });
   } catch (error) {
@@ -226,12 +270,66 @@ router.put('/:id', auth, authorize('admin'), async (req, res) => {
 router.post('/:id/assign-trainer', auth, authorize('admin'), async (req, res) => {
   try {
     const { trainerId } = req.body;
-    const profile = await MemberProfile.findOneAndUpdate(
-      { user: req.params.id },
-      { assignedTrainer: trainerId },
-      { new: true }
-    );
+    const member = await User.findById(req.params.id);
+    if (!member || member.role !== 'member') {
+      return res.status(404).json({ message: 'Member not found' });
+    }
+
+    const profile = await MemberProfile.findOne({ user: member._id });
     if (!profile) return res.status(404).json({ message: 'Member profile not found' });
+
+    const clearing = trainerId === null || trainerId === undefined || String(trainerId).trim() === '';
+    if (clearing) {
+      profile.assignedTrainer = undefined;
+      profile.trainerAssignmentStatus = 'NONE';
+      profile.pendingTrainerReason = undefined;
+      profile.assignedAt = undefined;
+      await profile.save();
+      return res.json({ profile });
+    }
+
+    const trainer = await User.findOne({ _id: trainerId, role: 'trainer', isActive: true });
+    if (!trainer) {
+      return res.status(400).json({ message: 'Trainer must be an active trainer account' });
+    }
+
+    // Capacity check - an admin override may not exceed the trainer's stated
+    // member limit (an existing assignment to the same trainer is an update).
+    if (profile.assignedTrainer && String(profile.assignedTrainer) === String(trainer._id)) {
+      profile.trainerAssignmentStatus = 'ASSIGNED';
+      profile.pendingTrainerReason = undefined;
+      profile.assignedAt = new Date();
+      await profile.save();
+      return res.json({ profile });
+    }
+    const trainerProfile = await TrainerProfile.findOne({ user: trainer._id });
+    const max = trainerProfile && trainerProfile.maxMembers > 0 ? trainerProfile.maxMembers : Infinity;
+    const currentLoad = await MemberProfile.countDocuments({ assignedTrainer: trainer._id });
+    if (currentLoad >= max) {
+      return res.status(400).json({ message: `${trainer.name} is already at their member limit (${max})` });
+    }
+
+    profile.assignedTrainer = trainer._id;
+    profile.trainerAssignmentStatus = 'ASSIGNED';
+    profile.pendingTrainerReason = undefined;
+    profile.assignedAt = new Date();
+    await profile.save();
+
+    await Promise.all([
+      Notification.create({
+        user: member._id,
+        title: 'Trainer assigned',
+        message: `Your trainer is ${trainer.name}.`,
+        type: 'trainer_assignment'
+      }),
+      Notification.create({
+        user: trainer._id,
+        title: 'New member assigned',
+        message: `You have been assigned as the trainer for ${member.name}.`,
+        type: 'trainer_assignment'
+      })
+    ]);
+
     res.json({ profile });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });

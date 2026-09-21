@@ -48,6 +48,37 @@ const paymentSchema = new mongoose.Schema({
   },
   confirmedAt: {
     type: Date
+  },
+  // Gateway metadata for online payments. gatewayOrderId / gatewayPaymentId /
+  // gatewayEventId are unique (sparse) so no two payments can track the same
+  // upstream object and every verified signature / webhook payload maps back
+  // to exactly one local payment.
+  gateway: {
+    type: String,
+    enum: ['razorpay', 'stripe']
+  },
+  gatewayOrderId: {
+    type: String,
+    trim: true
+  },
+  gatewayPaymentId: {
+    type: String,
+    trim: true
+  },
+  gatewaySignature: {
+    type: String,
+    trim: true
+  },
+  gatewayStatus: {
+    type: String,
+    trim: true
+  },
+  gatewayVerifiedAt: {
+    type: Date
+  },
+  gatewayEventId: {
+    type: String,
+    trim: true
   }
 }, {
   timestamps: true
@@ -58,5 +89,8 @@ paymentSchema.index({ status: 1 });
 paymentSchema.index({ date: -1 });
 paymentSchema.index({ user: 1, date: -1 });
 paymentSchema.index({ status: 1, date: -1 });
+paymentSchema.index({ gatewayOrderId: 1 }, { unique: true, sparse: true });
+paymentSchema.index({ gatewayPaymentId: 1 }, { unique: true, sparse: true });
+paymentSchema.index({ gatewayEventId: 1 }, { unique: true, sparse: true });
 
 module.exports = mongoose.model('Payment', paymentSchema);

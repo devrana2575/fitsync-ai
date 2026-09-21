@@ -32,6 +32,23 @@ const trainerProfileSchema = new mongoose.Schema({
   maxMembers: {
     type: Number,
     default: 20
+  },
+  // Operational availability. Absence is recorded explicitly so the gym can
+  // see who is unavailable and affected members can be notified. Allocation
+  // excludes trainers who are unavailable.
+  isAvailable: {
+    type: Boolean,
+    default: true
+  },
+  absenceReason: {
+    type: String,
+    trim: true
+  },
+  absenceFrom: {
+    type: Date
+  },
+  absenceTo: {
+    type: Date
   }
 }, {
   timestamps: true

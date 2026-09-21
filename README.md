@@ -20,7 +20,7 @@ A comprehensive full-stack gym management system with integrated machine learnin
 - **Equipment Management** - Track equipment condition and maintenance schedules
 - **Notifications** - In-app notifications for membership, attendance, risk alerts
 - **Announcements** - Poster board with priority levels, pinning and expiry
-- **Online Payments** - Stripe checkout with demo-mode fallback for membership purchase
+- **Online Payments** - Razorpay checkout with server-side verification and webhook reconciliation, plus Stripe and UPI scan-to-pay options
 - **Email/SMS Alerts** - Optional dispatch for membership expiry, risk and announcements
 - **Reports** - Revenue, membership, attendance, ML risk reports
 
@@ -200,13 +200,48 @@ ADMIN_EMAIL=
 ADMIN_PASSWORD=
 
 # Payment gateway (production REQUIRES one of these, else startup fails)
+# 1. Razorpay (recommended) - used whenever configured:
+RAZORPAY_KEY_ID=
+RAZORPAY_KEY_SECRET=
+RAZORPAY_WEBHOOK_SECRET=
+# 2. Stripe (cards)
 STRIPE_SECRET_KEY=
 STRIPE_WEBHOOK_SECRET=
+# 3. UPI scan-to-pay (gym counter / manual verification)
 UPI_ID=
 UPI_NAME=FitSync AI Gym
 ```
 
 `ML_SERVICE_URL` is present for compatibility but is **not consumed** by the API.
+
+### Razorpay setup (recommended gateway)
+
+1. Create an account at https://dashboard.razorpay.com and grab your **Key ID** and **Key Secret**
+   (Dashboard → Settings → API keys). For development use test keys (`rzp_test_...`); go live with
+   keys that start with `rzp_live_`.
+2. Set `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` in `server/.env` (and optionally
+   `RAZORPAY_WEBHOOK_SECRET`).
+3. Register the webhook on the Razorpay dashboard (Settings → Webhooks):
+   `https://<your-host>/api/payments/razorpay/webhook` with the events
+   `payment.captured`, `payment.failed`, `payment.refunded`, using the same
+   `RAZORPAY_WEBHOOK_SECRET`. The webhook makes activation automatic even if the member
+   closes the checkout popup before the verification call returns.
+4. In `NODE_ENV=production` the server refuses to start with missing or test Razorpay keys —
+   a real checkout gateway is mandatory.
+
+### Payment lifecycle
+
+- Members pay through the **Razorpay Checkout** popup. The server creates the order from the
+  **database price** (never the client), then re-verifies the payment signature, the order
+  and the real gateway **capture** state before the payment may complete.
+- A payment only becomes `COMPLETED` after this server-side verification or via the webhook.
+  The member's frontend alone can never complete a payment.
+- UPI stays available as a self-serve scan-to-pay option (member claims the payment and the
+  gym verifies it) and as an admin counter option. When Razorpay is configured, the member's
+  "Buy" button opens the Razorpay checkout.
+- Gateway refunds (`payments` collection → a Razorpay payment) first issue the refund through
+  Razorpay and mark the payment `REFUNDED` only after the gateway confirms it; the linked
+  membership is cancelled.
 
 ## Running the Application
 
@@ -262,6 +297,13 @@ Additional demo accounts (trainers, members) are seeded automatically. See `.env
 - `POST /api/attendance/qr-checkin` - QR check-in
 - `GET /api/attendance/today` - Today's attendance
 - `GET /api/attendance/stats` - Attendance statistics
+
+### Payments (Razorpay)
+- `POST /api/checkout/create` - Start checkout (returns the active gateway mode)
+- `POST /api/checkout/razorpay/order` - Create/refresh a Razorpay order (DB-priced, deduped)
+- `POST /api/checkout/razorpay/verify` - Verify signature + gateway capture, complete payment
+- `POST /api/payments/razorpay/webhook` - Razorpay webhook (captured/failed/refunded)
+- `POST /api/checkout/upi/confirm/:paymentId` - Member "I have paid" claim (stays PENDING for admin verification)
 
 ### ML Predictions
 
@@ -319,7 +361,7 @@ The ML models are trained on **synthetic data** generated to simulate realistic 
 3. **Forecasting**: Simple moving average, not ARIMA or Prophet
 4. **Anomaly Detection**: Statistical thresholds, not deep learning
 5. **No Real-time**: WebSocket implemented for notifications only, not live dashboards
-6. **Payment Gateway**: Stripe integrated but demo-mode is the default fallback
+6. **Payment Gateway**: Razorpay/Stripe/UPI integrated; demo-mode completion exists only as a development fallback and is always disabled in production
 7. **QR Check-in**: Basic implementation, not camera-based scanner
 8. **Diet Tracking**: Fixed list of diet types (keto, vegan, etc.) as a daily completion checklist
 

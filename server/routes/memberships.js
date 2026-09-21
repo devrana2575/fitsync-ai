@@ -3,8 +3,21 @@ const router = express.Router();
 const Membership = require('../models/Membership');
 const MembershipPlan = require('../models/MembershipPlan');
 const User = require('../models/User');
+const Payment = require('../models/Payment');
 const { auth, authorize } = require('../middleware/auth');
 const { parsePagination } = require('../utils/helpers');
+const { allocateTrainerForMembership } = require('../utils/trainerAllocation');
+
+// Entitlement follow-up for flows that grant ACTIVE membership without a
+// payment (complimentary grants and counter renewals). Never blocks the main
+// action - a failed allocation only logs.
+const applyEntitlement = async (membershipId) => {
+  try {
+    await allocateTrainerForMembership(membershipId);
+  } catch (error) {
+    console.error('trainer allocation failed (complimentary/renew)', error);
+  }
+};
 
 router.get('/', auth, authorize('admin'), async (req, res) => {
   try {
@@ -88,6 +101,8 @@ router.post('/', auth, authorize('admin'), async (req, res) => {
       autoRenew: Boolean(autoRenew)
     });
 
+    if (isComplimentary) await applyEntitlement(membership._id);
+
     const populated = await membership.populate(['plan', 'user']);
     res.status(201).json({ membership: populated });
   } catch (error) {
@@ -119,6 +134,8 @@ router.put('/:id/renew', auth, authorize('admin'), async (req, res) => {
     membership.endDate = newEnd;
     membership.status = 'ACTIVE';
     await membership.save();
+
+    await applyEntitlement(membership._id);
 
     res.json({ membership });
   } catch (error) {
@@ -160,6 +177,35 @@ router.get('/stats', auth, authorize('admin'), async (req, res) => {
     }
 
     res.json({ ...counts, expiringSoon });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Admin membership detail with the payment ledger against it. Highlights how
+// far an INSTALLMENT membership has been covered and what remains.
+router.get('/:id', auth, authorize('admin'), async (req, res) => {
+  try {
+    const membership = await Membership.findById(req.params.id)
+      .populate('user', 'name email')
+      .populate('plan')
+      .lean();
+    if (!membership) return res.status(404).json({ message: 'Membership not found' });
+
+    const payments = await Payment.find({ membership: membership._id })
+      .select('amount method status date transactionId')
+      .sort({ date: -1 })
+      .lean();
+    const paidTotal = payments
+      .filter((p) => p.status === 'COMPLETED')
+      .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+
+    res.json({
+      membership,
+      payments,
+      paidTotal,
+      remaining: Math.max((Number(membership.plan?.price) || 0) - paidTotal, 0)
+    });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }

@@ -26,9 +26,12 @@ const EDITABLE_FIELDS = {
   // role is deliberately not editable through AllData: authz decoupled from
   // data debugging.
   users: ['name', 'email', 'avatar', 'isActive', 'preferences'],
-  memberProfiles: ['phone', 'dateOfBirth', 'gender', 'address', 'emergencyContact', 'assignedTrainer', 'joinDate', 'medicalConditions'],
-  trainerProfiles: ['phone', 'specializations', 'certifications', 'experience', 'bio', 'maxMembers'],
-  membershipPlans: ['name', 'price', 'duration', 'description', 'features', 'isActive'],
+  // assignedTrainer / trainerAssignmentStatus / pendingTrainerReason are NOT
+  // editable through AllData: trainer allocation flows through the allocation
+  // service or the admin assign-trainer business route so status stays coherent.
+  memberProfiles: ['phone', 'phoneNumbers', 'dateOfBirth', 'gender', 'address', 'emergencyContact', 'joinDate', 'medicalConditions', 'medicalNotes', 'allergies', 'medicalRestrictions', 'doctorRecommendation', 'trainerRecommendation', 'goals', 'heightCm', 'weightKg'],
+  trainerProfiles: ['phone', 'specializations', 'certifications', 'experience', 'bio', 'maxMembers', 'isAvailable', 'absenceReason', 'absenceFrom', 'absenceTo'],
+  membershipPlans: ['name', 'price', 'duration', 'description', 'features', 'isActive', 'trainerIncluded', 'trainerAllocationMode', 'requiredSpecialization', 'workoutPlanIncluded', 'paymentMode', 'installments'],
   // status is not editable through AllData: activation must flow through the
   // payment-verified paths (or explicit admin flows in the memberships API).
   memberships: ['startDate', 'endDate', 'autoRenew'],
@@ -37,8 +40,8 @@ const EDITABLE_FIELDS = {
   payments: ['amount', 'method', 'transactionId', 'notes', 'date'],
   attendances: ['date', 'checkInTime', 'checkOutTime', 'method', 'duration'],
   exercises: ['name', 'category', 'muscleGroup', 'difficulty', 'description', 'equipment', 'isActive'],
-  equipment: ['name', 'category', 'brand', 'model', 'condition', 'status', 'purchaseDate', 'lastMaintenance', 'nextMaintenance', 'location', 'isActive', 'description', 'notes'],
-  workoutPlans: ['name', 'description', 'startDate', 'endDate', 'isActive', 'dayOfWeek', 'exercises'],
+  equipment: ['name', 'category', 'brand', 'model', 'condition', 'status', 'purchaseDate', 'lastMaintenance', 'nextMaintenance', 'location', 'isActive', 'description', 'notes', 'reportedIssue', 'reportedAt'],
+  workoutPlans: ['name', 'description', 'startDate', 'endDate', 'isActive', 'dayOfWeek', 'exercises', 'goal', 'hoursPerDay', 'totalHours', 'recommendationSource'],
   workoutLogs: ['date', 'sets', 'reps', 'weight', 'duration', 'isCompleted', 'notes'],
   bodyMeasurements: ['date', 'weight', 'height', 'bodyFat', 'chest', 'waist', 'hips', 'biceps', 'thighs'],
   fitnessGoals: ['type', 'title', 'description', 'start', 'target', 'current', 'unit', 'startDate', 'targetDate', 'status'],

@@ -21,6 +21,10 @@ export default function Equipment() {
   const [form, setForm] = useState(initialForm);
   const [saving, setSaving] = useState(false);
   const [conditionFilter, setConditionFilter] = useState('all');
+  const [issueTarget, setIssueTarget] = useState(null);
+  const [issueText, setIssueText] = useState('');
+  const [issueSaving, setIssueSaving] = useState(false);
+  const [showIssueModal, setShowIssueModal] = useState(false);
 
   const fetchAll = async () => {
     setLoading(true);
@@ -91,13 +95,36 @@ export default function Equipment() {
     }
   };
 
+  const openIssueReport = (eq) => {
+    setIssueTarget(eq);
+    setIssueText(eq.status === 'issue_reported' ? eq.reportedIssue || '' : '');
+    setShowIssueModal(true);
+  };
+
+  const submitIssueReport = async (e) => {
+    e.preventDefault();
+    if (!issueText.trim()) return;
+    setIssueSaving(true);
+    try {
+      await api.post(`/equipment/${issueTarget._id}/issue-report`, { reportedIssue: issueText.trim() });
+      setShowIssueModal(false);
+      setIssueTarget(null);
+      setIssueText('');
+      fetchAll();
+    } catch (err) {
+      alert(err.message || 'Failed to report issue');
+    } finally {
+      setIssueSaving(false);
+    }
+  };
+
   const conditionColor = (c) => {
     const map = { excellent: 'bg-green-100 text-green-700', good: 'bg-blue-100 text-blue-700', fair: 'bg-yellow-100 text-yellow-700', poor: 'bg-red-100 text-red-700', needs_repair: 'bg-red-100 text-red-700' };
     return map[c?.toLowerCase()] || 'bg-slate-100 text-slate-700';
   };
 
   const statusColor = (s) => {
-    const map = { available: 'bg-green-100 text-green-700', in_use: 'bg-blue-100 text-blue-700', under_maintenance: 'bg-yellow-100 text-yellow-700', out_of_order: 'bg-red-100 text-red-700' };
+    const map = { available: 'bg-green-100 text-green-700', in_use: 'bg-blue-100 text-blue-700', under_maintenance: 'bg-yellow-100 text-yellow-700', out_of_order: 'bg-red-100 text-red-700', issue_reported: 'bg-orange-100 text-orange-700' };
     return map[s?.toLowerCase()] || 'bg-slate-100 text-slate-700';
   };
 
@@ -162,7 +189,12 @@ export default function Equipment() {
         <DataTable headers={['Name', 'Category', 'Condition', 'Last Maintenance', 'Next Maintenance', 'Status', 'Actions']}>
           {filteredEquipment.map((eq, i) => (
             <tr key={eq._id} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
-              <td className="px-6 py-4 font-medium text-slate-900">{eq.name}</td>
+              <td className="px-6 py-4 font-medium text-slate-900">
+                {eq.name}
+                {eq.status === 'issue_reported' && (
+                  <p className="text-xs font-normal text-orange-600 mt-0.5">Issue: {eq.reportedIssue || 'reported'}{eq.reportedAt ? ` · ${new Date(eq.reportedAt).toLocaleDateString('en-IN')}` : ''}</p>
+                )}
+              </td>
               <td className="px-6 py-4 text-slate-600 capitalize">{eq.category || '—'}</td>
               <td className="px-6 py-4">
                 <span className={`px-2 py-1 rounded-full text-xs font-medium ${conditionColor(eq.condition)}`}>{eq.condition}</span>
@@ -174,6 +206,7 @@ export default function Equipment() {
               </td>
               <td className="px-6 py-4">
                 <div className="flex gap-3">
+                  <button onClick={() => openIssueReport(eq)} className="text-amber-600 hover:text-amber-800 font-medium text-sm">Report Issue</button>
                   <button onClick={() => openEdit(eq)} className="text-indigo-600 hover:text-indigo-800 font-medium text-sm">Edit</button>
                   <button onClick={() => handleDelete(eq)} className="text-red-600 hover:text-red-800 font-medium text-sm">Delete</button>
                 </div>
@@ -230,6 +263,24 @@ export default function Equipment() {
             <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 font-medium">Cancel</button>
             <button type="submit" disabled={saving} className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-medium disabled:opacity-50">
               {saving ? 'Saving...' : editing ? 'Save Changes' : 'Create'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal isOpen={showIssueModal} onClose={() => setShowIssueModal(false)} title={`Report Issue — ${issueTarget?.name || 'Equipment'}`}>
+        <form onSubmit={submitIssueReport} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">What's wrong?</label>
+            <textarea required value={issueText} onChange={(e) => setIssueText(e.target.value)} rows={3} placeholder="e.g. Treadmill belt slipping, loose handlebar" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+          </div>
+          <p className="text-xs text-slate-500 -mt-2">
+            The equipment is flagged as having a reported issue and the admins are notified to schedule maintenance and follow up.
+          </p>
+          <div className="flex justify-end gap-3 pt-2">
+            <button type="button" onClick={() => setShowIssueModal(false)} className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 font-medium">Cancel</button>
+            <button type="submit" disabled={issueSaving} className="px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-medium disabled:opacity-50">
+              {issueSaving ? 'Reporting...' : 'Report Issue'}
             </button>
           </div>
         </form>

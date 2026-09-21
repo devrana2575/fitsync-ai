@@ -9,8 +9,14 @@ import Modal from '../../components/common/Modal';
 import DataTable from '../../components/common/DataTable';
 import StatCard from '../../components/common/StatCard';
 
-const initialPlan = { name: '', price: '', duration: '', features: '', description: '' };
+const initialPlan = {
+  name: '', price: '', duration: '', features: '', description: '',
+  trainerIncluded: false, trainerAllocationMode: 'SHARED', requiredSpecialization: '',
+  workoutPlanIncluded: false, paymentMode: 'FULL', installments: 1,
+};
 const initialAssignForm = { selectedMember: null, selectedPlan: null, startDate: new Date().toISOString().split('T')[0], complimentary: false };
+
+const ALLOCATION_MODES = ['NONE', 'SHARED', 'ASSIGNED', 'DEDICATED'];
 
 export default function Memberships() {
   const location = useLocation();
@@ -30,6 +36,9 @@ export default function Memberships() {
   const [allMembers, setAllMembers] = useState([]);
   const [memberSearch, setMemberSearch] = useState('');
   const debouncedMemberSearch = useDebounce(memberSearch, 300);
+
+  const [detail, setDetail] = useState(null);
+  const [detailLoading, setDetailLoading] = useState(false);
 
   const fetchAll = async () => {
     setLoading(true);
@@ -75,8 +84,27 @@ export default function Memberships() {
       name: p.name, price: p.price, duration: p.duration,
       features: Array.isArray(p.features) ? p.features.join(', ') : (p.features || ''),
       description: p.description || '',
+      trainerIncluded: Boolean(p.trainerIncluded),
+      trainerAllocationMode: p.trainerAllocationMode || 'SHARED',
+      requiredSpecialization: p.requiredSpecialization || '',
+      workoutPlanIncluded: Boolean(p.workoutPlanIncluded),
+      paymentMode: p.paymentMode || 'FULL',
+      installments: p.installments || 1,
     });
     setShowPlanModal(true);
+  };
+
+  const viewMembership = async (m) => {
+    setDetailLoading(true);
+    setDetail(null);
+    try {
+      const res = await api.get(`/memberships/${m._id}`);
+      setDetail(res.data);
+    } catch (err) {
+      alert(err.message || 'Failed to load membership details');
+    } finally {
+      setDetailLoading(false);
+    }
   };
 
   const filteredMembers = allMembers.filter((m) => {
@@ -137,7 +165,11 @@ export default function Memberships() {
         ...planForm,
         price: Number(planForm.price),
         duration: Number(planForm.duration),
+        installments: Number(planForm.installments) || 1,
         features: planForm.features.split(',').map(f => f.trim()).filter(Boolean),
+        trainerIncluded: planForm.trainerIncluded,
+        workoutPlanIncluded: planForm.workoutPlanIncluded,
+        paymentMode: planForm.paymentMode,
       };
       if (editingPlan) {
         await api.put(`/membership-plans/${editingPlan._id}`, payload);
@@ -221,7 +253,27 @@ export default function Memberships() {
                       <button onClick={() => openEditPlan(p)} className="text-indigo-600 hover:text-indigo-800 text-sm font-medium">Edit</button>
                     </div>
                     <p className="text-3xl font-bold text-indigo-600 mb-1">₹{Number(p.price).toLocaleString('en-IN')}</p>
-                    <p className="text-sm text-slate-500 mb-3">{p.duration} days</p>
+                    <p className="text-sm text-slate-500 mb-2">{p.duration} days</p>
+                    <div className="flex flex-wrap gap-1.5 mb-3">
+                      {p.paymentMode === 'INSTALLMENT' && (
+                        <span className="px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 text-xs font-medium">
+                          {p.installments || 2} × ₹{Number(p.installmentAmount || 0).toLocaleString('en-IN')} installments
+                        </span>
+                      )}
+                      {p.trainerIncluded ? (
+                        <span className="px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 text-xs font-medium">
+                          Trainer: {p.trainerAllocationMode || 'SHARED'}
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-xs font-medium">No trainer</span>
+                      )}
+                      {p.workoutPlanIncluded && (
+                        <span className="px-2 py-0.5 rounded-full bg-green-50 text-green-700 text-xs font-medium">Workouts included</span>
+                      )}
+                      {p.requiredSpecialization && (
+                        <span className="px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 text-xs font-medium">Specialty: {p.requiredSpecialization}</span>
+                      )}
+                    </div>
                     {p.description && <p className="text-sm text-slate-600 mb-3">{p.description}</p>}
                     {p.features?.length > 0 && (
                       <ul className="space-y-1">
@@ -255,6 +307,7 @@ export default function Memberships() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex gap-2">
+                        <button onClick={() => viewMembership(m)} className="text-slate-600 hover:text-slate-900 font-medium text-sm">View</button>
                         {m.status?.toLowerCase() === 'active' && (
                           <>
                             <button onClick={() => renewMembership(m)} className="text-green-600 hover:text-green-800 font-medium text-sm">Renew</button>
@@ -292,6 +345,52 @@ export default function Memberships() {
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Features (comma-separated)</label>
             <input value={planForm.features} onChange={(e) => setPlanForm({ ...planForm, features: e.target.value })} placeholder="e.g. Access to gym, Locker, Sauna" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Payment Mode</label>
+              <select value={planForm.paymentMode} onChange={(e) => setPlanForm({ ...planForm, paymentMode: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                <option value="FULL">Pay in full</option>
+                <option value="INSTALLMENT">Installments</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Installments (if applicable)</label>
+              <input type="number" min="1" value={planForm.installments} onChange={(e) => setPlanForm({ ...planForm, installments: e.target.value })} disabled={planForm.paymentMode !== 'INSTALLMENT'} className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-slate-50 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none disabled:opacity-50" />
+            </div>
+          </div>
+          {planForm.paymentMode === 'INSTALLMENT' && Number(planForm.installments) > 1 && (
+            <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+              Installment amount = ₹{(Number(planForm.price) / Number(planForm.installments)).toFixed(2)} per installment. The membership activates only after the full price is covered.
+            </p>
+          )}
+
+          <div className="flex items-center gap-2">
+            <input id="plan-trainer" type="checkbox" checked={planForm.trainerIncluded} onChange={(e) => setPlanForm({ ...planForm, trainerIncluded: e.target.checked })} className="h-4 w-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500" />
+            <label htmlFor="plan-trainer" className="text-sm font-medium text-slate-700">Includes personal trainer</label>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Trainer Allocation</label>
+              <select value={planForm.trainerAllocationMode} onChange={(e) => setPlanForm({ ...planForm, trainerAllocationMode: e.target.value })} disabled={!planForm.trainerIncluded} className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-slate-50 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none disabled:opacity-50">
+                {ALLOCATION_MODES.map((mode) => (
+                  <option key={mode} value={mode}>{mode}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Required Specialization</label>
+              <input value={planForm.requiredSpecialization} onChange={(e) => setPlanForm({ ...planForm, requiredSpecialization: e.target.value })} disabled={!planForm.trainerIncluded} placeholder="e.g. Strength" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none disabled:opacity-50" />
+            </div>
+          </div>
+          <p className="text-xs text-slate-500 -mt-2">
+            SHARED: any trainer can coach this member. ASSIGNED/DEDICATED: a trainer is assigned after payment and only they (or admins) plan workouts for this member.
+          </p>
+
+          <div className="flex items-center gap-2">
+            <input id="plan-workouts" type="checkbox" checked={planForm.workoutPlanIncluded} onChange={(e) => setPlanForm({ ...planForm, workoutPlanIncluded: e.target.checked })} className="h-4 w-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500" />
+            <label htmlFor="plan-workouts" className="text-sm font-medium text-slate-700">Includes workout plans</label>
           </div>
           <div className="flex justify-end gap-3 pt-2">
             <button type="button" onClick={() => setShowPlanModal(false)} className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 font-medium">Cancel</button>
@@ -361,6 +460,81 @@ export default function Memberships() {
             </button>
           </div>
         </form>
+      </Modal>
+
+      <Modal isOpen={detailLoading || detail !== null} onClose={() => { if (!detailLoading) setDetail(null); }} title={`Membership — ${detail?.membership?.plan?.name || 'Details'}`}>
+        {detailLoading ? (
+          <div className="flex justify-center py-10"><LoadingSpinner /></div>
+        ) : detail && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+              <div>
+                <p className="text-slate-500">Member</p>
+                <p className="font-medium text-slate-900">{detail.membership?.user?.name || '—'}</p>
+              </div>
+              <div>
+                <p className="text-slate-500">Plan</p>
+                <p className="font-medium text-slate-900">{detail.membership?.plan?.name || '—'}</p>
+              </div>
+              <div>
+                <p className="text-slate-500">Status</p>
+                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColor(detail.membership?.status)}`}>{detail.membership?.status}</span>
+              </div>
+              <div>
+                <p className="text-slate-500">Payment</p>
+                <p className="font-medium text-slate-900">{detail.membership?.plan?.paymentMode || 'FULL'}</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-3 text-sm">
+              <div>
+                <p className="text-slate-500">Paid</p>
+                <p className="font-semibold text-green-700">₹{Number(detail.paidTotal || 0).toLocaleString('en-IN')}</p>
+              </div>
+              <div>
+                <p className="text-slate-500">Price</p>
+                <p className="font-semibold text-slate-900">₹{Number(detail.membership?.plan?.price || 0).toLocaleString('en-IN')}</p>
+              </div>
+              <div>
+                <p className="text-slate-500">Remaining</p>
+                <p className={`font-semibold ${Number(detail.remaining) > 0 ? 'text-amber-700' : 'text-green-700'}`}>₹{Number(detail.remaining || 0).toLocaleString('en-IN')}</p>
+              </div>
+            </div>
+            {detail.membership?.plan?.paymentMode === 'INSTALLMENT' && Number(detail.membership?.plan?.price) > 0 && (
+              <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+                <div className="h-full rounded-full bg-green-500" style={{ width: `${Math.min(100, (Number(detail.paidTotal || 0) / Number(detail.membership?.plan?.price || 1)) * 100)}%` }} />
+              </div>
+            )}
+            <div className="overflow-x-auto rounded-lg border border-slate-200">
+              <table className="w-full">
+                <thead className="bg-slate-50">
+                  <tr>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Receipt</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Amount</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Method</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Date</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {(detail.payments || []).length === 0 ? (
+                    <tr><td colSpan="5" className="px-4 py-4 text-sm text-slate-400 text-center">No payments recorded for this membership</td></tr>
+                  ) : detail.payments.map((p) => (
+                    <tr key={p._id}>
+                      <td className="px-4 py-2 font-mono text-xs text-slate-500">{p.transactionId || '—'}</td>
+                      <td className="px-4 py-2 font-medium text-slate-900">₹{Number(p.amount || 0).toLocaleString('en-IN')}</td>
+                      <td className="px-4 py-2 text-slate-600 capitalize">{p.method || '—'}</td>
+                      <td className="px-4 py-2"><span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColor(p.status)}`}>{p.status}</span></td>
+                      <td className="px-4 py-2 text-slate-600">{p.date ? new Date(p.date).toLocaleDateString('en-IN') : '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="flex justify-end">
+              <button type="button" onClick={() => setDetail(null)} className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 font-medium">Close</button>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );

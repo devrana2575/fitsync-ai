@@ -137,15 +137,42 @@ router.get('/me', auth, async (req, res) => {
 
 router.put('/me', auth, async (req, res) => {
   try {
-    const { name, phone, address, emergencyContact, specializations, bio } = req.body;
+    const { name, phone, phoneNumbers, address, emergencyContact, heightCm, weightKg, goals, medicalConditions, medicalNotes, allergies, medicalRestrictions, specializations, bio } = req.body;
     const user = await User.findByIdAndUpdate(req.user._id, { name }, { new: true });
 
     if (user.role === 'member') {
+      const update = { phone, address, emergencyContact, heightCm, weightKg, goals, medicalConditions, medicalNotes, allergies, medicalRestrictions };
+      for (const key of Object.keys(update)) {
+        if (update[key] === undefined) delete update[key];
+      }
+
+      if (phoneNumbers !== undefined) {
+        if (!Array.isArray(phoneNumbers) || phoneNumbers.length === 0) {
+          return res.status(400).json({ message: 'At least one phone number is required' });
+        }
+        const seen = new Set();
+        for (const entry of phoneNumbers) {
+          const number = String(entry && entry.number || '').trim();
+          if (!number) return res.status(400).json({ message: 'Phone number is required' });
+          if (!/^[\+]?[\d\s\-\(\)]{7,15}$/.test(number)) {
+            return res.status(400).json({ message: 'Please provide a valid phone number' });
+          }
+          if (seen.has(number)) return res.status(400).json({ message: 'Duplicate phone numbers are not allowed' });
+          seen.add(number);
+        }
+        update.phoneNumbers = phoneNumbers;
+        const primary = phoneNumbers.find((p) => p.label === 'Primary') || phoneNumbers[0];
+        if (primary && primary.number) update.phone = primary.number;
+      }
+
       await MemberProfile.findOneAndUpdate(
         { user: user._id },
-        { phone, address, emergencyContact },
+        update,
         { new: true }
       );
+      // New members may not have a profile yet (self-registration creates one,
+      // but be tolerant for legacy accounts).
+      await MemberProfile.updateOne({ user: user._id }, { $setOnInsert: update });
     } else if (user.role === 'trainer') {
       await TrainerProfile.findOneAndUpdate(
         { user: user._id },

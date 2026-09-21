@@ -8,7 +8,7 @@ import ErrorState from '../../components/common/ErrorState';
 import Modal from '../../components/common/Modal';
 import DataTable from '../../components/common/DataTable';
 
-const initialForm = { name: '', email: '', password: '', specializations: '', experience: '' };
+const initialForm = { name: '', email: '', password: '', specializations: '', experience: '', maxMembers: '' };
 
 export default function Trainers() {
   const location = useLocation();
@@ -51,8 +51,26 @@ export default function Trainers() {
       name: t.name, email: t.email, password: '',
       specializations: Array.isArray(t.profile?.specializations) ? t.profile.specializations.join(', ') : (t.profile?.specializations || ''),
       experience: t.profile?.experience || '',
+      maxMembers: t.profile?.maxMembers ?? '',
     });
     setShowModal(true);
+  };
+
+  const toggleAvailability = async (t) => {
+    const available = t.profile?.isAvailable !== false;
+    const reason = available
+      ? prompt(`Mark ${t.name} as unavailable (leave / absence)?\nEnter a reason:`)
+      : null;
+    if (available && reason === null) return;
+    try {
+      await api.put(`/trainers/${t._id}/availability`, {
+        isAvailable: !available,
+        reason: reason || undefined,
+      });
+      fetchTrainers();
+    } catch (err) {
+      alert(err.message || 'Failed to update availability');
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -64,6 +82,8 @@ export default function Trainers() {
         specializations: form.specializations.split(',').map(s => s.trim()).filter(Boolean),
         experience: Number(form.experience),
       };
+      if (payload.maxMembers !== '') payload.maxMembers = Number(payload.maxMembers);
+      else delete payload.maxMembers;
       if (editing && !payload.password) delete payload.password;
       if (editing) {
         await api.put(`/trainers/${editing._id}`, payload);
@@ -108,7 +128,7 @@ export default function Trainers() {
       ) : loading ? <LoadingSpinner size="lg" /> : trainers.length === 0 ? (
         <EmptyState icon={UserGroupIcon} message="No trainers found" />
       ) : (
-        <DataTable headers={['Name', 'Email', 'Specializations', 'Experience', 'Members Assigned', 'Status', 'Actions']}>
+        <DataTable headers={['Name', 'Email', 'Specializations', 'Experience', 'Members Assigned', 'Availability', 'Status', 'Actions']}>
           {trainers.map((t, i) => (
             <tr key={t._id} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
               <td className="px-6 py-4 font-medium text-slate-900">{t.name}</td>
@@ -121,16 +141,27 @@ export default function Trainers() {
                 </div>
               </td>
               <td className="px-6 py-4 text-slate-600">{t.profile?.experience ? `${t.profile.experience} yrs` : '—'}</td>
-              <td className="px-6 py-4 text-slate-600">{t.memberCount ?? t.assignedMembers?.length ?? '—'}</td>
+              <td className="px-6 py-4 text-slate-600">{t.memberCount ?? t.assignedMembers?.length ?? '—'} <span className="text-xs text-slate-400">/ {t.profile?.maxMembers ?? '—'}</span></td>
+              <td className="px-6 py-4">
+                <span className={`px-2 py-1 rounded-full text-xs font-medium ${t.profile?.isAvailable !== false ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                  {t.profile?.isAvailable !== false ? 'Available' : 'Unavailable'}
+                </span>
+                {t.profile?.isAvailable === false && t.profile?.absenceReason && (
+                  <p className="text-xs text-slate-400 mt-1 max-w-[180px] truncate" title={t.profile.absenceReason}>{t.profile.absenceReason}</p>
+                )}
+              </td>
               <td className="px-6 py-4">
                 <span className={`px-2 py-1 rounded-full text-xs font-medium ${t.isActive !== false ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                   {t.isActive !== false ? 'Active' : 'Inactive'}
                 </span>
               </td>
               <td className="px-6 py-4">
-                <div className="flex gap-2">
-                  <button onClick={() => openEdit(t)} className="text-indigo-600 hover:text-indigo-800 font-medium text-sm">Edit</button>
-                  <button onClick={() => toggleDeactivate(t)} className={`font-medium text-sm ${t.isActive !== false ? 'text-red-600 hover:text-red-800' : 'text-green-600 hover:text-green-800'}`}>
+                <div className="flex flex-col gap-1">
+                  <button onClick={() => openEdit(t)} className="text-indigo-600 hover:text-indigo-800 font-medium text-sm text-left">Edit</button>
+                  <button onClick={() => toggleAvailability(t)} className={`font-medium text-sm text-left ${t.profile?.isAvailable !== false ? 'text-amber-600 hover:text-amber-800' : 'text-green-600 hover:text-green-800'}`}>
+                    {t.profile?.isAvailable !== false ? 'Mark Unavailable' : 'Back Available'}
+                  </button>
+                  <button onClick={() => toggleDeactivate(t)} className={`font-medium text-sm text-left ${t.isActive !== false ? 'text-red-600 hover:text-red-800' : 'text-green-600 hover:text-green-800'}`}>
                     {t.isActive !== false ? 'Deactivate' : 'Activate'}
                   </button>
                 </div>
@@ -163,6 +194,11 @@ export default function Trainers() {
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Experience (years)</label>
             <input required type="number" min="0" value={form.experience} onChange={(e) => setForm({ ...form, experience: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Max Members</label>
+            <input type="number" min="0" value={form.maxMembers} onChange={(e) => setForm({ ...form, maxMembers: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+            <p className="text-xs text-slate-400 mt-1">Caps how many members can be assigned to this trainer.</p>
           </div>
           <div className="flex justify-end gap-3 pt-2">
             <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 font-medium">Cancel</button>
