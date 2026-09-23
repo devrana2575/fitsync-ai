@@ -12,6 +12,7 @@ const { activateMembershipFromPayment, cancelLinkedMembership } = require('../ut
 const { validateManualPaymentAmount, isMembershipFullyPaid } = require('../utils/paymentTerms');
 const razorpayGateway = require('../utils/razorpayGateway');
 const { getGymMonthStart, getGymTimezone } = require('../utils/gymTime');
+const { logAudit } = require('../utils/audit');
 
 const makeReceiptNumber = () => `INV-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${crypto.randomBytes(2).toString('hex').toUpperCase()}`;
 
@@ -191,6 +192,16 @@ router.post('/:id/verify', auth, authorize('admin'), async (req, res) => {
     payment.notes = `${payment.notes || ''} (verified by ${req.user.name || req.user._id})`.trim();
     await payment.save();
 
+    await logAudit({
+      actor: req.user._id,
+      user: payment.user,
+      action: 'verified',
+      entity: 'Payment',
+      entityId: payment._id,
+      reason: 'admin verified manual payment',
+      metadata: { membership: payment.membership ? String(payment.membership) : null, amount: payment.amount }
+    });
+
     await activateWhenFullyPaid(payment.membership);
     await notifyPaymentReceived(payment.user, payment.amount);
 
@@ -266,6 +277,16 @@ router.put('/:id', auth, authorize('admin'), async (req, res) => {
       // A refunded payment must not leave the member with active access.
       await cancelLinkedMembership(payment.membership);
     }
+
+    await logAudit({
+      actor: req.user._id,
+      user: payment.user,
+      action: payment.status,
+      entity: 'Payment',
+      entityId: payment._id,
+      reason: 'admin payment state change',
+      metadata: { from: existing.status, amount: payment.amount, membership: payment.membership ? String(payment.membership) : null }
+    });
 
     res.json({ payment });
   } catch (error) {

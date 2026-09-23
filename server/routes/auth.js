@@ -2,8 +2,6 @@
 
 const express = require('express');
 const path = require('path');
-const fs = require('fs');
-const multer = require('multer');
 const router = express.Router();
 const { body, validationResult } = require('express-validator');
 const User = require('../models/User');
@@ -92,35 +90,27 @@ const validateCertifications = (v) => {
   return { value: list, error: null };
 };
 
-// --- Avatar upload (multer, same pattern as progress photos) ----------------
+// --- Avatar upload -----------------------------------------------------------
+//
+// Secure image handling: size is capped and configurable via the environment,
+// the file bytes are sniffed (magic bytes) before anything is stored, the
+// stored filename is a random non-guessable id (no ObjectId/email/timestamp),
+// only the authenticated user's own avatar can be changed, and the endpoint is
+// rate-limited against repeated abusive uploads.
 
-const avatarDir = path.join(__dirname, '..', 'uploads', 'avatars');
-fs.mkdirSync(avatarDir, { recursive: true });
+const {
+  AVATARS_DIR,
+  AVATAR_MAX_BYTES,
+  AVATAR_MAX_MB,
+  createImageMulter,
+  handleMulterError,
+  writeSecureImage,
+  deleteStoredUpload,
+  createUploadLimiter,
+} = require('../utils/uploads');
 
-const avatarStorage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, avatarDir),
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname || '').toLowerCase() || '.jpg';
-    cb(null, `${req.user._id}-${Date.now()}${ext}`);
-  }
-});
-
-const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-const avatarUpload = multer({
-  storage: avatarStorage,
-  limits: { fileSize: 2 * 1024 * 1024 },
-  fileFilter: (req, file, cb) => {
-    if (ALLOWED_IMAGE_TYPES.includes(file.mimetype)) return cb(null, true);
-    cb(new Error('Only JPEG, PNG, WebP or GIF images are allowed'));
-  }
-});
-
-const uploadAvatarMiddleware = (req, res, next) => {
-  avatarUpload.single('photo')(req, res, (err) => {
-    if (err) return res.status(400).json({ message: err.message || 'Invalid image file' });
-    next();
-  });
-};
+const avatarMulter = createImageMulter(AVATAR_MAX_BYTES);
+const uploadAvatarLimiter = createUploadLimiter({ max: 12 });
 
 // --- Routes -----------------------------------------------------------------
 
@@ -413,22 +403,38 @@ router.put('/me', auth, async (req, res) => {
 });
 
 // Profile photo (upload / replace / remove). Reuses User.avatar and the
-// existing static /uploads mount. auth is enforced; users can only change
-// their own avatar.
-router.post('/me/avatar', auth, uploadAvatarMiddleware, async (req, res) => {
-  try {
-    if (!req.file) return res.status(400).json({ message: 'Profile photo is required' });
-    const user = await User.findById(req.user._id);
-    if (!user) return res.status(404).json({ message: 'User not found' });
-    if (user.avatar && user.avatar.startsWith('/uploads/avatars/')) {
-      fs.unlink(path.join(avatarDir, path.basename(user.avatar)), () => {});
+// existing static /uploads mount. The path always targets the authenticated
+// user (there is no userId/memberId/trainerId parameter to manipulate), so a
+// member/trainer can only ever change their own avatar. auth is enforced and
+// the endpoint is rate-limited. The old file is only removed after the new
+// image has been validated, stored and committed to the database.
+router.post('/me/avatar', uploadAvatarLimiter, auth, (req, res) => {
+  avatarMulter.single('photo')(req, res, async (err) => {
+    try {
+      if (err) return handleMulterError(err, res, AVATAR_MAX_MB);
+      if (!req.file) return res.status(400).json({ message: 'Profile photo is required' });
+
+      const stored = writeSecureImage(req.file.buffer, AVATARS_DIR);
+      if (!stored) return res.status(400).json({ message: 'Invalid image file' });
+
+      const user = await User.findById(req.user._id);
+      if (!user) {
+        deleteStoredUpload(stored.absPath);
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      const previous = user.avatar;
+      user.avatar = stored.urlPath;
+      await user.save();
+
+      if (previous && previous.startsWith('/uploads/avatars/')) {
+        deleteStoredUpload(path.join(AVATARS_DIR, path.basename(previous)));
+      }
+      res.json({ user });
+    } catch (error) {
+      res.status(500).json({ message: 'Server error' });
     }
-    user.avatar = `/uploads/avatars/${req.file.filename}`;
-    await user.save();
-    res.json({ user });
-  } catch (error) {
-    res.status(500).json({ message: 'Server error' });
-  }
+  });
 });
 
 router.delete('/me/avatar', auth, async (req, res) => {
@@ -436,11 +442,12 @@ router.delete('/me/avatar', auth, async (req, res) => {
     const user = await User.findById(req.user._id);
     if (!user) return res.status(404).json({ message: 'User not found' });
     if (user.avatar) {
-      if (user.avatar.startsWith('/uploads/avatars/')) {
-        fs.unlink(path.join(avatarDir, path.basename(user.avatar)), () => {});
-      }
+      const previous = user.avatar;
       user.avatar = '';
       await user.save();
+      if (previous.startsWith('/uploads/avatars/')) {
+        deleteStoredUpload(path.join(AVATARS_DIR, path.basename(previous)));
+      }
     }
     res.json({ user });
   } catch (error) {

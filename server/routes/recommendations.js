@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { auth, authorize } = require('../middleware/auth');
 const { getWorkoutRecommendations } = require('../utils/recommendations');
+const { canTrainerAccessMember } = require('../utils/access');
 
 router.get('/my', auth, authorize('member'), async (req, res) => {
   try {
@@ -15,6 +16,12 @@ router.get('/my', auth, authorize('member'), async (req, res) => {
 
 router.get('/member/:memberId', auth, authorize('admin', 'trainer'), async (req, res) => {
   try {
+    // Recommendations are built from a member's profile and body data, so a
+    // trainer may only request them for members they coach.
+    if (req.user.role === 'trainer') {
+      const entitled = await canTrainerAccessMember(req.user._id, req.params.memberId);
+      if (!entitled) return res.status(403).json({ message: 'Access denied' });
+    }
     const limit = Math.min(Number(req.query.limit) || 5, 10);
     const result = await getWorkoutRecommendations(req.params.memberId, limit);
     res.json(result);

@@ -5,6 +5,7 @@ const MemberProfile = require('../models/MemberProfile');
 const TrainerProfile = require('../models/TrainerProfile');
 const Notification = require('../models/Notification');
 const Membership = require('../models/Membership');
+const MembershipPlan = require('../models/MembershipPlan');
 const Attendance = require('../models/Attendance');
 const Payment = require('../models/Payment');
 const WorkoutPlan = require('../models/WorkoutPlan');
@@ -14,6 +15,8 @@ const BodyMeasurement = require('../models/BodyMeasurement');
 const { auth, authorize } = require('../middleware/auth');
 const { body, validationResult } = require('express-validator');
 const { escapeRegex, parsePagination } = require('../utils/helpers');
+const { canTrainerAccessMember, filterAccessibleMemberIds, sanitizeMemberProfileForViewer } = require('../utils/access');
+const { logAudit } = require('../utils/audit');
 
 const PHONE_RE = /^[\+]?[\d\s\-\(\)]{7,15}$/;
 
@@ -61,13 +64,34 @@ router.get('/', auth, authorize('admin', 'trainer'), async (req, res) => {
     if (status === 'active') filter.isActive = true;
     if (status === 'inactive') filter.isActive = false;
 
-    const total = await User.countDocuments(filter);
-    const members = await User.find(filter)
+    let total = await User.countDocuments(filter);
+    let members = await User.find(filter)
       .select('name email role isActive avatar createdAt')
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit)
       .lean();
+
+    // A trainer only ever sees the members they may coach. Roster lists are
+    // never a window into members outside their entitlement.
+    if (req.user.role === 'trainer') {
+      const memberIds = members.map((m) => m._id);
+      const accessible = await filterAccessibleMemberIds(req.user._id, memberIds);
+      const accessibleSet = new Set(accessible);
+      members = members.filter((m) => accessibleSet.has(String(m._id)));
+
+      // Honest pagination total: assigned members + members on SHARED-plan
+      // ACTIVE memberships, de-duplicated by user. Two bounded queries
+      // regardless of page size.
+      const [assignedIds, sharedPlanIds] = await Promise.all([
+        MemberProfile.find({ assignedTrainer: req.user._id }).distinct('user'),
+        MembershipPlan.find({ trainerIncluded: true, trainerAllocationMode: 'SHARED' }).distinct('_id')
+      ]);
+      const sharedUserIds = sharedPlanIds.length > 0
+        ? await Membership.find({ status: 'ACTIVE', plan: { $in: sharedPlanIds } }).distinct('user')
+        : [];
+      total = new Set([...assignedIds.map(String), ...sharedUserIds.map(String)]).size;
+    }
 
     const memberIds = members.map((m) => m._id);
     const [profiles, activeMemberships] = await Promise.all([
@@ -92,7 +116,9 @@ router.get('/', auth, authorize('admin', 'trainer'), async (req, res) => {
     const membersWithProfiles = members.map((m) => {
       const profile = profileMap.get(m._id.toString()) || null;
       const membership = membershipMap.get(m._id.toString()) || null;
-      return { ...m, profile, membership };
+      // Medical fields never leave the server on roster lists - even to
+      // entitled trainers (they get them on the member detail instead).
+      return { ...m, profile: sanitizeMemberProfileForViewer(profile, req.user.role), membership };
     });
 
     res.json({
@@ -113,7 +139,11 @@ router.get('/by-trainer', auth, authorize('admin', 'trainer'), async (req, res) 
       .populate('user', 'name email isActive')
       .sort({ createdAt: -1 })
       .lean();
-    res.json({ members: profiles });
+    // Roster-list context: no medical fields for trainer-facing lists.
+    const sanitized = req.user.role === 'trainer'
+      ? profiles.map((p) => sanitizeMemberProfileForViewer(p, req.user.role))
+      : profiles;
+    res.json({ members: sanitized });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }
@@ -128,9 +158,11 @@ router.get('/:id', auth, authorize('admin', 'trainer'), async (req, res) => {
 
     const profile = await MemberProfile.findOne({ user: member._id }).populate('assignedTrainer', 'name email');
 
-    // A trainer may only view members assigned to them.
-    if (req.user.role === 'trainer' && (!profile || !profile.assignedTrainer || profile.assignedTrainer._id.toString() !== req.user._id.toString())) {
-      return res.status(403).json({ message: 'Access denied' });
+    // A trainer may view a member only when entitled to coach them (assigned
+    // or covered by a SHARED-plan ACTIVE membership).
+    if (req.user.role === 'trainer') {
+      const allowed = await canTrainerAccessMember(req.user._id, member._id);
+      if (!allowed) return res.status(403).json({ message: 'Access denied' });
     }
 
     const [memberships, attendance, payments, workoutPlans, workoutLogs, goals, measurements, expiringMembership, lastVisit] = await Promise.all([
@@ -287,11 +319,22 @@ router.post('/:id/assign-trainer', auth, authorize('admin'), async (req, res) =>
 
     const clearing = trainerId === null || trainerId === undefined || String(trainerId).trim() === '';
     if (clearing) {
+      const previousId = profile.assignedTrainer || null;
       profile.assignedTrainer = undefined;
       profile.trainerAssignmentStatus = 'NONE';
       profile.pendingTrainerReason = undefined;
       profile.assignedAt = undefined;
       await profile.save();
+      await logAudit({
+        actor: req.user._id,
+        user: member._id,
+        action: 'unassigned',
+        entity: 'MemberProfile',
+        entityId: profile._id,
+        before: { assignedTrainer: previousId },
+        after: { assignedTrainer: null },
+        reason: previousId ? 'trainer assignment cleared by admin' : 'no trainer was assigned'
+      });
       return res.json({ profile });
     }
 
@@ -307,6 +350,15 @@ router.post('/:id/assign-trainer', auth, authorize('admin'), async (req, res) =>
       profile.pendingTrainerReason = undefined;
       profile.assignedAt = new Date();
       await profile.save();
+      await logAudit({
+        actor: req.user._id,
+        user: member._id,
+        action: 'assigned',
+        entity: 'MemberProfile',
+        entityId: profile._id,
+        after: { assignedTrainer: trainer._id, status: 'ASSIGNED' },
+        reason: 'admin confirmed/updated assignment'
+      });
       return res.json({ profile });
     }
     const trainerProfile = await TrainerProfile.findOne({ user: trainer._id });
@@ -321,6 +373,16 @@ router.post('/:id/assign-trainer', auth, authorize('admin'), async (req, res) =>
     profile.pendingTrainerReason = undefined;
     profile.assignedAt = new Date();
     await profile.save();
+
+    await logAudit({
+      actor: req.user._id,
+      user: member._id,
+      action: 'assigned',
+      entity: 'MemberProfile',
+      entityId: profile._id,
+      after: { assignedTrainer: trainer._id, status: 'ASSIGNED' },
+      reason: 'admin manual assignment'
+    });
 
     await Promise.all([
       Notification.create({
@@ -345,6 +407,10 @@ router.post('/:id/assign-trainer', auth, authorize('admin'), async (req, res) =>
 
 router.get('/trainer/:trainerId', auth, authorize('admin', 'trainer'), async (req, res) => {
   try {
+    // Trainers may only pull their own roster through this endpoint.
+    if (req.user.role === 'trainer' && String(req.params.trainerId) !== String(req.user._id)) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
     const profiles = await MemberProfile.find({ assignedTrainer: req.params.trainerId }).populate('user', 'name email isActive').lean();
     res.json({ members: profiles });
   } catch (error) {

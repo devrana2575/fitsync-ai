@@ -328,6 +328,43 @@ venv/bin/python main.py         # Linux/Mac
 - **Backend API**: http://localhost:5000
 - **ML API**: http://localhost:8001/docs (Swagger UI)
 
+## Production Deployment
+
+FitSync AI deploys directly on Node.js + MongoDB (no container tooling).
+
+```bash
+# 1. Install dependencies (backend + frontend)
+cd server && npm install
+cd ../client && npm install
+
+# 2. Configure the environment
+cp .env.example server/.env   # then edit server/.env (see "Environment Variables")
+#    Required: JWT_SECRET, MONGODB_URI, and at least one payment gateway
+#    (RAZORPAY_KEY_ID/SECRET or STRIPE_SECRET_KEY or UPI_ID). In
+#    NODE_ENV=production the server refuses to start without them.
+
+# 3. Start MongoDB (local service, or point MONGODB_URI at a hosted Atlas URI)
+
+# 4. Build the frontend - the backend then serves client/dist automatically
+cd client && npm run build
+
+# 5. Start the backend (serves the API on PORT and the built frontend)
+cd server && npm start        # or: npm run dev
+```
+
+- The API is served on `PORT` (default 5000) and, when `client/dist` exists,
+  the same Express process serves the built React app with SPA fallback
+  (`GET /` and client-side routes resolve to `index.html`).
+- Health monitoring: `GET /api/health` returns
+  `{ status: 'ok', timestamp, service: 'fitsync-ai-api' }`.
+- The server shuts down cleanly on `SIGINT`/`SIGTERM` (stops cron jobs,
+  closes the HTTP server, disconnects Mongo and exits).
+- Uploaded profile/progress images are stored under `server/uploads/`
+  (avatars, photos). Back this folder up; it is not versioned.
+
+For local development, run the two services separately instead: Terminal 1
+`cd server && npm run dev`, Terminal 2 `cd client && npm run dev`.
+
 ## Demo Credentials
 
 | Role | Email | Password |

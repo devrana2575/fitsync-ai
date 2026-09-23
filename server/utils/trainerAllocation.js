@@ -4,6 +4,7 @@ const User = require('../models/User');
 const TrainerProfile = require('../models/TrainerProfile');
 const MemberProfile = require('../models/MemberProfile');
 const Notification = require('../models/Notification');
+const { logAudit } = require('./audit');
 
 const notifyAdmins = async (title, message, data = {}) => {
   const admins = await User.find({ role: 'admin', isActive: true }).select('_id').lean();
@@ -88,11 +89,21 @@ const allocateTrainerForMembership = async (membershipId, { force = false } = {}
 
   if (!plan.trainerIncluded) {
     if (profile.trainerAssignmentStatus !== 'NONE') {
+      const previous = profile.assignedTrainer || null;
       profile.assignedTrainer = undefined;
       profile.trainerAssignmentStatus = 'NONE';
       profile.pendingTrainerReason = undefined;
       profile.assignedAt = undefined;
       await profile.save();
+      await logAudit({
+        action: 'unassigned',
+        entity: 'MemberProfile',
+        entityId: profile._id,
+        user: memberId,
+        before: { assignedTrainer: previous, status: 'ASSIGNED' },
+        after: { assignedTrainer: null, status: 'NONE' },
+        reason: 'plan has no trainer entitlement'
+      });
     }
     return { status: 'none', profile };
   }
@@ -109,6 +120,14 @@ const allocateTrainerForMembership = async (membershipId, { force = false } = {}
     profile.pendingTrainerReason = 'No eligible trainer is currently available for this plan';
     profile.assignedAt = undefined;
     await profile.save();
+    await logAudit({
+      action: 'pending',
+      entity: 'MemberProfile',
+      entityId: profile._id,
+      user: memberId,
+      after: { assignedTrainer: null, status: 'PENDING' },
+      reason: 'no eligible trainer available'
+    });
     await notifyAdmins(
       'Trainer allocation required',
       `A paid member on the ${plan.name} plan has no eligible trainer available. Please assign one.`,
@@ -118,11 +137,23 @@ const allocateTrainerForMembership = async (membershipId, { force = false } = {}
   }
 
   const chosen = pool[0];
+  const previous = profile.assignedTrainer || null;
   profile.assignedTrainer = chosen.trainer._id;
   profile.trainerAssignmentStatus = 'ASSIGNED';
   profile.pendingTrainerReason = undefined;
   profile.assignedAt = new Date();
   await profile.save();
+
+  await logAudit({
+    action: 'assigned',
+    entity: 'MemberProfile',
+    entityId: profile._id,
+    user: memberId,
+    before: { assignedTrainer: previous, status: 'ASSIGNED' },
+    after: { assignedTrainer: chosen.trainer._id, status: 'ASSIGNED' },
+    reason: 'deterministic allocation',
+    metadata: { plan: plan.name, trainerName: chosen.trainer.name }
+  });
 
   await Promise.all([
     Notification.create({

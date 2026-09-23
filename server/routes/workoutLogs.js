@@ -3,6 +3,7 @@ const router = express.Router();
 const WorkoutLog = require('../models/WorkoutLog');
 const { auth, authorize } = require('../middleware/auth');
 const { parsePagination } = require('../utils/helpers');
+const { canTrainerAccessMember } = require('../utils/access');
 
 router.get('/my', auth, async (req, res) => {
   try {
@@ -26,6 +27,11 @@ router.get('/my', auth, async (req, res) => {
 
 router.get('/member/:userId', auth, authorize('admin', 'trainer'), async (req, res) => {
   try {
+    // Trainers may only read logs of members they coach.
+    if (req.user.role === 'trainer') {
+      const entitled = await canTrainerAccessMember(req.user._id, req.params.userId);
+      if (!entitled) return res.status(403).json({ message: 'Access denied' });
+    }
     const logs = await WorkoutLog.find({ user: req.params.userId })
       .populate('exercise', 'name category muscleGroup')
       .sort({ date: -1 })

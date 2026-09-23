@@ -96,6 +96,10 @@ const DELETE_GUARDS = {
     const refs = await Payment.countDocuments({ membership: doc._id });
     return refs > 0 ? `Cannot delete: ${refs} payment record(s) reference this membership` : null;
   },
+  // Financial records are never physically deleted. Money movements must stay
+  // reconstructible (ledger property); if a transaction was wrong it gets
+  // refunded/annotated, not erased.
+  payments: async () => 'Payment records are financial records and cannot be deleted - issue a refund or annotate instead',
 };
 
 router.get('/all', auth, authorize('admin'), async (req, res) => {

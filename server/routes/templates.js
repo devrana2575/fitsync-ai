@@ -5,6 +5,7 @@ const WorkoutPlan = require('../models/WorkoutPlan');
 const User = require('../models/User');
 const { auth, authorize } = require('../middleware/auth');
 const { escapeRegex, parsePagination } = require('../utils/helpers');
+const { canTrainerAccessMember } = require('../utils/access');
 
 router.get('/', auth, authorize('admin', 'trainer'), async (req, res) => {
   try {
@@ -32,6 +33,10 @@ router.get('/:id', auth, authorize('admin', 'trainer'), async (req, res) => {
       .populate('exercises.exercise', 'name muscleGroup category difficulty')
       .lean();
     if (!template) return res.status(404).json({ message: 'Template not found' });
+    // A private template is visible only to its author (admins see all).
+    if (req.user.role === 'trainer' && !template.isShared && String(template.createdBy?._id || template.createdBy) !== String(req.user._id)) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
     res.json({ template });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
@@ -97,6 +102,15 @@ router.post('/:id/assign', auth, authorize('admin', 'trainer'), async (req, res)
 
     const template = await WorkoutTemplate.findById(req.params.id);
     if (!template || !template.isActive) return res.status(404).json({ message: 'Template not found' });
+
+    // A trainer can only use templates they own or that are shared, and can
+    // only build plans for members they are entitled to coach.
+    if (req.user.role === 'trainer') {
+      const mayUse = template.isShared || String(template.createdBy?._id || template.createdBy) === String(req.user._id);
+      if (!mayUse) return res.status(403).json({ message: 'Access denied' });
+      const entitled = await canTrainerAccessMember(req.user._id, memberId);
+      if (!entitled) return res.status(403).json({ message: 'You can only create plans for members assigned to you' });
+    }
 
     const member = await User.findOne({ _id: memberId, role: 'member', isActive: true });
     if (!member) return res.status(400).json({ message: 'Member not found or inactive' });

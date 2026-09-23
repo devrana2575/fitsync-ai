@@ -7,6 +7,7 @@ const Notification = require('../models/Notification');
 const { auth, authorize } = require('../middleware/auth');
 const { body, validationResult } = require('express-validator');
 const { escapeRegex, parsePagination } = require('../utils/helpers');
+const { sanitizeMemberProfileForViewer } = require('../utils/access');
 
 // When a trainer goes unavailable the members assigned to them and the admins
 // must know. Notifications are informational - the assignment is preserved and
@@ -89,16 +90,41 @@ router.get('/', auth, authorize('admin'), async (req, res) => {
   }
 });
 
+// Public-to-authenticated lightweight trainer picker (name + email only, no
+// roster, no availability internals). Declared BEFORE /:id so `/list/all` is
+// not swallowed by the id pattern.
+router.get('/list/all', auth, async (req, res) => {
+  try {
+    const trainers = await User.find({ role: 'trainer', isActive: true }).select('name email').lean();
+    res.json({ trainers });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 router.get('/:id', auth, authorize('admin', 'trainer'), async (req, res) => {
   try {
     const trainer = await User.findById(req.params.id);
     if (!trainer || trainer.role !== 'trainer') {
       return res.status(404).json({ message: 'Trainer not found' });
     }
+
+    // Trainers see their own profile only, and only their own roster. A
+    // trainer must never use this endpoint to read another trainer's members.
+    if (req.user.role === 'trainer' && String(trainer._id) !== String(req.user._id)) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const idFilter = { assignedTrainer: trainer._id };
     const [profile, members] = await Promise.all([
       TrainerProfile.findOne({ user: trainer._id }).lean(),
-      MemberProfile.find({ assignedTrainer: trainer._id }).populate('user', 'name email isActive').lean()
+      MemberProfile.find(idFilter).populate('user', 'name email isActive').lean()
     ]);
+    // Roster context: medical fields are never included on a trainer list,
+    // even for the trainer's own members (detail view is where they belong).
+    for (let i = 0; i < members.length; i += 1) {
+      members[i] = sanitizeMemberProfileForViewer(members[i], req.user.role);
+    }
     res.json({ trainer, profile, members });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
@@ -244,15 +270,6 @@ router.put('/:id/availability', auth, authorize('admin'), async (req, res) => {
     }
 
     res.json({ trainer: user, profile });
-  } catch (error) {
-    res.status(500).json({ message: 'Server error' });
-  }
-});
-
-router.get('/list/all', auth, async (req, res) => {
-  try {
-    const trainers = await User.find({ role: 'trainer', isActive: true }).select('name email').lean();
-    res.json({ trainers });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }

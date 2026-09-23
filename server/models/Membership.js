@@ -22,8 +22,24 @@ const membershipSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['ACTIVE', 'EXPIRED', 'PENDING', 'CANCELLED'],
+    enum: ['ACTIVE', 'EXPIRED', 'PENDING', 'CANCELLED', 'SUSPENDED'],
     default: 'PENDING'
+  },
+  // Set the moment a membership becomes ACTIVE (payment completed /
+  // complimentary / counter renewal). Preserves when access actually began.
+  activatedAt: {
+    type: Date,
+    default: null
+  },
+  // Admin suspension context (SUSPENDED status).
+  suspendedAt: {
+    type: Date,
+    default: null
+  },
+  suspendedReason: {
+    type: String,
+    trim: true,
+    default: ''
   },
   autoRenew: {
     type: Boolean,

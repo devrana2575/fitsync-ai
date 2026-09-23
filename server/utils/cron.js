@@ -4,6 +4,7 @@ const Attendance = require('../models/Attendance');
 const Notification = require('../models/Notification');
 const User = require('../models/User');
 const { bulkCreateNotifications } = require('./notify');
+const { logAudit } = require('./audit');
 
 const generateNotifications = async () => {
   try {
@@ -82,6 +83,16 @@ const expireMemberships = async () => {
 
     const ids = expired.map((m) => m._id);
     await Membership.updateMany({ _id: { $in: ids } }, { $set: { status: 'EXPIRED' } });
+    await Promise.all(
+      expired.map((m) => logAudit({
+        action: 'expired',
+        entity: 'Membership',
+        entityId: m._id,
+        user: m.user,
+        reason: 'end date reached (daily expiry sweep)',
+        metadata: { endDate: m.endDate }
+      }))
+    );
 
     const userIds = [...new Set(expired.map((m) => m.user).filter(Boolean))];
     const existing = await Notification.find({
@@ -109,11 +120,22 @@ const expireMemberships = async () => {
   }
 };
 
+const scheduledJobs = [];
+
 const startCronJobs = () => {
-  cron.schedule('0 8 * * *', generateNotifications);
-  cron.schedule('0 12 * * 1', generateNotifications);
-  cron.schedule('15 0 * * *', expireMemberships);
+  scheduledJobs.push(
+    cron.schedule('0 8 * * *', generateNotifications),
+    cron.schedule('0 12 * * 1', generateNotifications),
+    cron.schedule('15 0 * * *', expireMemberships)
+  );
   console.log('[Cron] Scheduled notification + membership expiry jobs');
 };
 
-module.exports = { startCronJobs, generateNotifications, expireMemberships };
+const stopCronJobs = () => {
+  for (const job of scheduledJobs) {
+    try { job.stop(); } catch (error) { /* already stopped */ }
+  }
+  scheduledJobs.length = 0;
+};
+
+module.exports = { startCronJobs, stopCronJobs, generateNotifications, expireMemberships };

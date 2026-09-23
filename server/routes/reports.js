@@ -8,6 +8,7 @@ const WorkoutLog = require('../models/WorkoutLog');
 const BodyMeasurement = require('../models/BodyMeasurement');
 const { auth, authorize } = require('../middleware/auth');
 const { parsePagination } = require('../utils/helpers');
+const { canTrainerAccessMember } = require('../utils/access');
 
 router.get('/admin/revenue', auth, authorize('admin'), async (req, res) => {
   try {
@@ -121,6 +122,11 @@ router.get('/member/progress', auth, async (req, res) => {
 
 router.get('/trainer/member-progress/:memberId', auth, authorize('admin', 'trainer'), async (req, res) => {
   try {
+    // Trainers may only pull progress data for members they coach.
+    if (req.user.role === 'trainer') {
+      const entitled = await canTrainerAccessMember(req.user._id, req.params.memberId);
+      if (!entitled) return res.status(403).json({ message: 'Access denied' });
+    }
     const [measurements, workouts, attendance] = await Promise.all([
       BodyMeasurement.find({ user: req.params.memberId }).select('date weight bodyFat').sort({ date: 1 }).lean(),
       WorkoutLog.find({ user: req.params.memberId }).select('date exercise sets reps weight isCompleted').sort({ date: -1 }).limit(30).lean(),

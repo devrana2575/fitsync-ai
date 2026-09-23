@@ -3,6 +3,7 @@ const router = express.Router();
 const BodyMeasurement = require('../models/BodyMeasurement');
 const MemberProfile = require('../models/MemberProfile');
 const { auth, authorize } = require('../middleware/auth');
+const { canTrainerAccessMember } = require('../utils/access');
 
 router.get('/my', auth, async (req, res) => {
   try {
@@ -15,6 +16,11 @@ router.get('/my', auth, async (req, res) => {
 
 router.get('/member/:userId', auth, authorize('admin', 'trainer'), async (req, res) => {
   try {
+    // Trainers may only read measurements of members they coach.
+    if (req.user.role === 'trainer') {
+      const entitled = await canTrainerAccessMember(req.user._id, req.params.userId);
+      if (!entitled) return res.status(403).json({ message: 'Access denied' });
+    }
     const measurements = await BodyMeasurement.find({ user: req.params.userId }).sort({ date: -1 }).limit(365).lean();
     res.json({ measurements });
   } catch (error) {

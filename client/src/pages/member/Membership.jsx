@@ -11,6 +11,7 @@ const statusMeta = {
   EXPIRED: { label: 'Expired', cls: 'bg-slate-200 text-slate-600' },
   PENDING: { label: 'Pending', cls: 'bg-yellow-100 text-yellow-700' },
   CANCELLED: { label: 'Cancelled', cls: 'bg-red-100 text-red-700' },
+  SUSPENDED: { label: 'Suspended', cls: 'bg-orange-100 text-orange-700' },
 };
 
 const RAZORPAY_SCRIPT = 'https://checkout.razorpay.com/v1/checkout.js';
@@ -39,7 +40,6 @@ export default function Membership() {
   const [qrLoading, setQrLoading] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState(null);
   const [myProfile, setMyProfile] = useState(null);
-  const [myPayments, setMyPayments] = useState([]);
 
   const fetchData = async () => {
     try {
@@ -59,15 +59,6 @@ export default function Membership() {
       setMyProfile(res.data.profile || null);
     } catch {
       setMyProfile(null);
-    }
-  };
-
-  const fetchMyPayments = async () => {
-    try {
-      const res = await api.get('/payments/my');
-      setMyPayments(res.data.payments || []);
-    } catch {
-      setMyPayments([]);
     }
   };
 
@@ -91,14 +82,9 @@ export default function Membership() {
     }
   };
 
-  useEffect(() => { fetchData(); fetchPlans(); fetchPaymentMethod(); fetchProfile(); fetchMyPayments(); }, []);
+  useEffect(() => { fetchData(); fetchPlans(); fetchPaymentMethod(); fetchProfile(); }, []);
 
   const planById = new Map(plans.map((p) => [p._id, p]));
-
-  const paidForMembership = (membershipId) =>
-    myPayments
-      .filter((p) => String(p.membership?._id || p.membership) === String(membershipId) && p.status === 'COMPLETED')
-      .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
 
   const isCounterUpMode = paymentMethod === 'upi';
 
@@ -259,10 +245,16 @@ export default function Membership() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {memberships.slice(0, 1).map((m) => {
                 const meta = statusMeta[m.status] || statusMeta.PENDING;
+                const progress = Math.min(100, Math.max(0, Number(m.progressPercent) || 0));
+                const daysRemaining = m.daysRemaining ?? '—';
+                const trainer = m.trainer || myProfile?.assignedTrainer;
                 return (
                   <div key={m._id} className="sm:col-span-2 bg-white rounded-xl border border-slate-200 p-6">
-                    <div className="flex items-start justify-between mb-2">
-                      <h2 className="text-lg font-semibold text-slate-900">{m.plan?.name || 'Membership'}</h2>
+                    <div className="flex items-start justify-between mb-1">
+                      <div>
+                        <h2 className="text-lg font-semibold text-slate-900">{m.plan?.name || 'Membership'}</h2>
+                        <p className="text-xs text-slate-400 font-mono mt-0.5">{m.membershipId || '—'}</p>
+                      </div>
                       <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${meta.cls}`}>{meta.label}</span>
                     </div>
                     <p className="text-sm text-slate-500 mb-4">
@@ -278,8 +270,8 @@ export default function Membership() {
                         <p className="font-medium text-slate-900">{fmtDate(m.endDate)}</p>
                       </div>
                       <div>
-                        <p className="text-slate-500">Plan price</p>
-                        <p className="font-medium text-slate-900">₹{Number(m.plan?.price || 0).toLocaleString('en-IN')}</p>
+                        <p className="text-slate-500">Days remaining</p>
+                        <p className="font-medium text-slate-900">{daysRemaining === '—' ? '—' : `${daysRemaining} day${daysRemaining === 1 ? '' : 's'}`}</p>
                       </div>
                       <div>
                         <p className="text-slate-500">Auto-renew</p>
@@ -287,7 +279,7 @@ export default function Membership() {
                       </div>
                       <div>
                         <p className="text-slate-500">Your trainer</p>
-                        <p className="font-medium text-slate-900">{myProfile?.assignedTrainer?.name || '—'}</p>
+                        <p className="font-medium text-slate-900">{trainer?.name || '—'}</p>
                       </div>
                       <div>
                         <p className="text-slate-500">Workout plans</p>
@@ -296,19 +288,38 @@ export default function Membership() {
                         </p>
                       </div>
                     </div>
-                    {(planById.get(m.plan?._id)?.paymentMode === 'INSTALLMENT' &&
-                      Number(planById.get(m.plan?._id)?.price) > 0) && (
-                      <div className="mt-4">
-                        <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
-                          <span>Paid via installments</span>
-                          <span>₹{paidForMembership(m._id).toLocaleString('en-IN')} / ₹{Number(m.plan?.price || 0).toLocaleString('en-IN')}</span>
-                        </div>
-                        <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
-                          <div
-                            className="h-full rounded-full bg-green-500"
-                            style={{ width: `${Math.min(100, (paidForMembership(m._id) / Number(m.plan?.price || 1)) * 100)}%` }}
-                          />
-                        </div>
+
+                    <div className="mt-4">
+                      <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
+                        <span>Plan duration elapsed</span>
+                        <span>{m.durationDays ? `${progress}%` : '—'}</span>
+                      </div>
+                      <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-green-500"
+                          style={{ width: `${progress}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    {(m.payments || []).length > 0 && (
+                      <div className="mt-4 flex flex-wrap gap-2 text-xs">
+                        <span className="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700">
+                          Paid ₹{Number(m.paidTotal || 0).toLocaleString('en-IN')}
+                        </span>
+                        {Number(m.pendingTotal || 0) > 0 && (
+                          <span className="px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700">
+                            Pending ₹{Number(m.pendingTotal || 0).toLocaleString('en-IN')}
+                          </span>
+                        )}
+                        {m.paymentStatus && (
+                          <span className={`px-2.5 py-0.5 rounded-full font-medium ${m.paymentStatus === 'PAID' ? 'bg-green-50 text-green-700' : m.paymentStatus === 'PARTIAL' ? 'bg-amber-50 text-amber-700' : 'bg-red-50 text-red-700'}`}>
+                            {m.paymentStatus === 'PAID' ? 'Fully paid' : m.paymentStatus === 'PARTIAL' ? 'Partially paid' : 'Payment pending'}
+                          </span>
+                        )}
+                        {m.status === 'SUSPENDED' && (
+                          <span className="px-2.5 py-0.5 rounded-full bg-orange-50 text-orange-700">Suspended by the gym</span>
+                        )}
                       </div>
                     )}
                   </div>
@@ -371,6 +382,48 @@ export default function Membership() {
                 </div>
               )}
             </div>
+
+            {memberships[0]?.payments?.length > 0 && (
+              <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                <div className="px-6 py-4 border-b border-slate-100">
+                  <h3 className="font-semibold text-slate-900">Payment History</h3>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-slate-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Date</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Amount</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Method</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Reference</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200">
+                      {(memberships[0]?.payments || []).map((p) => (
+                        <tr key={p._id}>
+                          <td className="px-6 py-4 text-sm text-slate-600">{fmtDate(p.date)}</td>
+                          <td className="px-6 py-4 text-sm font-medium text-slate-900">₹{Number(p.amount || 0).toLocaleString('en-IN')}</td>
+                          <td className="px-6 py-4 text-sm text-slate-600">{(p.method || '—').toUpperCase()}</td>
+                          <td className="px-6 py-4 text-sm text-slate-500 font-mono">{p.transactionId || '—'}</td>
+                          <td className="px-6 py-4">
+                            <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              p.status === 'COMPLETED' ? 'bg-green-100 text-green-700'
+                                : p.status === 'PENDING' ? 'bg-yellow-100 text-yellow-700'
+                                : p.status === 'REFUNDED' ? 'bg-orange-100 text-orange-700'
+                                : p.status === 'FAILED' ? 'bg-red-100 text-red-700'
+                                : 'bg-slate-100 text-slate-600'
+                            }`}>
+                              {p.status?.toLowerCase?.() ? p.status[0] + p.status.slice(1).toLowerCase() : '—'}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
 
             <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
               <div className="px-6 py-4 border-b border-slate-100">

@@ -1,5 +1,6 @@
 const express = require('express');
 const path = require('path');
+const fs = require('fs');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const helmet = require('helmet');
@@ -16,6 +17,9 @@ const GymSetting = require('./models/GymSetting');
 dotenv.config();
 
 const isTestEnv = () => process.env.NODE_ENV === 'test';
+
+const DIST_DIR = path.resolve(__dirname, '..', 'client', 'dist');
+const hasBuild = () => fs.existsSync(path.join(DIST_DIR, 'index.html'));
 
 const createLimiter = (options) => (isTestEnv() ? (req, res, next) => next() : rateLimit(options));
 
@@ -84,6 +88,16 @@ const createApp = () => {
   app.use('/api/recommendations', require('./routes/recommendations'));
   app.use('/api/admin', require('./routes/admin'));
   app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+  // Production: the API also serves the built SPA so one port runs the whole
+  // app. SPA fallback keeps client-side routing working (React Router paths
+  // must not 404 on refresh). Skipped when there is no build output.
+  if (hasBuild()) {
+    app.use(express.static(DIST_DIR));
+    app.get(/^\/(?!api\/|uploads\/).*/, (req, res) => {
+      res.sendFile(path.join(DIST_DIR, 'index.html'));
+    });
+  }
 
   app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString(), service: 'fitsync-ai-api' });
@@ -160,6 +174,32 @@ const startServer = async (options = {}) => {
   });
   initSocket(httpServer);
   expireMemberships().catch((err) => console.error('[Startup] Expiry sweep failed:', err.message));
+
+  // Graceful shutdown: stop accepting connections, stop scheduled jobs, and
+  // close the DB so in-flight writes complete cleanly.
+  let shuttingDown = false;
+  const shutdown = async (signal) => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    console.log(`[Shutdown] ${signal} received - draining connections...`);
+    const forceExit = setTimeout(() => process.exit(1), 10000);
+    forceExit.unref();
+    httpServer.close(() => {});
+    const { stopCronJobs } = require('./utils/cron');
+    stopCronJobs();
+    const mongoose = require('mongoose');
+    try {
+      await mongoose.disconnect();
+      console.log('[Shutdown] Database disconnected. Bye.');
+    } catch (error) {
+      console.error('[Shutdown] DB disconnect failed:', error.message);
+    }
+    clearTimeout(forceExit);
+    process.exit(0);
+  };
+  process.on('SIGINT', () => shutdown('SIGINT'));
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+
   return httpServer;
 };
 

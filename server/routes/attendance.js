@@ -5,6 +5,7 @@ const Membership = require('../models/Membership');
 const User = require('../models/User');
 const { auth, authorize } = require('../middleware/auth');
 const { parsePagination } = require('../utils/helpers');
+const { getTrainerAccessibleMemberIds, canTrainerAccessMember } = require('../utils/access');
 const {
   getGymDayStart,
   getGymDayEnd,
@@ -49,6 +50,12 @@ router.get('/', auth, authorize('admin', 'trainer'), async (req, res) => {
       const end = getGymDayEnd(new Date(start.getTime() + 1));
       filter.date = { $gte: start, $lt: end };
     }
+    // Trainers only ever pull attendance for members they may coach.
+    if (req.user.role === 'trainer') {
+      const accessible = await getTrainerAccessibleMemberIds(req.user._id);
+      if (accessible.length === 0) return res.json({ records: [], total: 0, page, pages: 0 });
+      filter.user = { $in: accessible };
+    }
     const total = await Attendance.countDocuments(filter);
     const records = await Attendance.find(filter)
       .select('user date checkInTime checkOutTime method duration')
@@ -67,7 +74,16 @@ router.get('/batch-today', auth, authorize('admin', 'trainer'), async (req, res)
   try {
     const { userIds, date } = req.query;
     if (!userIds) return res.status(400).json({ message: 'userIds is required' });
-    const ids = userIds.split(',').filter(Boolean);
+    let ids = userIds.split(',').filter(Boolean);
+    if (ids.length === 0) return res.json({ records: [], count: 0 });
+
+    // Trainers may only batch-inspect members they are entitled to coach;
+    // silently narrow the requested set to what the trainer may see.
+    if (req.user.role === 'trainer') {
+      const accessible = await getTrainerAccessibleMemberIds(req.user._id);
+      const accessibleSet = new Set(accessible);
+      ids = ids.filter((id) => accessibleSet.has(String(id)));
+    }
     if (ids.length === 0) return res.json({ records: [], count: 0 });
 
     const filter = { user: { $in: ids } };
@@ -163,6 +179,11 @@ router.post('/checkin', auth, authorize('admin', 'trainer'), async (req, res) =>
     if (!target.isActive) {
       return res.status(403).json({ message: 'Member is deactivated' });
     }
+    // Trainers may only check in members they are entitled to coach.
+    if (req.user.role === 'trainer') {
+      const entitled = await canTrainerAccessMember(req.user._id, user._id);
+      if (!entitled) return res.status(403).json({ message: 'Access denied' });
+    }
 
     const membership = await requireActiveMembership(userId);
     if (!membership) {
@@ -201,8 +222,13 @@ router.post('/checkout/:id', auth, async (req, res) => {
   try {
     const attendance = await Attendance.findById(req.params.id);
     if (!attendance) return res.status(404).json({ message: 'Attendance not found' });
-    if (attendance.user.toString() !== req.user._id.toString() && req.user.role !== 'admin' && req.user.role !== 'trainer') {
+    if (attendance.user.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Access denied' });
+    }
+    // A trainer only checks out members they are entitled to coach.
+    if (req.user.role === 'trainer') {
+      const entitled = await canTrainerAccessMember(req.user._id, attendance.user);
+      if (!entitled) return res.status(403).json({ message: 'Access denied' });
     }
     if (attendance.checkOutTime) {
       return res.status(400).json({ message: 'Already checked out' });

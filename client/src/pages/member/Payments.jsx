@@ -17,28 +17,30 @@ export default function Payments() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [banner, setBanner] = useState(null);
+  const [recentActivity, setRecentActivity] = useState(false);
 
   const fetchData = async () => {
     try {
       setLoading(true);
       const res = await api.get('/payments/my');
       setPayments(res.data.payments || []);
+      return res.data.payments || [];
     } catch (err) {
       setError(err.message);
+      return [];
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchData();
+    // The URL `?checkout=...` is only a *return hint* from the gateway. It is
+    // never honored as proof of payment by itself - the banner message is
+    // derived from what the server actually recorded, so a redirect can never
+    // fake success (or cancel) on this page.
     const params = new URLSearchParams(window.location.search);
     const checkout = params.get('checkout');
-    if (checkout === 'success') {
-      setBanner('success');
-    } else if (checkout === 'cancelled') {
-      setBanner('cancelled');
-    }
+    setRecentActivity(Boolean(checkout));
     if (checkout) {
       params.delete('checkout');
       const qs = params.toString();
@@ -46,6 +48,26 @@ export default function Payments() {
       window.history.replaceState(null, '', newUrl);
     }
   }, []);
+
+  useEffect(() => {
+    if (!recentActivity) return;
+    const deriveBanner = async () => {
+      const list = await fetchData();
+      const recentWindow = Date.now() - 5 * 60 * 1000;
+      const recent = list.filter((p) => {
+        const at = new Date(p.date || p.createdAt).getTime();
+        return at >= recentWindow;
+      });
+      if (recent.some((p) => p.status === 'COMPLETED')) {
+        setBanner('success');
+      } else if (recent.some((p) => p.status === 'PENDING')) {
+        setBanner('pending');
+      } else {
+        setBanner(null);
+      }
+    };
+    deriveBanner();
+  }, [recentActivity]);
 
   if (loading) return <LoadingSpinner />;
   if (error) return <div className="p-6 text-center text-red-600">{error}</div>;
@@ -58,12 +80,12 @@ export default function Payments() {
 
         {banner === 'success' && (
           <div className="mb-6 rounded-lg bg-green-100 text-green-700 px-4 py-3 text-sm font-medium">
-            Payment successful! Your membership is now active.
+            Payment received and verified. Your membership is active.
           </div>
         )}
-        {banner === 'cancelled' && (
-          <div className="mb-6 rounded-lg bg-amber-100 text-amber-700 px-4 py-3 text-sm font-medium">
-            Checkout cancelled.
+        {banner === 'pending' && (
+          <div className="mb-6 rounded-lg bg-yellow-100 text-yellow-700 px-4 py-3 text-sm font-medium">
+            We received your payment request. Your membership activates once the payment is confirmed and verified.
           </div>
         )}
 
