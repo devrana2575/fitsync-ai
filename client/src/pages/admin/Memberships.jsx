@@ -1,13 +1,17 @@
 import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { XCircleIcon, ClipboardDocumentListIcon, CheckCircleIcon, ClockIcon, BellAlertIcon } from '@heroicons/react/24/outline';
+import { XCircleIcon, ClipboardDocumentListIcon, CheckCircleIcon, ClockIcon, BellAlertIcon, PlusIcon } from '@heroicons/react/24/outline';
 import api from '../../services/api';
 import useDebounce from '../../hooks/useDebounce';
-import LoadingSpinner from '../../components/common/LoadingSpinner';
 import EmptyState from '../../components/common/EmptyState';
+import PageHeader from '../../components/common/PageHeader';
 import Modal from '../../components/common/Modal';
 import DataTable from '../../components/common/DataTable';
 import StatCard from '../../components/common/StatCard';
+import ProgressBar from '../../components/common/ProgressBar';
+import Avatar from '../../components/common/Avatar';
+import { SkeletonCard, SkeletonRow } from '../../components/common/Skeleton';
+import { toINR, fmtDate } from '../../utils/format';
 
 const initialPlan = {
   name: '', price: '', duration: '', features: '', description: '',
@@ -211,13 +215,17 @@ export default function Memberships() {
   };
 
   const statusColor = (s) => {
-    const map = { active: 'bg-green-100 text-green-700', expired: 'bg-red-100 text-red-700', pending: 'bg-yellow-100 text-yellow-700', cancelled: 'bg-gray-100 text-gray-700' };
-    return map[s?.toLowerCase()] || 'bg-slate-100 text-slate-700';
+    const map = { active: 'badge-success', expired: 'badge-danger', pending: 'badge-warning', cancelled: 'badge-muted' };
+    return map[s?.toLowerCase()] || 'badge-muted';
   };
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-slate-900">Memberships</h1>
+    <div className="page-wrap space-y-6">
+      <PageHeader
+        title="Memberships"
+        subtitle="Manage membership plans and active memberships"
+        icon={ClipboardDocumentListIcon}
+      />
 
       {stats && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
@@ -230,57 +238,66 @@ export default function Memberships() {
       )}
 
       <div className="flex gap-1 border-b border-slate-200">
-        <button onClick={() => setTab('plans')} className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${tab === 'plans' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
+        <button onClick={() => setTab('plans')} className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${tab === 'plans' ? 'border-brand-600 text-brand-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
           Plans
         </button>
-        <button onClick={() => setTab('memberships')} className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${tab === 'memberships' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
-          Active Memberships
+        <button onClick={() => setTab('memberships')} className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${tab === 'memberships' ? 'border-brand-600 text-brand-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
+          Memberships
         </button>
       </div>
 
-      {loading ? <LoadingSpinner size="lg" /> : (
+      {loading ? (
+        tab === 'plans' ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {Array.from({ length: 3 }).map((_, i) => <SkeletonCard key={i} />)}
+          </div>
+        ) : (
+          <SkeletonRow rows={8} />
+        )
+      ) : (
         tab === 'plans' ? (
           <div className="space-y-4">
             <div className="flex justify-end">
-              <button onClick={openAddPlan} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">+ Add Plan</button>
+              <button onClick={openAddPlan} className="btn btn-md btn-primary">
+                <PlusIcon className="h-5 w-5" aria-hidden="true" />
+                Add Plan
+              </button>
             </div>
             {plans.length === 0 ? <EmptyState icon={ClipboardDocumentListIcon} message="No plans created yet" /> : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {plans.map((p) => (
-                  <div key={p._id} className="bg-white rounded-xl border border-slate-200 p-6 hover:shadow-md transition-shadow">
+                  <div key={p._id} className="card p-6 hover:shadow-md transition-shadow">
                     <div className="flex items-start justify-between mb-3">
                       <h3 className="text-lg font-semibold text-slate-900">{p.name}</h3>
-                      <button onClick={() => openEditPlan(p)} className="text-indigo-600 hover:text-indigo-800 text-sm font-medium">Edit</button>
+                      <button onClick={() => openEditPlan(p)} className="btn btn-sm btn-outline">Edit</button>
                     </div>
-                    <p className="text-3xl font-bold text-indigo-600 mb-1">₹{Number(p.price).toLocaleString('en-IN')}</p>
-                    <p className="text-sm text-slate-500 mb-2">{p.duration} days</p>
+                    <p className="text-2xl font-semibold tabular-nums text-brand-600 mb-1">{toINR(p.price)}</p>
+                    <p className="text-sm font-semibold uppercase tracking-wide text-slate-500 mb-2">{p.duration} DAYS</p>
                     <div className="flex flex-wrap gap-1.5 mb-3">
                       {p.paymentMode === 'INSTALLMENT' && (
-                        <span className="px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 text-xs font-medium">
-                          {p.installments || 2} × ₹{Number(p.installmentAmount || 0).toLocaleString('en-IN')} installments
+                        <span className="badge badge-warning">
+                          {p.installments || 2} × {toINR(p.installmentAmount || 0)}
                         </span>
                       )}
                       {p.trainerIncluded ? (
-                        <span className="px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 text-xs font-medium">
+                        <span className="badge badge-brand">
                           Trainer: {p.trainerAllocationMode || 'SHARED'}
                         </span>
                       ) : (
-                        <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-xs font-medium">No trainer</span>
+                        <span className="badge badge-muted">No trainer</span>
                       )}
                       {p.workoutPlanIncluded && (
-                        <span className="px-2 py-0.5 rounded-full bg-green-50 text-green-700 text-xs font-medium">Workouts included</span>
+                        <span className="badge badge-success">Workout plan</span>
                       )}
                       {p.requiredSpecialization && (
-                        <span className="px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 text-xs font-medium">Specialty: {p.requiredSpecialization}</span>
+                        <span className="badge badge-info">Specialty: {p.requiredSpecialization}</span>
                       )}
                     </div>
                     {p.description && <p className="text-sm text-slate-600 mb-3">{p.description}</p>}
                     {p.features?.length > 0 && (
-                      <ul className="space-y-1">
+                      <ul className="flex flex-wrap gap-1.5">
                         {p.features.map((f, i) => (
-                          <li key={i} className="text-sm text-slate-600 flex items-center gap-2">
-                            <CheckCircleIcon className="h-4 w-4 text-green-500" aria-hidden="true" /> {f}
-                          </li>
+                          <li key={i} className="badge badge-muted">{f}</li>
                         ))}
                       </ul>
                     )}
@@ -292,26 +309,34 @@ export default function Memberships() {
         ) : (
           <div className="space-y-4">
             <div className="flex justify-end">
-              <button onClick={openAssignModal} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">+ Assign Membership</button>
+              <button onClick={openAssignModal} className="btn btn-md btn-primary">
+                <PlusIcon className="h-5 w-5" aria-hidden="true" />
+                Assign Membership
+              </button>
             </div>
             {memberships.length === 0 ? <EmptyState icon={ClipboardDocumentListIcon} message="No active memberships" /> : (
               <DataTable headers={['Member', 'Plan', 'Start Date', 'End Date', 'Status', 'Actions']}>
-                {memberships.map((m, i) => (
-                  <tr key={m._id} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
-                    <td className="px-6 py-4 font-medium text-slate-900">{m.user?.name || m.member?.name || '—'}</td>
-                    <td className="px-6 py-4 text-slate-600">{m.plan?.name || '—'}</td>
-                    <td className="px-6 py-4 text-slate-600">{m.startDate ? new Date(m.startDate).toLocaleDateString('en-IN') : '—'}</td>
-                    <td className="px-6 py-4 text-slate-600">{m.endDate ? new Date(m.endDate).toLocaleDateString('en-IN') : '—'}</td>
-                    <td className="px-6 py-4">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColor(m.status)}`}>{m.status}</span>
+                {memberships.map((m) => (
+                  <tr key={m._id} className="odd:bg-white even:bg-slate-50/50">
+                    <td className="px-4 py-3 text-sm">
+                      <div className="flex items-center gap-2">
+                        <Avatar name={m.user?.name || m.member?.name} size="sm" />
+                        <span className="font-medium text-slate-900">{m.user?.name || m.member?.name || '—'}</span>
+                      </div>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="flex gap-2">
-                        <button onClick={() => viewMembership(m)} className="text-slate-600 hover:text-slate-900 font-medium text-sm">View</button>
+                    <td className="px-4 py-3 text-sm text-slate-600">{m.plan?.name || '—'}</td>
+                    <td className="px-4 py-3 text-sm text-slate-600">{fmtDate(m.startDate)}</td>
+                    <td className="px-4 py-3 text-sm text-slate-600">{fmtDate(m.endDate)}</td>
+                    <td className="px-4 py-3 text-sm">
+                      <span className={`badge ${statusColor(m.status)}`}>{m.status}</span>
+                    </td>
+                    <td className="px-4 py-3 text-sm">
+                      <div className="flex gap-1 flex-wrap">
+                        <button onClick={() => viewMembership(m)} className="btn btn-sm btn-outline">View</button>
                         {m.status?.toLowerCase() === 'active' && (
                           <>
-                            <button onClick={() => renewMembership(m)} className="text-green-600 hover:text-green-800 font-medium text-sm">Renew</button>
-                            <button onClick={() => cancelMembership(m)} className="text-red-600 hover:text-red-800 font-medium text-sm">Cancel</button>
+                            <button onClick={() => renewMembership(m)} className="btn btn-sm text-green-600 hover:bg-green-50">Renew</button>
+                            <button onClick={() => cancelMembership(m)} className="btn btn-sm text-red-600 hover:bg-red-50">Cancel</button>
                           </>
                         )}
                       </div>
@@ -327,37 +352,37 @@ export default function Memberships() {
       <Modal isOpen={showPlanModal} onClose={() => setShowPlanModal(false)} title={editingPlan ? 'Edit Plan' : 'Add Plan'}>
         <form onSubmit={handlePlanSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Plan Name</label>
-            <input required value={planForm.name} onChange={(e) => setPlanForm({ ...planForm, name: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+            <label className="label">Plan Name</label>
+            <input required value={planForm.name} onChange={(e) => setPlanForm({ ...planForm, name: e.target.value })} className="input" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Price (₹)</label>
-            <input required type="number" min="0" value={planForm.price} onChange={(e) => setPlanForm({ ...planForm, price: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+            <label className="label">Price (₹)</label>
+            <input required type="number" min="0" value={planForm.price} onChange={(e) => setPlanForm({ ...planForm, price: e.target.value })} className="input" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Duration (days)</label>
-            <input required type="number" min="1" value={planForm.duration} onChange={(e) => setPlanForm({ ...planForm, duration: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+            <label className="label">Duration (days)</label>
+            <input required type="number" min="1" value={planForm.duration} onChange={(e) => setPlanForm({ ...planForm, duration: e.target.value })} className="input" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
-            <textarea value={planForm.description} onChange={(e) => setPlanForm({ ...planForm, description: e.target.value })} rows={2} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+            <label className="label">Description</label>
+            <textarea value={planForm.description} onChange={(e) => setPlanForm({ ...planForm, description: e.target.value })} rows={2} className="input" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Features (comma-separated)</label>
-            <input value={planForm.features} onChange={(e) => setPlanForm({ ...planForm, features: e.target.value })} placeholder="e.g. Access to gym, Locker, Sauna" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+            <label className="label">Features (comma-separated)</label>
+            <input value={planForm.features} onChange={(e) => setPlanForm({ ...planForm, features: e.target.value })} placeholder="e.g. Access to gym, Locker, Sauna" className="input" />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Payment Mode</label>
-              <select value={planForm.paymentMode} onChange={(e) => setPlanForm({ ...planForm, paymentMode: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+              <label className="label">Payment Mode</label>
+              <select value={planForm.paymentMode} onChange={(e) => setPlanForm({ ...planForm, paymentMode: e.target.value })} className="input">
                 <option value="FULL">Pay in full</option>
                 <option value="INSTALLMENT">Installments</option>
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Installments (if applicable)</label>
-              <input type="number" min="1" value={planForm.installments} onChange={(e) => setPlanForm({ ...planForm, installments: e.target.value })} disabled={planForm.paymentMode !== 'INSTALLMENT'} className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-slate-50 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none disabled:opacity-50" />
+              <label className="label">Installments (if applicable)</label>
+              <input type="number" min="1" value={planForm.installments} onChange={(e) => setPlanForm({ ...planForm, installments: e.target.value })} disabled={planForm.paymentMode !== 'INSTALLMENT'} className="input bg-slate-50 disabled:opacity-50" />
             </div>
           </div>
           {planForm.paymentMode === 'INSTALLMENT' && Number(planForm.installments) > 1 && (
@@ -367,21 +392,21 @@ export default function Memberships() {
           )}
 
           <div className="flex items-center gap-2">
-            <input id="plan-trainer" type="checkbox" checked={planForm.trainerIncluded} onChange={(e) => setPlanForm({ ...planForm, trainerIncluded: e.target.checked })} className="h-4 w-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500" />
+            <input id="plan-trainer" type="checkbox" checked={planForm.trainerIncluded} onChange={(e) => setPlanForm({ ...planForm, trainerIncluded: e.target.checked })} className="h-4 w-4 text-brand-600 border-slate-300 rounded focus:ring-brand-500" />
             <label htmlFor="plan-trainer" className="text-sm font-medium text-slate-700">Includes personal trainer</label>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Trainer Allocation</label>
-              <select value={planForm.trainerAllocationMode} onChange={(e) => setPlanForm({ ...planForm, trainerAllocationMode: e.target.value })} disabled={!planForm.trainerIncluded} className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-slate-50 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none disabled:opacity-50">
+              <label className="label">Trainer Allocation</label>
+              <select value={planForm.trainerAllocationMode} onChange={(e) => setPlanForm({ ...planForm, trainerAllocationMode: e.target.value })} disabled={!planForm.trainerIncluded} className="input bg-slate-50 disabled:opacity-50">
                 {ALLOCATION_MODES.map((mode) => (
                   <option key={mode} value={mode}>{mode}</option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Required Specialization</label>
-              <input value={planForm.requiredSpecialization} onChange={(e) => setPlanForm({ ...planForm, requiredSpecialization: e.target.value })} disabled={!planForm.trainerIncluded} placeholder="e.g. Strength" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none disabled:opacity-50" />
+              <label className="label">Required Specialization</label>
+              <input value={planForm.requiredSpecialization} onChange={(e) => setPlanForm({ ...planForm, requiredSpecialization: e.target.value })} disabled={!planForm.trainerIncluded} placeholder="e.g. Strength" className="input disabled:opacity-50" />
             </div>
           </div>
           <p className="text-xs text-slate-500 -mt-2">
@@ -389,12 +414,12 @@ export default function Memberships() {
           </p>
 
           <div className="flex items-center gap-2">
-            <input id="plan-workouts" type="checkbox" checked={planForm.workoutPlanIncluded} onChange={(e) => setPlanForm({ ...planForm, workoutPlanIncluded: e.target.checked })} className="h-4 w-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500" />
+            <input id="plan-workouts" type="checkbox" checked={planForm.workoutPlanIncluded} onChange={(e) => setPlanForm({ ...planForm, workoutPlanIncluded: e.target.checked })} className="h-4 w-4 text-brand-600 border-slate-300 rounded focus:ring-brand-500" />
             <label htmlFor="plan-workouts" className="text-sm font-medium text-slate-700">Includes workout plans</label>
           </div>
           <div className="flex justify-end gap-3 pt-2">
-            <button type="button" onClick={() => setShowPlanModal(false)} className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 font-medium">Cancel</button>
-            <button type="submit" disabled={saving} className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-medium disabled:opacity-50">
+            <button type="button" onClick={() => setShowPlanModal(false)} className="btn btn-outline btn-md">Cancel</button>
+            <button type="submit" disabled={saving} className="btn btn-md btn-primary">
               {saving ? 'Saving...' : editingPlan ? 'Update' : 'Create'}
             </button>
           </div>
@@ -404,7 +429,7 @@ export default function Memberships() {
       <Modal isOpen={showAssignModal} onClose={() => setShowAssignModal(false)} title="Assign Membership">
         <form onSubmit={handleAssignSubmit} className="space-y-4">
           <div className="relative">
-            <label className="block text-sm font-medium text-slate-700 mb-1">Select Member</label>
+            <label className="label">Select Member</label>
             {assignForm.selectedMember ? (
               <div className="flex items-center gap-2 px-3 py-2 border border-slate-300 rounded-lg bg-slate-50">
                 <span className="flex-1 text-sm text-slate-900">{assignForm.selectedMember.name} ({assignForm.selectedMember.email})</span>
@@ -415,13 +440,13 @@ export default function Memberships() {
                 value={memberSearch}
                 onChange={(e) => setMemberSearch(e.target.value)}
                 placeholder="Search member..."
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                className="input"
               />
             )}
             {memberSearch && !assignForm.selectedMember && filteredMembers.length > 0 && (
               <ul className="absolute z-10 mt-1 w-full bg-white border border-slate-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
                 {filteredMembers.slice(0, 20).map((m) => (
-                  <li key={m._id} onClick={() => handleAssignMemberSelect(m)} className="px-3 py-2 text-sm hover:bg-indigo-50 cursor-pointer">
+                  <li key={m._id} onClick={() => handleAssignMemberSelect(m)} className="px-3 py-2 text-sm hover:bg-brand-50 cursor-pointer">
                     {m.name} <span className="text-slate-500">({m.email})</span>
                   </li>
                 ))}
@@ -429,23 +454,23 @@ export default function Memberships() {
             )}
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Plan</label>
+            <label className="label">Plan</label>
             <select required value={assignForm.selectedPlan?._id || ''} onChange={(e) => {
               const plan = plans.find((p) => p._id === e.target.value) || null;
               setAssignForm({ ...assignForm, selectedPlan: plan });
-            }} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+            }} className="input">
               <option value="">Choose a plan...</option>
               {plans.map((p) => (
-                <option key={p._id} value={p._id}>{p.name} — ₹{Number(p.price).toLocaleString('en-IN')} ({p.duration} days)</option>
+                <option key={p._id} value={p._id}>{p.name} — {toINR(p.price)} ({p.duration} days)</option>
               ))}
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Start Date (optional)</label>
-            <input type="date" value={assignForm.startDate} onChange={(e) => setAssignForm({ ...assignForm, startDate: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+            <label className="label">Start Date (optional)</label>
+            <input type="date" value={assignForm.startDate} onChange={(e) => setAssignForm({ ...assignForm, startDate: e.target.value })} className="input" />
           </div>
           <div className="flex items-center gap-2">
-            <input id="complimentary" type="checkbox" checked={assignForm.complimentary} onChange={(e) => setAssignForm({ ...assignForm, complimentary: e.target.checked })} className="h-4 w-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500" />
+            <input id="complimentary" type="checkbox" checked={assignForm.complimentary} onChange={(e) => setAssignForm({ ...assignForm, complimentary: e.target.checked })} className="h-4 w-4 text-brand-600 border-slate-300 rounded focus:ring-brand-500" />
             <label htmlFor="complimentary" className="text-sm font-medium text-slate-700">Complementary / free grant (activate immediately)</label>
           </div>
           <div className={`rounded-lg px-3 py-2 text-xs ${assignForm.complimentary ? 'bg-amber-50 text-amber-800 border border-amber-200' : 'bg-slate-50 text-slate-500 border border-slate-200'}`}>
@@ -454,8 +479,8 @@ export default function Memberships() {
               : 'This membership is created as PENDING and does not grant access yet. Record the payment on the Payments page (Plan-based entry) to activate it.'}
           </div>
           <div className="flex justify-end gap-3 pt-2">
-            <button type="button" onClick={() => setShowAssignModal(false)} className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 font-medium">Cancel</button>
-            <button type="submit" disabled={assignSaving || !assignForm.selectedMember || !assignForm.selectedPlan} className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-medium disabled:opacity-50">
+            <button type="button" onClick={() => setShowAssignModal(false)} className="btn btn-outline btn-md">Cancel</button>
+            <button type="submit" disabled={assignSaving || !assignForm.selectedMember || !assignForm.selectedPlan} className="btn btn-md btn-primary">
               {assignSaving ? 'Assigning...' : 'Assign'}
             </button>
           </div>
@@ -464,7 +489,9 @@ export default function Memberships() {
 
       <Modal isOpen={detailLoading || detail !== null} onClose={() => { if (!detailLoading) setDetail(null); }} title={`Membership — ${detail?.membership?.plan?.name || 'Details'}`}>
         {detailLoading ? (
-          <div className="flex justify-center py-10"><LoadingSpinner /></div>
+          <div className="space-y-4">
+            <SkeletonCard />
+          </div>
         ) : detail && (
           <div className="space-y-4">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
@@ -478,7 +505,7 @@ export default function Memberships() {
               </div>
               <div>
                 <p className="text-slate-500">Status</p>
-                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColor(detail.membership?.status)}`}>{detail.membership?.status}</span>
+                <span className={`badge ${statusColor(detail.membership?.status)}`}>{detail.membership?.status}</span>
               </div>
               <div>
                 <p className="text-slate-500">Payment</p>
@@ -488,50 +515,54 @@ export default function Memberships() {
             <div className="grid grid-cols-3 gap-3 text-sm">
               <div>
                 <p className="text-slate-500">Paid</p>
-                <p className="font-semibold text-green-700">₹{Number(detail.paidTotal || 0).toLocaleString('en-IN')}</p>
+                <p className="font-semibold text-green-700">{toINR(detail.paidTotal)}</p>
               </div>
               <div>
                 <p className="text-slate-500">Price</p>
-                <p className="font-semibold text-slate-900">₹{Number(detail.membership?.plan?.price || 0).toLocaleString('en-IN')}</p>
+                <p className="font-semibold text-slate-900">{toINR(detail.membership?.plan?.price)}</p>
               </div>
               <div>
                 <p className="text-slate-500">Remaining</p>
-                <p className={`font-semibold ${Number(detail.remaining) > 0 ? 'text-amber-700' : 'text-green-700'}`}>₹{Number(detail.remaining || 0).toLocaleString('en-IN')}</p>
+                <p className={`font-semibold ${Number(detail.remaining) > 0 ? 'text-amber-700' : 'text-green-700'}`}>{toINR(detail.remaining)}</p>
               </div>
             </div>
             {detail.membership?.plan?.paymentMode === 'INSTALLMENT' && Number(detail.membership?.plan?.price) > 0 && (
-              <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
-                <div className="h-full rounded-full bg-green-500" style={{ width: `${Math.min(100, (Number(detail.paidTotal || 0) / Number(detail.membership?.plan?.price || 1)) * 100)}%` }} />
-              </div>
+              <ProgressBar
+                value={(Number(detail.paidTotal || 0) / Number(detail.membership?.plan?.price || 1)) * 100}
+                tone="success"
+                label={`${toINR(detail.paidTotal)} of ${toINR(detail.membership?.plan?.price)} paid`}
+              />
             )}
-            <div className="overflow-x-auto rounded-lg border border-slate-200">
-              <table className="w-full">
-                <thead className="bg-slate-50">
-                  <tr>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Receipt</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Amount</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Method</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Date</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {(detail.payments || []).length === 0 ? (
-                    <tr><td colSpan="5" className="px-4 py-4 text-sm text-slate-400 text-center">No payments recorded for this membership</td></tr>
-                  ) : detail.payments.map((p) => (
-                    <tr key={p._id}>
-                      <td className="px-4 py-2 font-mono text-xs text-slate-500">{p.transactionId || '—'}</td>
-                      <td className="px-4 py-2 font-medium text-slate-900">₹{Number(p.amount || 0).toLocaleString('en-IN')}</td>
-                      <td className="px-4 py-2 text-slate-600 capitalize">{p.method || '—'}</td>
-                      <td className="px-4 py-2"><span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColor(p.status)}`}>{p.status}</span></td>
-                      <td className="px-4 py-2 text-slate-600">{p.date ? new Date(p.date).toLocaleDateString('en-IN') : '—'}</td>
+            <div className="card overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-slate-50">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Receipt</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Amount</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Method</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Status</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Date</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {(detail.payments || []).length === 0 ? (
+                      <tr><td colSpan="5" className="px-4 py-3 text-sm text-slate-400 text-center">No payments recorded for this membership</td></tr>
+                    ) : detail.payments.map((p) => (
+                      <tr key={p._id}>
+                        <td className="px-4 py-3 font-mono text-xs text-slate-500">{p.transactionId || '—'}</td>
+                        <td className="px-4 py-3 font-medium text-slate-900">{toINR(p.amount)}</td>
+                        <td className="px-4 py-3 text-sm text-slate-600 capitalize">{p.method || '—'}</td>
+                        <td className="px-4 py-3 text-sm"><span className={`badge ${statusColor(p.status)}`}>{p.status}</span></td>
+                        <td className="px-4 py-3 text-sm text-slate-600">{fmtDate(p.date)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
             <div className="flex justify-end">
-              <button type="button" onClick={() => setDetail(null)} className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 font-medium">Close</button>
+              <button type="button" onClick={() => setDetail(null)} className="btn btn-outline btn-md">Close</button>
             </div>
           </div>
         )}

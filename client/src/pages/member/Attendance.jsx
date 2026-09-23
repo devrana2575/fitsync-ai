@@ -1,7 +1,18 @@
 import { useState, useEffect } from 'react';
-import { MapPinIcon } from '@heroicons/react/24/outline';
+import {
+  MapPinIcon,
+  CalendarDaysIcon,
+  ClipboardDocumentListIcon,
+  CheckCircleIcon,
+} from '@heroicons/react/24/outline';
 import api from '../../services/api';
-import LoadingSpinner from '../../components/common/LoadingSpinner';
+import PageHeader from '../../components/common/PageHeader';
+import StatCard from '../../components/common/StatCard';
+import EmptyState from '../../components/common/EmptyState';
+import ErrorState from '../../components/common/ErrorState';
+import StatusBadge from '../../components/common/StatusBadge';
+import Skeleton, { SkeletonCard, SkeletonRow } from '../../components/common/Skeleton';
+import { fmtDate, fmtTime } from '../../utils/format';
 
 export default function Attendance() {
   const [records, setRecords] = useState([]);
@@ -14,6 +25,7 @@ export default function Attendance() {
   const fetchAttendance = async () => {
     try {
       setLoading(true);
+      setError(null);
       const res = await api.get('/attendance/my');
       const data = res.data?.attendance || res.data?.records || res.data || [];
       setRecords(Array.isArray(data) ? data : []);
@@ -68,8 +80,40 @@ export default function Attendance() {
     return thisMonth.length;
   };
 
-  if (loading) return <LoadingSpinner />;
-  if (error) return <div className="p-6 text-center text-red-600">{error}</div>;
+  if (loading) {
+    return (
+      <div className="page-wrap space-y-6">
+        <div className="space-y-2">
+          <Skeleton width="w-56" height="h-8" />
+          <Skeleton width="w-72" height="h-4" />
+        </div>
+        <SkeletonCard />
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <SkeletonCard />
+          <SkeletonCard />
+          <SkeletonCard />
+        </div>
+        <SkeletonRow rows={5} />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="page-wrap space-y-6">
+        <PageHeader title="My Attendance" subtitle="Your gym check-ins" icon={ClipboardDocumentListIcon} />
+        <ErrorState message={error} onRetry={fetchAttendance} />
+      </div>
+    );
+  }
+
+  const now = new Date();
+  const todayRecords = records.filter((r) => {
+    const d = new Date(r.checkInTime || r.date);
+    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+  });
+  const todayRecord = todayRecords[0];
+  const checkedIn = Boolean(todayRecord && !todayRecord.checkOutTime);
 
   const monthlyCount = getMonthlyCount();
 
@@ -82,120 +126,144 @@ export default function Attendance() {
   }, {});
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6">
-      <div className="max-w-5xl mx-auto">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8 gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900">My Attendance</h1>
-            <p className="text-slate-500 mt-1">{records.length} total check-ins</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="bg-white border border-slate-200 rounded-lg px-4 py-2 text-sm">
-              <span className="text-slate-500">This Month:</span>{' '}
-              <span className="font-semibold text-slate-900">{monthlyCount}</span>
+    <div className="page-wrap space-y-6">
+      <PageHeader
+        title="My Attendance"
+        subtitle={`${records.length} total check-ins`}
+        icon={ClipboardDocumentListIcon}
+      />
+
+      <div className={`card p-6 ${checkedIn ? 'border-emerald-200 bg-emerald-50/60' : ''}`}>
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          {checkedIn ? (
+            <div className="flex items-center gap-3">
+              <div className="rounded-full bg-emerald-100 p-2.5">
+                <CheckCircleIcon className="h-6 w-6 text-emerald-600" aria-hidden="true" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold tracking-wide text-emerald-700">CHECKED IN</p>
+                <p className="text-sm text-slate-600">
+                  {todayRecord?.checkInTime ? `Checked in at ${fmtTime(todayRecord.checkInTime)}` : 'Checked in today'}
+                </p>
+              </div>
             </div>
-            <button
-              onClick={handleCheckIn}
-              disabled={checking}
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors disabled:opacity-50"
-            >
-              {checking ? 'Checking in...' : (
-                <>
-                  <MapPinIcon className="h-4 w-4" aria-hidden="true" />
-                  Check In
-                </>
-              )}
+          ) : (
+            <div className="flex items-center gap-3">
+              <div className="rounded-full bg-brand-100 p-2.5">
+                <MapPinIcon className="h-6 w-6 text-brand-600" aria-hidden="true" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-slate-900">Not checked in yet</p>
+                <p className="text-sm text-slate-500">Check in when you arrive at the gym.</p>
+              </div>
+            </div>
+          )}
+          {!checkedIn && (
+            <button onClick={handleCheckIn} disabled={checking} className="btn btn-md btn-primary">
+              <MapPinIcon className="h-5 w-5 shrink-0" aria-hidden="true" />
+              {checking ? 'Checking in...' : 'Check In'}
             </button>
-          </div>
+          )}
         </div>
-
-        <div className="flex gap-2 mb-6">
-          <button
-            onClick={() => setView('table')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${view === 'table' ? 'bg-indigo-600 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'}`}
-          >
-            Table View
-          </button>
-          <button
-            onClick={() => setView('calendar')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${view === 'calendar' ? 'bg-indigo-600 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'}`}
-          >
-            Summary View
-          </button>
-        </div>
-
-        {records.length === 0 ? (
-          <div className="bg-white rounded-xl border border-slate-200 p-12 text-center text-slate-400">
-            <p className="text-lg">No attendance records yet</p>
-            <p className="text-sm mt-1">Click Check In to mark your attendance</p>
-          </div>
-        ) : view === 'table' ? (
-          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-slate-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Date</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Check-in</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Check-out</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Duration</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Method</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200">
-                  {records.map((r, idx) => (
-                    <tr key={r._id || r.id || idx} className="hover:bg-slate-50 transition-colors">
-                      <td className="px-6 py-4 text-sm font-medium text-slate-900">
-                        {new Date(r.checkInTime || r.date).toLocaleDateString('en-IN', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-slate-500">
-                        {r.checkInTime ? new Date(r.checkInTime).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' }) : '—'}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-slate-500">
-                        {r.checkOutTime ? new Date(r.checkOutTime).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' }) : (
-                          <button onClick={() => handleCheckOut(r._id || r.id)} disabled={checkingOutId === (r._id || r.id)} className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50">
-                            {checkingOutId === (r._id || r.id) ? 'Checking out...' : 'Check Out'}
-                          </button>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-slate-500">{formatDuration(r.duration)}</td>
-                      <td className="px-6 py-4">
-                        <span className="inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600">
-                          {r.method || r.checkInMethod || 'manual'}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-6">
-            {Object.entries(groupedByMonth).sort((a, b) => b[0].localeCompare(a[0])).map(([monthKey, monthRecords]) => {
-              const [year, month] = monthKey.split('-');
-              const monthName = new Date(year, month - 1).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
-              return (
-                <div key={monthKey} className="bg-white rounded-xl border border-slate-200 p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-base font-semibold text-slate-900">{monthName}</h3>
-                    <span className="text-sm text-slate-500">{monthRecords.length} visit{monthRecords.length !== 1 ? 's' : ''}</span>
-                  </div>
-                  <div className="grid grid-cols-7 gap-2">
-                    {monthRecords.map((r, idx) => (
-                      <div key={idx} className="aspect-square bg-green-100 rounded-lg flex items-center justify-center" title={new Date(r.checkInTime || r.date).toLocaleDateString()}>
-                        <span className="text-xs font-medium text-green-700">
-                          {new Date(r.checkInTime || r.date).getDate()}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
       </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <StatCard icon={MapPinIcon} label="Today" value={todayRecords.length} color="brand" />
+        <StatCard icon={CalendarDaysIcon} label="This Month" value={monthlyCount} color="blue" />
+        <StatCard icon={ClipboardDocumentListIcon} label="Total Check-ins" value={records.length} color="green" />
+      </div>
+
+      <div className="flex gap-2">
+        <button
+          onClick={() => setView('table')}
+          className={`btn btn-md ${view === 'table' ? 'btn-primary' : 'btn-outline'}`}
+        >
+          Table View
+        </button>
+        <button
+          onClick={() => setView('calendar')}
+          className={`btn btn-md ${view === 'calendar' ? 'btn-primary' : 'btn-outline'}`}
+        >
+          Summary View
+        </button>
+      </div>
+
+      {records.length === 0 ? (
+        <div className="card">
+          <EmptyState
+            icon={MapPinIcon}
+            message="No check-ins yet"
+            description="Check in when you arrive at the gym."
+          />
+        </div>
+      ) : view === 'table' ? (
+        <div className="card overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-slate-50 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                  <th className="px-6 py-3">Date</th>
+                  <th className="px-6 py-3">Check-in</th>
+                  <th className="px-6 py-3">Check-out</th>
+                  <th className="px-6 py-3">Duration</th>
+                  <th className="px-6 py-3">Method</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {records.map((r, idx) => (
+                  <tr key={r._id || r.id || idx} className="odd:bg-white even:bg-slate-50/50 hover:bg-slate-50 transition-colors">
+                    <td className="px-6 py-4 font-medium text-slate-900 whitespace-nowrap">
+                      {fmtDate(r.checkInTime || r.date, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                    </td>
+                    <td className="px-6 py-4 text-slate-600">{r.checkInTime ? fmtTime(r.checkInTime) : '—'}</td>
+                    <td className="px-6 py-4 text-slate-600">
+                      {r.checkOutTime ? (
+                        fmtTime(r.checkOutTime)
+                      ) : (
+                        <button
+                          onClick={() => handleCheckOut(r._id || r.id)}
+                          disabled={checkingOutId === (r._id || r.id)}
+                          className="btn btn-sm btn-primary"
+                        >
+                          {checkingOutId === (r._id || r.id) ? 'Checking out...' : 'Check Out'}
+                        </button>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 text-slate-600">{formatDuration(r.duration)}</td>
+                    <td className="px-6 py-4">
+                      <StatusBadge value={r.method || r.checkInMethod || 'manual'} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {Object.entries(groupedByMonth).sort((a, b) => b[0].localeCompare(a[0])).map(([monthKey, monthRecords]) => {
+            const [year, month] = monthKey.split('-');
+            const monthName = new Date(year, month - 1).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+            return (
+              <div key={monthKey} className="card p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-base font-semibold text-slate-900">{monthName}</h3>
+                  <span className="text-sm text-slate-500">{monthRecords.length} visit{monthRecords.length !== 1 ? 's' : ''}</span>
+                </div>
+                <div className="grid grid-cols-7 gap-2">
+                  {monthRecords.map((r, idx) => (
+                    <div key={idx} className="aspect-square bg-green-100 rounded-lg flex items-center justify-center" title={new Date(r.checkInTime || r.date).toLocaleDateString()}>
+                      <span className="text-xs font-medium text-green-700">
+                        {new Date(r.checkInTime || r.date).getDate()}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

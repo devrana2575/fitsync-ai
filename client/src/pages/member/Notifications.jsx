@@ -9,8 +9,10 @@ import {
   WrenchScrewdriverIcon,
 } from '@heroicons/react/24/outline';
 import api from '../../services/api';
-import LoadingSpinner from '../../components/common/LoadingSpinner';
+import PageHeader from '../../components/common/PageHeader';
 import EmptyState from '../../components/common/EmptyState';
+import ErrorState from '../../components/common/ErrorState';
+import { SkeletonRow } from '../../components/common/Skeleton';
 
 const NOTIFICATION_TYPES = [
   { value: 'membership_expiry', label: 'Membership expiry' },
@@ -32,7 +34,7 @@ const typeIcons = {
 };
 
 const typeTones = {
-  membership_expiry: 'text-indigo-500',
+  membership_expiry: 'text-brand-600',
   payment_due: 'text-amber-500',
   low_attendance: 'text-sky-500',
   high_risk: 'text-red-500',
@@ -141,144 +143,170 @@ export default function Notifications() {
     }));
   };
 
-  if (loading && notifications.length === 0) return <LoadingSpinner />;
-  if (error) return <div className="p-6 text-center text-red-600">{error}</div>;
+  const header = (
+    <PageHeader
+      title="Notifications"
+      subtitle="Updates about your membership, attendance and goals"
+      icon={BellIcon}
+      actions={
+        <>
+          <label className="flex items-center gap-2 text-sm text-slate-600">
+            <input
+              type="checkbox"
+              checked={unreadOnly}
+              onChange={(e) => setUnreadOnly(e.target.checked)}
+              className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+            />
+            Unread only
+          </label>
+          {notifications.some((n) => !n.isRead) && (
+            <button onClick={handleMarkAllRead} className="btn btn-sm btn-outline">
+              Mark all read
+            </button>
+          )}
+        </>
+      }
+    />
+  );
+
+  if (loading && notifications.length === 0) {
+    return (
+      <div className="page-wrap space-y-6">
+        {header}
+        <SkeletonRow rows={6} />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="page-wrap space-y-6">
+        {header}
+        <div className="card p-5">
+          <ErrorState message={error} onRetry={fetchData} />
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6">
-      <div className="max-w-5xl mx-auto">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8 gap-4">
+    <div className="page-wrap space-y-6">
+      {header}
+
+      <div className="card p-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 mb-1">Notifications</h1>
-            <p className="text-slate-500">Updates about your membership, attendance and goals</p>
+            <h2 className="card-title">Notification Preferences</h2>
+            <p className="text-sm text-slate-500">Choose how you want to be notified</p>
           </div>
-          <div className="flex items-center gap-3">
-            <label className="flex items-center gap-2 text-sm text-slate-600">
-              <input
-                type="checkbox"
-                checked={unreadOnly}
-                onChange={(e) => setUnreadOnly(e.target.checked)}
-                className="h-4 w-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500"
-              />
-              Unread only
-            </label>
-            {notifications.some((n) => !n.isRead) && (
-              <button onClick={handleMarkAllRead} className="text-sm font-medium text-indigo-600 hover:text-indigo-800">
-                Mark all read
-              </button>
-            )}
-          </div>
+          <button
+            onClick={handleSavePreferences}
+            className="btn btn-md btn-primary self-start sm:self-auto"
+          >
+            Save
+          </button>
         </div>
 
-        <div className="bg-white rounded-xl border border-slate-200 p-6 mb-6">
-          <div className="flex items-center justify-between mb-4 gap-3">
+        <div className="mt-6 space-y-5">
+          <div className="flex items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-semibold text-slate-900">Notification Preferences</h2>
-              <p className="text-sm text-slate-500">Choose how you want to be notified</p>
+              <p className="text-sm font-medium text-slate-800">Email notifications</p>
+              <p className="text-xs text-slate-500">Receive updates via email</p>
             </div>
             <button
-              onClick={handleSavePreferences}
-              className="text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg px-4 py-2 transition-colors"
+              type="button"
+              onClick={() => setToggle('emailNotifications')}
+              className={`relative inline-flex h-5 w-10 shrink-0 rounded-full transition-colors ${preferences.emailNotifications ? 'bg-brand-500' : 'bg-slate-300'}`}
             >
-              Save
+              <span
+                className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${preferences.emailNotifications ? 'translate-x-4' : 'translate-x-0'}`}
+              />
             </button>
           </div>
 
-          <div className="space-y-4">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-sm font-medium text-slate-800">Email notifications</p>
-                <p className="text-xs text-slate-500">Receive updates via email</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setToggle('emailNotifications')}
-                className={`relative inline-flex h-5 w-10 shrink-0 rounded-full transition-colors ${preferences.emailNotifications ? 'bg-indigo-600' : 'bg-slate-300'}`}
-              >
-                <span
-                  className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${preferences.emailNotifications ? 'translate-x-4' : 'translate-x-0'}`}
-                />
-              </button>
-            </div>
-
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-sm font-medium text-slate-800">SMS notifications</p>
-                <p className="text-xs text-slate-500">Receive updates via text message</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setToggle('smsNotifications')}
-                className={`relative inline-flex h-5 w-10 shrink-0 rounded-full transition-colors ${preferences.smsNotifications ? 'bg-indigo-600' : 'bg-slate-300'}`}
-              >
-                <span
-                  className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${preferences.smsNotifications ? 'translate-x-4' : 'translate-x-0'}`}
-                />
-              </button>
-            </div>
-
+          <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-sm font-medium text-slate-800 mb-2">Notify me about</p>
-              <div className="flex flex-wrap gap-2">
-                {NOTIFICATION_TYPES.map((t) => {
-                  const active = preferences.notifyTypes.includes(t.value);
-                  return (
-                    <button
-                      key={t.value}
-                      type="button"
-                      onClick={() => toggleNotifyType(t.value)}
-                      className={`text-xs font-medium rounded-full px-3 py-1.5 border transition-colors ${active ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'}`}
-                    >
-                      {t.label}
-                    </button>
-                  );
-                })}
-              </div>
+              <p className="text-sm font-medium text-slate-800">SMS notifications</p>
+              <p className="text-xs text-slate-500">Receive updates via text message</p>
             </div>
+            <button
+              type="button"
+              onClick={() => setToggle('smsNotifications')}
+              className={`relative inline-flex h-5 w-10 shrink-0 rounded-full transition-colors ${preferences.smsNotifications ? 'bg-brand-500' : 'bg-slate-300'}`}
+            >
+              <span
+                className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${preferences.smsNotifications ? 'translate-x-4' : 'translate-x-0'}`}
+              />
+            </button>
           </div>
 
-          {prefSaved && (
-            <div className="mt-4 text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-2">
-              Preferences saved successfully
+          <div>
+            <p className="text-sm font-medium text-slate-800 mb-2">Notify me about</p>
+            <div className="flex flex-wrap gap-2">
+              {NOTIFICATION_TYPES.map((t) => {
+                const active = preferences.notifyTypes.includes(t.value);
+                return (
+                  <button
+                    key={t.value}
+                    type="button"
+                    onClick={() => toggleNotifyType(t.value)}
+                    className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${active ? 'border-brand-500 bg-brand-500 text-white' : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-50'}`}
+                  >
+                    {t.label}
+                  </button>
+                );
+              })}
             </div>
-          )}
-          {prefError && (
-            <div className="mt-4 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-4 py-2">
-              {prefError}
-            </div>
-          )}
+          </div>
         </div>
 
-        {notifications.length === 0 ? (
-          <EmptyState icon={BellIcon} message={unreadOnly ? 'No unread notifications' : 'No notifications yet'} />
-        ) : (
-          <div className="bg-white rounded-xl border border-slate-200 divide-y divide-slate-100 overflow-hidden">
-            {notifications.map((n) => {
-              const TypeIcon = typeIcons[n.type] || BellIcon;
-              return (
-                <button
-                  key={n._id}
-                  onClick={() => { if (!n.isRead) handleMarkRead(n._id); }}
-                  className={`w-full text-left px-5 py-4 hover:bg-slate-50 transition-colors ${!n.isRead ? 'bg-indigo-50/40' : ''}`}
-                >
-                  <div className="flex items-start gap-3">
-                    <TypeIcon className={`h-5 w-5 mt-0.5 shrink-0 ${typeTones[n.type] || 'text-slate-400'}`} aria-hidden="true" />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between gap-2">
-                        <p className={`text-sm leading-snug ${!n.isRead ? 'font-semibold text-slate-900' : 'text-slate-700'}`}>
-                          {n.title}
-                        </p>
-                        <span className="text-xs text-slate-400 shrink-0">{timeAgo(n.createdAt)}</span>
-                      </div>
-                      <p className="text-sm text-slate-500 mt-0.5">{n.message}</p>
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
+        {prefSaved && (
+          <div className="mt-5 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-700">
+            Preferences saved successfully
+          </div>
+        )}
+        {prefError && (
+          <div className="mt-5 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
+            {prefError}
           </div>
         )}
       </div>
+
+      {notifications.length === 0 ? (
+        <EmptyState icon={BellIcon} message={unreadOnly ? "You're all caught up" : 'No notifications yet'} />
+      ) : (
+        <div className="space-y-3">
+          {notifications.map((n) => {
+            const TypeIcon = typeIcons[n.type] || BellIcon;
+            const unread = !n.isRead;
+            return (
+              <button
+                key={n._id}
+                onClick={() => { if (unread) handleMarkRead(n._id); }}
+                className={`card w-full p-5 text-left transition-colors hover:bg-slate-50 ${unread ? 'border-l-4 border-l-brand-500' : ''}`}
+              >
+                <div className="flex items-start gap-3">
+                  <TypeIcon className={`h-5 w-5 mt-0.5 shrink-0 ${typeTones[n.type] || 'text-slate-400'}`} aria-hidden="true" />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex min-w-0 items-center gap-2">
+                        {unread && (
+                          <span className="h-2 w-2 shrink-0 rounded-full bg-brand-500" aria-hidden="true" />
+                        )}
+                        <p className={`truncate text-sm leading-snug ${unread ? 'font-medium text-slate-900' : 'text-slate-700'}`}>
+                          {n.title}
+                        </p>
+                      </div>
+                      <span className="shrink-0 text-xs text-slate-400">{timeAgo(n.createdAt)}</span>
+                    </div>
+                    <p className="mt-0.5 text-sm text-slate-500">{n.message}</p>
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

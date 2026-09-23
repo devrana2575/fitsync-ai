@@ -1,14 +1,41 @@
 import { useState, useEffect, useCallback } from 'react';
-import { UsersIcon, BoltIcon, ArrowPathIcon, ClipboardDocumentCheckIcon } from '@heroicons/react/24/outline';
+import { useNavigate } from 'react-router-dom';
+import {
+  UsersIcon,
+  BoltIcon,
+  ArrowPathIcon,
+  ClipboardDocumentCheckIcon,
+  UserGroupIcon,
+  ArrowRightIcon,
+  PlusIcon,
+  ChartBarIcon,
+} from '@heroicons/react/24/outline';
 import { useAuth } from '../../context/AuthContext';
 import StatCard from '../../components/common/StatCard';
-import LoadingSpinner from '../../components/common/LoadingSpinner';
+import Avatar from '../../components/common/Avatar';
+import StatusBadge from '../../components/common/StatusBadge';
+import ProgressBar from '../../components/common/ProgressBar';
+import Skeleton, { SkeletonCard, SkeletonRow } from '../../components/common/Skeleton';
+import EmptyState from '../../components/common/EmptyState';
+import ErrorState from '../../components/common/ErrorState';
+import PageHeader from '../../components/common/PageHeader';
 import ProfileCompletionCard from '../../components/common/ProfileCompletionCard';
 import useTrainerDashboard from '../../hooks/useTrainerDashboard';
 import api from '../../services/api';
+import { fmtDate } from '../../utils/format';
+
+const QUICK_ACTIONS = [
+  { label: 'View Members', hint: 'Browse your assigned roster', path: '/trainer/members', icon: UsersIcon },
+  { label: 'Create Work Plan', hint: 'Build a training plan for a member', path: '/trainer/workouts', icon: PlusIcon },
+  { label: 'Check Member Progress', hint: 'Review attendance and progress', path: '/trainer/members', icon: ChartBarIcon },
+];
+
+const memberName = (m) => m.user?.name || m.name || 'Member';
+const memberId = (m) => m.user?._id || m._id || m.id;
 
 export default function TrainerDashboard() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [refreshing, setRefreshing] = useState(false);
   const [completion, setCompletion] = useState(null);
   const { data, loading, error, reload } = useTrainerDashboard({ forceRefresh: true });
@@ -46,106 +73,204 @@ export default function TrainerDashboard() {
     return () => document.removeEventListener('visibilitychange', handleVisibility);
   }, [handleRefresh]);
 
-  if (loading) return <LoadingSpinner />;
-  if (error) return (
-    <div className="p-6 text-center">
-      <p className="text-red-600 mb-3">{error}</p>
-      <button onClick={handleRefresh} disabled={refreshing} className="px-4 py-2 text-sm font-medium text-indigo-600 hover:text-indigo-800 border border-indigo-200 rounded-lg hover:bg-indigo-50 transition-colors disabled:opacity-50">
-        {refreshing ? 'Retrying...' : 'Retry'}
-      </button>
-    </div>
-  );
+  if (loading) {
+    return (
+      <div className="page-wrap space-y-6">
+        <div className="space-y-2">
+          <Skeleton width="w-64" height="h-8" />
+          <Skeleton width="w-80" height="h-4" />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <SkeletonCard key={i} />
+          ))}
+        </div>
+        <SkeletonRow rows={5} />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="page-wrap space-y-6">
+        <PageHeader title="Trainer Dashboard" subtitle={`Welcome back, ${user?.name}`} icon={UsersIcon} />
+        <ErrorState message={error} onRetry={handleRefresh} />
+      </div>
+    );
+  }
 
   const members = data?.members || [];
+  const totalAssigned = data?.totalAssigned ?? members.length;
+  const maxMembers = data?.maxMembers;
+  const capacityPct = maxMembers ? Math.round((totalAssigned / maxMembers) * 100) : null;
+  const needsAttention = members.filter((m) => Array.isArray(m.attention) && m.attention.length > 0);
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6">
-      <div className="max-w-7xl mx-auto">
-        <div className="mb-8 flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900">Trainer Dashboard</h1>
-            <p className="text-slate-500 mt-1">Welcome back, {user?.name}</p>
-          </div>
-          <button onClick={handleRefresh} disabled={refreshing} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50">
+    <div className="page-wrap space-y-6">
+      <PageHeader
+        title="Trainer Dashboard"
+        subtitle={`Welcome back, ${user?.name} — here's how your members are doing today.`}
+        icon={UsersIcon}
+        actions={
+          <button onClick={handleRefresh} disabled={refreshing} className="btn btn-sm btn-outline">
             <ArrowPathIcon className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} aria-hidden="true" />
-            Refresh
+            {refreshing ? 'Refreshing...' : 'Refresh'}
           </button>
-        </div>
+        }
+      />
 
-        {completion && !completion.allRequiredComplete && (
-          <div className="mb-8">
-            <ProfileCompletionCard completion={completion} member={false} />
-          </div>
-        )}
+      {completion && !completion.allRequiredComplete && (
+        <ProfileCompletionCard completion={completion} member={false} />
+      )}
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <StatCard icon={UsersIcon} label="Total Assigned Members" value={data?.totalAssigned ?? 0} color="indigo" />
-          <StatCard icon={ClipboardDocumentCheckIcon} label="Today's Attendance" value={data?.todayAttendance ?? 0} color="green" />
-          <StatCard icon={BoltIcon} label="Recent Workouts (30d)" value={data?.recentWorkouts ?? 0} color="blue" />
-        </div>
-
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-200">
-            <h2 className="text-lg font-semibold text-slate-900">Assigned Members</h2>
-          </div>
-          {members.length === 0 ? (
-            <div className="p-12 text-center text-slate-400">
-              <p className="text-lg">No members assigned yet</p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        <div className="card p-5">
+          <div className="flex items-center gap-4">
+            <span className="shrink-0 p-3 rounded-lg ring-1 bg-brand-100 text-brand-700 ring-brand-200">
+              <UserGroupIcon className="h-5 w-5" aria-hidden="true" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium text-slate-500">Member Capacity</p>
+              <p className="mt-0.5 text-2xl font-semibold text-slate-900 tracking-tight tabular-nums">
+                {maxMembers ? `${totalAssigned} / ${maxMembers}` : totalAssigned}
+                <span className="ml-1.5 text-sm font-normal text-slate-500">{maxMembers ? 'members' : 'assigned'}</span>
+              </p>
+              {maxMembers ? (
+                <ProgressBar
+                  value={capacityPct}
+                  tone={capacityPct >= 90 ? 'danger' : capacityPct >= 75 ? 'warning' : 'brand'}
+                  className="mt-2"
+                />
+              ) : (
+                <p className="mt-1.5 text-xs text-slate-400">Assigned member count</p>
+              )}
             </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-slate-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Name</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Attention</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Last Visit</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200">
-                  {members.map((member) => (
-                    <tr key={member._id || member.id} className="hover:bg-slate-50 transition-colors">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="h-9 w-9 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-semibold text-sm">
-                            {(member.user?.name || member.name || '').charAt(0).toUpperCase()}
-                          </div>
-                          <span className="text-sm font-medium text-slate-900">{member.user?.name || member.name}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        {Array.isArray(member.attention) && member.attention.length > 0 ? (
-                          <div className="flex flex-wrap gap-1.5">
-                            {member.attention.includes('no_recent_attendance') && (
-                              <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">No visit in 7+ days</span>
-                            )}
-                            {member.attention.includes('membership_expiring') && (
-                              <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-700">Membership expiring</span>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-sm text-slate-300">—</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          member.user?.isActive !== false ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                        }`}>
-                          {member.user?.isActive !== false ? 'Active' : 'Inactive'}
+          </div>
+        </div>
+        <StatCard icon={UsersIcon} label="Total Assigned Members" value={totalAssigned} color="brand" />
+        <StatCard icon={ClipboardDocumentCheckIcon} label="Today's Attendance" value={data?.todayAttendance ?? 0} color="green" />
+        <StatCard icon={BoltIcon} label="Recent Workouts (30d)" value={data?.recentWorkouts ?? 0} color="blue" />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 space-y-6">
+          <div className="card">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+              <h2 className="card-title">Needs attention</h2>
+              {needsAttention.length > 0 && (
+                <span className="badge badge-warning">{needsAttention.length} member{needsAttention.length !== 1 ? 's' : ''}</span>
+              )}
+            </div>
+            {needsAttention.length === 0 ? (
+              <div className="px-5 py-10 text-center text-sm text-slate-400">
+                All assigned members are on track. Nothing needs your attention.
+              </div>
+            ) : (
+              <ul className="divide-y divide-slate-100">
+                {needsAttention.map((m) => (
+                  <li key={memberId(m)}>
+                    <button
+                      onClick={() => navigate(`/trainer/members/${memberId(m)}`)}
+                      className="w-full flex items-center gap-3 px-5 py-3.5 text-left hover:bg-slate-50 transition-colors"
+                    >
+                      <Avatar name={memberName(m)} src={m.user?.avatar} size="md" />
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-sm font-medium text-slate-900 truncate">{memberName(m)}</span>
+                        <span className="block text-xs text-slate-500 mt-0.5">
+                          {m.lastVisit ? `Last visit ${fmtDate(m.lastVisit)}` : 'No visits yet'}
                         </span>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-slate-500">
-                        {member.lastVisit
-                          ? new Date(member.lastVisit).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' })
-                          : '—'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                      </span>
+                      <span className="shrink-0 flex flex-wrap justify-end gap-1.5">
+                        {m.attention.includes('no_recent_attendance') && (
+                          <span className="badge badge-warning">No visit in 7+ days</span>
+                        )}
+                        {m.attention.includes('membership_expiring') && (
+                          <span className="badge bg-orange-100 text-orange-700">Membership expiring</span>
+                        )}
+                      </span>
+                      <ArrowRightIcon className="h-4 w-4 text-slate-300 shrink-0" aria-hidden="true" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <div className="card overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+              <h2 className="card-title">Assigned Members</h2>
+              <span className="text-xs text-slate-400">{members.length} total</span>
             </div>
-          )}
+            {members.length === 0 ? (
+              <EmptyState
+                icon={UsersIcon}
+                message="No members assigned yet"
+                description="Members assigned to you will show up here with their attendance and status."
+              />
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-slate-50 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                      <th className="px-5 py-3">Name</th>
+                      <th className="px-5 py-3">Status</th>
+                      <th className="px-5 py-3">Last Visit</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {members.map((m, i) => {
+                      const active = m.user?.isActive !== false;
+                      return (
+                        <tr
+                          key={memberId(m)}
+                          onClick={() => navigate(`/trainer/members/${memberId(m)}`)}
+                          className={`cursor-pointer hover:bg-slate-50 transition-colors ${i % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'}`}
+                        >
+                          <td className="px-5 py-3">
+                            <div className="flex items-center gap-3">
+                              <Avatar name={memberName(m)} src={m.user?.avatar} size="sm" />
+                              <div className="min-w-0">
+                                <p className="font-medium text-slate-900 truncate">{memberName(m)}</p>
+                                <p className="text-xs text-slate-500 truncate">{m.user?.email || '—'}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-5 py-3">
+                            <StatusBadge value={active} label={active ? 'Active' : 'Inactive'} />
+                          </td>
+                          <td className="px-5 py-3 text-xs text-slate-500">{m.lastVisit ? fmtDate(m.lastVisit) : '—'}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="space-y-6">
+          <div className="card p-5">
+            <h2 className="card-title mb-4">Quick Actions</h2>
+            <div className="space-y-2">
+              {QUICK_ACTIONS.map((action) => (
+                <button
+                  key={action.label}
+                  onClick={() => navigate(action.path)}
+                  className="flex w-full items-center gap-3 rounded-xl border border-slate-200 px-4 py-3 text-left hover:bg-slate-50 hover:border-slate-300 transition-colors"
+                >
+                  <span className="shrink-0 p-2 rounded-lg bg-brand-100 text-brand-700">
+                    <action.icon className="h-5 w-5" aria-hidden="true" />
+                  </span>
+                  <span className="flex-1 min-w-0">
+                    <span className="block text-sm font-medium text-slate-900">{action.label}</span>
+                    <span className="block text-xs text-slate-500">{action.hint}</span>
+                  </span>
+                  <ArrowRightIcon className="h-4 w-4 text-slate-400 shrink-0" aria-hidden="true" />
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     </div>

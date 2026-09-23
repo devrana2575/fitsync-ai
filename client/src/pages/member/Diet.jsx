@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { CheckIcon, ClipboardDocumentCheckIcon, FireIcon, CalendarDaysIcon } from '@heroicons/react/24/outline';
 import api from '../../services/api';
+import PageHeader from '../../components/common/PageHeader';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import ErrorState from '../../components/common/ErrorState';
 import StatCard from '../../components/common/StatCard';
@@ -70,78 +71,83 @@ export default function Diet() {
   const totalDiets = dietTypes.length;
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Diet</h1>
-        <p className="text-sm text-slate-500 mt-1">Check off the diet types you completed on a given day.</p>
-      </div>
+    <div className="page-wrap space-y-6">
+      <PageHeader
+        title="Diet"
+        subtitle="Check off the diet types you completed on a given day."
+        icon={ClipboardDocumentCheckIcon}
+      />
 
       {error ? (
-        <div className="bg-white rounded-xl border border-slate-200">
+        <div className="card overflow-hidden">
           <ErrorState message={error} onRetry={fetchAll} />
         </div>
       ) : loading ? (
-        <LoadingSpinner size="lg" />
+        <div className="py-10">
+          <LoadingSpinner size="lg" />
+        </div>
       ) : (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <StatCard icon={ClipboardDocumentCheckIcon} label="Completed Today" value={totalDiets ? `${completedCount} / ${totalDiets}` : '—'} color="indigo" />
+            <StatCard icon={ClipboardDocumentCheckIcon} label="Completed Today" value={totalDiets ? `${completedCount} / ${totalDiets}` : '—'} color="brand" />
             <StatCard icon={FireIcon} label="Day Streak" value={stats?.streak ?? '—'} color="orange" />
             <StatCard icon={CalendarDaysIcon} label="Days Tracked (7d)" value={stats?.last7Days?.length ?? '—'} color="cyan" />
           </div>
 
-          <div className="bg-white rounded-xl border border-slate-200 p-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
-              <h2 className="text-lg font-semibold text-slate-900">Daily Diet Checklist</h2>
+          <div className="card p-5 sm:p-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <h2 className="card-title">Daily Diet Checklist</h2>
               <input
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                className="input sm:w-auto"
               />
             </div>
 
-            {dietTypes.length === 0 ? (
-              <p className="text-sm text-slate-400">No diet types available.</p>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {dietTypes.map((d) => {
-                  const isChecked = completed.has(d.value);
-                  return (
-                    <label
-                      key={d.value}
-                      className={`flex items-center gap-3 px-4 py-3 rounded-xl border cursor-pointer transition-colors ${
-                        isChecked ? 'border-indigo-300 bg-indigo-50' : 'border-slate-200 bg-white hover:bg-slate-50'
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={isChecked}
-                        disabled={saving}
-                        onChange={(e) => handleToggle(d.value, e.target.checked)}
-                        className="h-5 w-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                      />
-                      <span className={`text-sm font-medium flex-1 ${isChecked ? 'text-indigo-900' : 'text-slate-700'}`}>
-                        {d.label}
-                      </span>
-                      {isChecked && <CheckIcon className="h-5 w-5 text-indigo-600 shrink-0" aria-hidden="true" />}
-                    </label>
-                  );
-                })}
-              </div>
-            )}
+            <div className="mt-5">
+              {dietTypes.length === 0 ? (
+                <p className="text-sm text-slate-400">No diet types available.</p>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {dietTypes.map((d) => {
+                    const isChecked = completed.has(d.value);
+                    return (
+                      <label
+                        key={d.value}
+                        className={`flex items-center gap-3 px-4 py-3 rounded-xl border cursor-pointer transition-colors ${
+                          isChecked ? 'border-brand-300 bg-brand-50' : 'border-slate-200 bg-white hover:bg-slate-50'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          disabled={saving}
+                          onChange={(e) => handleToggle(d.value, e.target.checked)}
+                          className="h-5 w-5 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+                        />
+                        <span className={`text-sm font-medium flex-1 ${isChecked ? 'text-brand-900' : 'text-slate-700'}`}>
+                          {d.label}
+                        </span>
+                        {isChecked && <CheckIcon className="h-5 w-5 text-brand-600 shrink-0" aria-hidden="true" />}
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
 
-          <div className="bg-white rounded-xl border border-slate-200 p-6">
-            <h2 className="text-lg font-semibold text-slate-900 mb-4">Last 7 Days</h2>
+          <div className="card p-5 sm:p-6">
+            <h2 className="card-title mb-5">Last 7 Days</h2>
             {!stats || stats.last7Days.length === 0 ? (
               <p className="text-sm text-slate-400">No diet checklist entries in the last week.</p>
             ) : (
               <div className="flex flex-wrap gap-3">
                 {stats.last7Days.map((day) => (
-                  <div key={new Date(day.date).toISOString()} className="rounded-lg border border-slate-200 px-4 py-3 text-center min-w-[96px]">
+                  <div key={new Date(day.date).toISOString()} className="rounded-xl border border-slate-200 px-4 py-3 text-center min-w-[96px] bg-white">
                     <p className="text-xs text-slate-500">{fmtDay(day.date)}</p>
-                    <p className="text-lg font-semibold text-slate-900 mt-1">{day.count}</p>
+                    <p className="text-lg font-semibold text-slate-900 mt-1 tabular-nums">{day.count}</p>
                     <p className="text-[11px] text-slate-400">completed</p>
                   </div>
                 ))}

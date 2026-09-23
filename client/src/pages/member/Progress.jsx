@@ -1,10 +1,20 @@
 import { useState, useEffect, useMemo } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { CameraIcon } from '@heroicons/react/24/outline';
+import {
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
+} from 'recharts';
+import {
+  ChartBarIcon,
+  ClipboardDocumentListIcon,
+  CameraIcon,
+  PlusIcon,
+} from '@heroicons/react/24/outline';
 import api from '../../services/api';
-import LoadingSpinner from '../../components/common/LoadingSpinner';
-import Modal from '../../components/common/Modal';
+import PageHeader from '../../components/common/PageHeader';
 import EmptyState from '../../components/common/EmptyState';
+import ErrorState from '../../components/common/ErrorState';
+import Modal from '../../components/common/Modal';
+import Skeleton, { SkeletonCard, SkeletonRow } from '../../components/common/Skeleton';
+import { fmtDate } from '../../utils/format';
 
 export default function Progress() {
   const [measurements, setMeasurements] = useState([]);
@@ -32,7 +42,7 @@ export default function Progress() {
   });
 
   useEffect(() => {
-    Promise.all([fetchMeasurements(), fetchPhotos()]);
+    refetch();
   }, []);
 
   async function fetchMeasurements() {
@@ -56,6 +66,11 @@ export default function Progress() {
     } catch {
       setPhotos([]);
     }
+  }
+
+  async function refetch() {
+    setError(null);
+    await Promise.all([fetchMeasurements(), fetchPhotos()]);
   }
 
   const handlePhotoChange = (e) => {
@@ -138,272 +153,318 @@ export default function Progress() {
   const points = (key) => chartData.filter((d) => d[key] != null).length;
   const enough = (key, min = 2) => points(key) >= min;
 
-  if (loading) return <LoadingSpinner />;
-  if (error) return <div className="p-6 text-center text-red-600">{error}</div>;
+  if (loading) {
+    return (
+      <div className="page-wrap space-y-6">
+        <div className="space-y-2">
+          <Skeleton width="w-56" height="h-8" />
+          <Skeleton width="w-72" height="h-4" />
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <SkeletonCard />
+          <SkeletonCard />
+        </div>
+        <SkeletonCard />
+        <SkeletonCard />
+        <SkeletonRow rows={5} />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="page-wrap space-y-6">
+        <PageHeader title="My Progress" subtitle="Your body measurements and progress photos" icon={ChartBarIcon} />
+        <ErrorState message={error} onRetry={refetch} />
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6">
-      <div className="max-w-5xl mx-auto">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8 gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900">My Progress</h1>
-            <p className="text-slate-500 mt-1">{measurements.length} measurement{measurements.length !== 1 ? 's' : ''} recorded</p>
-          </div>
-          <button
-            onClick={() => setShowForm(!showForm)}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors"
-          >
-            {showForm ? 'Cancel' : '+ Record Measurement'}
+    <div className="page-wrap space-y-6">
+      <PageHeader
+        title="My Progress"
+        subtitle={`${measurements.length} measurement${measurements.length !== 1 ? 's' : ''} recorded`}
+        icon={ChartBarIcon}
+        actions={
+          <button onClick={() => setShowForm(!showForm)} className="btn btn-md btn-primary">
+            <PlusIcon className="h-4 w-4" aria-hidden="true" />
+            {showForm ? 'Cancel' : 'Record Measurement'}
           </button>
-        </div>
+        }
+      />
 
-        {showForm && (
-          <div className="bg-white rounded-xl border border-slate-200 p-6 mb-8">
-            <h2 className="text-lg font-semibold text-slate-900 mb-4">Record Body Measurement</h2>
-            {formError && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{formError}</div>
-            )}
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Weight (kg)</label>
-                  <input type="number" name="weight" value={form.weight} onChange={handleChange} min="0" step="0.1" placeholder="e.g. 75" className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Height (cm)</label>
-                  <input type="number" name="height" value={form.height} onChange={handleChange} min="0" step="0.1" placeholder="e.g. 175" className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Body Fat %</label>
-                  <input type="number" name="bodyFat" value={form.bodyFat} onChange={handleChange} min="0" step="0.1" placeholder="e.g. 20" className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Chest (cm)</label>
-                  <input type="number" name="chest" value={form.chest} onChange={handleChange} min="0" step="0.1" placeholder="e.g. 100" className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Waist (cm)</label>
-                  <input type="number" name="waist" value={form.waist} onChange={handleChange} min="0" step="0.1" placeholder="e.g. 80" className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Hips (cm)</label>
-                  <input type="number" name="hips" value={form.hips} onChange={handleChange} min="0" step="0.1" placeholder="e.g. 95" className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Biceps (cm)</label>
-                  <input type="number" name="biceps" value={form.biceps} onChange={handleChange} min="0" step="0.1" placeholder="e.g. 35" className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Thighs (cm)</label>
-                  <input type="number" name="thighs" value={form.thighs} onChange={handleChange} min="0" step="0.1" placeholder="e.g. 55" className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" />
-                </div>
+      {showForm && (
+        <div className="card p-6">
+          <h2 className="section-title mb-4">Record Body Measurement</h2>
+          {formError && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{formError}</div>
+          )}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div>
+                <label className="label">Weight (kg)</label>
+                <input type="number" name="weight" value={form.weight} onChange={handleChange} min="0" step="0.1" placeholder="e.g. 75" className="input" />
               </div>
-              <div className="flex justify-end">
-                <button type="submit" disabled={submitting} className="px-6 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors disabled:opacity-50">
-                  {submitting ? 'Saving...' : 'Save Measurement'}
-                </button>
+              <div>
+                <label className="label">Height (cm)</label>
+                <input type="number" name="height" value={form.height} onChange={handleChange} min="0" step="0.1" placeholder="e.g. 175" className="input" />
               </div>
-            </form>
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          <div className="bg-white rounded-xl border border-slate-200 p-6">
-            <h2 className="text-lg font-semibold text-slate-900 mb-4">Weight Trend</h2>
-            {enough('weight') ? (
-              <ResponsiveContainer width="100%" height={250}>
-                <LineChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                  <XAxis dataKey="date" tick={{ fontSize: 12 }} stroke="#94a3b8" />
-                  <YAxis tick={{ fontSize: 12 }} stroke="#94a3b8" />
-                  <Tooltip />
-                  <Line type="monotone" dataKey="weight" stroke="#6366f1" strokeWidth={2} dot={{ fill: '#6366f1' }} name="Weight (kg)" />
-                </LineChart>
-              </ResponsiveContainer>
-            ) : points('weight') === 1 ? (
-              <div className="h-[250px] flex items-center justify-center text-slate-500 text-sm">Not enough data to show a trend — record another measurement</div>
-            ) : (
-              <div className="h-[250px] flex items-center justify-center text-slate-400 text-sm">No weight data yet</div>
-            )}
-          </div>
-
-          <div className="bg-white rounded-xl border border-slate-200 p-6">
-            <h2 className="text-lg font-semibold text-slate-900 mb-4">BMI Trend</h2>
-            {enough('bmi') ? (
-              <ResponsiveContainer width="100%" height={250}>
-                <LineChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                  <XAxis dataKey="date" tick={{ fontSize: 12 }} stroke="#94a3b8" />
-                  <YAxis tick={{ fontSize: 12 }} stroke="#94a3b8" />
-                  <Tooltip />
-                  <Line type="monotone" dataKey="bmi" stroke="#10b981" strokeWidth={2} dot={{ fill: '#10b981' }} name="BMI" />
-                </LineChart>
-              </ResponsiveContainer>
-            ) : points('bmi') === 1 ? (
-              <div className="h-[250px] flex items-center justify-center text-slate-500 text-sm">Not enough data to show a trend — record another measurement</div>
-            ) : (
-              <div className="h-[250px] flex items-center justify-center text-slate-400 text-sm">No BMI data yet (need weight + height)</div>
-            )}
-          </div>
+              <div>
+                <label className="label">Body Fat %</label>
+                <input type="number" name="bodyFat" value={form.bodyFat} onChange={handleChange} min="0" step="0.1" placeholder="e.g. 20" className="input" />
+              </div>
+              <div>
+                <label className="label">Chest (cm)</label>
+                <input type="number" name="chest" value={form.chest} onChange={handleChange} min="0" step="0.1" placeholder="e.g. 100" className="input" />
+              </div>
+              <div>
+                <label className="label">Waist (cm)</label>
+                <input type="number" name="waist" value={form.waist} onChange={handleChange} min="0" step="0.1" placeholder="e.g. 80" className="input" />
+              </div>
+              <div>
+                <label className="label">Hips (cm)</label>
+                <input type="number" name="hips" value={form.hips} onChange={handleChange} min="0" step="0.1" placeholder="e.g. 95" className="input" />
+              </div>
+              <div>
+                <label className="label">Biceps (cm)</label>
+                <input type="number" name="biceps" value={form.biceps} onChange={handleChange} min="0" step="0.1" placeholder="e.g. 35" className="input" />
+              </div>
+              <div>
+                <label className="label">Thighs (cm)</label>
+                <input type="number" name="thighs" value={form.thighs} onChange={handleChange} min="0" step="0.1" placeholder="e.g. 55" className="input" />
+              </div>
+            </div>
+            <div className="flex justify-end">
+              <button type="submit" disabled={submitting} className="btn btn-md btn-primary">
+                {submitting ? 'Saving...' : 'Save Measurement'}
+              </button>
+            </div>
+          </form>
         </div>
+      )}
 
-        <div className="bg-white rounded-xl border border-slate-200 p-6 mb-8">
-          <h2 className="text-lg font-semibold text-slate-900 mb-4">Body Measurements Over Time</h2>
-          {enough('chest') || enough('waist') || enough('hips') ? (
-            <ResponsiveContainer width="100%" height={300}>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="card p-6">
+          <h2 className="section-title mb-4">Weight Trend</h2>
+          {enough('weight') ? (
+            <ResponsiveContainer width="100%" height={250}>
               <LineChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                 <XAxis dataKey="date" tick={{ fontSize: 12 }} stroke="#94a3b8" />
                 <YAxis tick={{ fontSize: 12 }} stroke="#94a3b8" />
                 <Tooltip />
-                <Legend />
-                <Line type="monotone" dataKey="chest" stroke="#6366f1" strokeWidth={2} dot={{ fill: '#6366f1' }} name="Chest (cm)" />
-                <Line type="monotone" dataKey="waist" stroke="#f59e0b" strokeWidth={2} dot={{ fill: '#f59e0b' }} name="Waist (cm)" />
-                <Line type="monotone" dataKey="hips" stroke="#10b981" strokeWidth={2} dot={{ fill: '#10b981' }} name="Hips (cm)" />
+                <Line type="monotone" dataKey="weight" stroke="#84cc16" strokeWidth={2} dot={{ fill: '#84cc16' }} name="Weight (kg)" />
               </LineChart>
             </ResponsiveContainer>
-          ) : points('chest') + points('waist') + points('hips') > 0 ? (
-            <div className="h-[300px] flex items-center justify-center text-slate-500 text-sm">Not enough data to show a trend — record another measurement</div>
           ) : (
-            <div className="h-[300px] flex items-center justify-center text-slate-400 text-sm">No body measurement data yet</div>
+            <div className="flex min-h-[250px] items-center justify-center">
+              <EmptyState
+                icon={ChartBarIcon}
+                message="Not enough measurements yet."
+                description="Complete your next fitness assessment to see your trend."
+                action={
+                  <button onClick={() => setShowForm(true)} className="btn btn-md btn-primary">
+                    Record Measurement
+                  </button>
+                }
+              />
+            </div>
           )}
         </div>
 
-        <div className="bg-white rounded-xl border border-slate-200 p-6 mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-slate-900">Progress Photos</h2>
-            <button
-              onClick={() => setShowPhotoForm(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors"
-            >
-              + Upload Photo
-            </button>
-          </div>
-          {photos.length > 0 ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              {photos.map((photo) => (
-                <div key={photo._id || photo.url} className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-                  <img
-                    src={photo.url}
-                    alt={photo.caption || 'Progress photo'}
-                    className="h-48 w-full object-cover rounded-t-xl"
-                  />
-                  <div className="p-4">
-                    <p className="text-sm font-medium text-slate-900 truncate">{photo.caption || 'Progress photo'}</p>
-                    <div className="mt-2 flex items-center gap-2">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-50 text-indigo-600 capitalize">{photo.angle}</span>
-                      <span className="text-xs text-slate-500">
-                        {new Date(photo.createdAt || photo.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                      </span>
-                    </div>
-                    <button onClick={() => handleDeletePhoto(photo)} className="mt-3 text-xs font-medium text-red-600 hover:text-red-800">
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
+        <div className="card p-6">
+          <h2 className="section-title mb-4">BMI Trend</h2>
+          {enough('bmi') ? (
+            <ResponsiveContainer width="100%" height={250}>
+              <LineChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                <XAxis dataKey="date" tick={{ fontSize: 12 }} stroke="#94a3b8" />
+                <YAxis tick={{ fontSize: 12 }} stroke="#94a3b8" />
+                <Tooltip />
+                <Line type="monotone" dataKey="bmi" stroke="#10b981" strokeWidth={2} dot={{ fill: '#10b981' }} name="BMI" />
+              </LineChart>
+            </ResponsiveContainer>
           ) : (
-            <EmptyState icon={CameraIcon} message="No progress photos yet. Upload one to track your transformation." />
+            <div className="flex min-h-[250px] items-center justify-center">
+              <EmptyState
+                icon={ChartBarIcon}
+                message="Not enough measurements yet."
+                description="Complete your next fitness assessment to see your trend."
+                action={
+                  <button onClick={() => setShowForm(true)} className="btn btn-md btn-primary">
+                    Record Measurement
+                  </button>
+                }
+              />
+            </div>
           )}
         </div>
+      </div>
 
-        <Modal isOpen={showPhotoForm} onClose={() => setShowPhotoForm(false)} title="Upload Progress Photo">
-          <form onSubmit={handlePhotoSubmit} className="space-y-4">
-            {photoError && (
-              <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{photoError}</div>
-            )}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Caption</label>
-              <input
-                type="text"
-                name="caption"
-                value={photoForm.caption}
-                onChange={handlePhotoChange}
-                placeholder="e.g. Week 4 check-in"
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Angle</label>
-              <select
-                name="angle"
-                value={photoForm.angle}
-                onChange={handlePhotoChange}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-              >
-                <option value="other">Other</option>
-                <option value="front">Front</option>
-                <option value="side">Side</option>
-                <option value="back">Back</option>
-                <option value="full">Full</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Photo</label>
-              <input
-                type="file"
-                name="photo"
-                accept="image/*"
-                onChange={handlePhotoChange}
-                className="w-full text-sm text-slate-600 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-indigo-50 file:text-indigo-600 hover:file:bg-indigo-100"
-              />
-            </div>
-            <div className="flex justify-end">
-              <button type="submit" disabled={photoSubmitting} className="px-6 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors disabled:opacity-50">
-                {photoSubmitting ? 'Uploading...' : 'Upload Photo'}
-              </button>
-            </div>
-          </form>
-        </Modal>
-
-        {measurements.length > 0 && (
-          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-200">
-              <h2 className="text-lg font-semibold text-slate-900">Measurement History</h2>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-slate-50">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Date</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Weight</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Height</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">BMI</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Body Fat</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Chest</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Waist</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Hips</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Biceps</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Thighs</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200">
-                  {[...measurements].reverse().map((m, idx) => {
-                    const bmi = m.bmi || (m.weight && m.height ? Math.round((m.weight / ((m.height / 100) ** 2)) * 10) / 10 : null);
-                    return (
-                      <tr key={m._id || m.id || idx} className="hover:bg-slate-50 transition-colors">
-                        <td className="px-4 py-3 text-sm font-medium text-slate-900 whitespace-nowrap">
-                          {new Date(m.createdAt || m.date).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' })}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-slate-600">{m.weight ? `${m.weight} kg` : '—'}</td>
-                        <td className="px-4 py-3 text-sm text-slate-600">{m.height ? `${m.height} cm` : '—'}</td>
-                        <td className="px-4 py-3 text-sm text-slate-600">{bmi ?? '—'}</td>
-                        <td className="px-4 py-3 text-sm text-slate-600">{m.bodyFat ? `${m.bodyFat}%` : '—'}</td>
-                        <td className="px-4 py-3 text-sm text-slate-600">{m.chest ? `${m.chest} cm` : '—'}</td>
-                        <td className="px-4 py-3 text-sm text-slate-600">{m.waist ? `${m.waist} cm` : '—'}</td>
-                        <td className="px-4 py-3 text-sm text-slate-600">{m.hips ? `${m.hips} cm` : '—'}</td>
-                        <td className="px-4 py-3 text-sm text-slate-600">{m.biceps ? `${m.biceps} cm` : '—'}</td>
-                        <td className="px-4 py-3 text-sm text-slate-600">{m.thighs ? `${m.thighs} cm` : '—'}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+      <div className="card p-6">
+        <h2 className="section-title mb-4">Body Measurements Over Time</h2>
+        {enough('chest') || enough('waist') || enough('hips') ? (
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <XAxis dataKey="date" tick={{ fontSize: 12 }} stroke="#94a3b8" />
+              <YAxis tick={{ fontSize: 12 }} stroke="#94a3b8" />
+              <Tooltip />
+              <Legend />
+              <Line type="monotone" dataKey="chest" stroke="#84cc16" strokeWidth={2} dot={{ fill: '#84cc16' }} name="Chest (cm)" />
+              <Line type="monotone" dataKey="waist" stroke="#f59e0b" strokeWidth={2} dot={{ fill: '#f59e0b' }} name="Waist (cm)" />
+              <Line type="monotone" dataKey="hips" stroke="#10b981" strokeWidth={2} dot={{ fill: '#10b981' }} name="Hips (cm)" />
+            </LineChart>
+          </ResponsiveContainer>
+        ) : (
+          <div className="flex min-h-[300px] items-center justify-center">
+            <EmptyState
+              icon={ClipboardDocumentListIcon}
+              message="Not enough measurements yet."
+              description="Complete your next fitness assessment to see your trend."
+              action={
+                <button onClick={() => setShowForm(true)} className="btn btn-md btn-primary">
+                  Record Measurement
+                </button>
+              }
+            />
           </div>
         )}
       </div>
+
+      <div className="card p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="section-title">Progress Photos</h2>
+          <button onClick={() => setShowPhotoForm(true)} className="btn btn-md btn-primary">
+            <CameraIcon className="h-4 w-4" aria-hidden="true" />
+            Upload Photo
+          </button>
+        </div>
+        {photos.length > 0 ? (
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            {photos.map((photo) => (
+              <div key={photo._id || photo.url} className="card overflow-hidden">
+                <img
+                  src={photo.url}
+                  alt={photo.caption || 'Progress photo'}
+                  className="h-48 w-full object-cover"
+                />
+                <div className="p-4">
+                  <p className="text-sm font-medium text-slate-900 truncate">{photo.caption || 'Progress photo'}</p>
+                  <div className="mt-2 flex items-center gap-2">
+                    <span className="badge badge-brand capitalize">{photo.angle}</span>
+                    <span className="text-xs text-slate-500">{fmtDate(photo.createdAt || photo.date)}</span>
+                  </div>
+                  <button onClick={() => handleDeletePhoto(photo)} className="btn btn-sm btn-danger mt-3">
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <EmptyState
+            icon={CameraIcon}
+            message="No progress photos yet"
+            description="Upload one to track your transformation."
+          />
+        )}
+      </div>
+
+      <Modal isOpen={showPhotoForm} onClose={() => setShowPhotoForm(false)} title="Upload Progress Photo">
+        <form onSubmit={handlePhotoSubmit} className="space-y-4">
+          {photoError && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{photoError}</div>
+          )}
+          <div>
+            <label className="label">Caption</label>
+            <input
+              type="text"
+              name="caption"
+              value={photoForm.caption}
+              onChange={handlePhotoChange}
+              placeholder="e.g. Week 4 check-in"
+              className="input"
+            />
+          </div>
+          <div>
+            <label className="label">Angle</label>
+            <select
+              name="angle"
+              value={photoForm.angle}
+              onChange={handlePhotoChange}
+              className="input"
+            >
+              <option value="other">Other</option>
+              <option value="front">Front</option>
+              <option value="side">Side</option>
+              <option value="back">Back</option>
+              <option value="full">Full</option>
+            </select>
+          </div>
+          <div>
+            <label className="label">Photo</label>
+            <input
+              type="file"
+              name="photo"
+              accept="image/*"
+              onChange={handlePhotoChange}
+              className="input file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-brand-50 file:text-brand-600"
+            />
+          </div>
+          <div className="flex justify-end">
+            <button type="submit" disabled={photoSubmitting} className="btn btn-md btn-primary">
+              {photoSubmitting ? 'Uploading...' : 'Upload Photo'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {measurements.length > 0 && (
+        <div className="card overflow-hidden">
+          <div className="px-6 py-4 border-b border-slate-100">
+            <h2 className="section-title">Measurement History</h2>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-slate-50 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                  <th className="px-6 py-3">Date</th>
+                  <th className="px-6 py-3">Weight</th>
+                  <th className="px-6 py-3">Height</th>
+                  <th className="px-6 py-3">BMI</th>
+                  <th className="px-6 py-3">Body Fat</th>
+                  <th className="px-6 py-3">Chest</th>
+                  <th className="px-6 py-3">Waist</th>
+                  <th className="px-6 py-3">Hips</th>
+                  <th className="px-6 py-3">Biceps</th>
+                  <th className="px-6 py-3">Thighs</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {[...measurements].reverse().map((m, idx) => {
+                  const bmi = m.bmi || (m.weight && m.height ? Math.round((m.weight / ((m.height / 100) ** 2)) * 10) / 10 : null);
+                  return (
+                    <tr key={m._id || m.id || idx} className="odd:bg-white even:bg-slate-50/50 hover:bg-slate-50 transition-colors">
+                      <td className="px-6 py-3 font-medium text-slate-900 whitespace-nowrap">{fmtDate(m.createdAt || m.date)}</td>
+                      <td className="px-6 py-3 text-slate-600">{m.weight ? `${m.weight} kg` : '—'}</td>
+                      <td className="px-6 py-3 text-slate-600">{m.height ? `${m.height} cm` : '—'}</td>
+                      <td className="px-6 py-3 text-slate-600">{bmi ?? '—'}</td>
+                      <td className="px-6 py-3 text-slate-600">{m.bodyFat ? `${m.bodyFat}%` : '—'}</td>
+                      <td className="px-6 py-3 text-slate-600">{m.chest ? `${m.chest} cm` : '—'}</td>
+                      <td className="px-6 py-3 text-slate-600">{m.waist ? `${m.waist} cm` : '—'}</td>
+                      <td className="px-6 py-3 text-slate-600">{m.hips ? `${m.hips} cm` : '—'}</td>
+                      <td className="px-6 py-3 text-slate-600">{m.biceps ? `${m.biceps} cm` : '—'}</td>
+                      <td className="px-6 py-3 text-slate-600">{m.thighs ? `${m.thighs} cm` : '—'}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

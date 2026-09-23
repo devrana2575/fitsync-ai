@@ -1,7 +1,17 @@
 import { useState, useEffect } from 'react';
-import { IdentificationIcon, CameraIcon, TrashIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import {
+  UserCircleIcon,
+  CameraIcon,
+  TrashIcon,
+  XMarkIcon,
+  PlusIcon,
+} from '@heroicons/react/24/outline';
 import api from '../../services/api';
-import LoadingSpinner from '../../components/common/LoadingSpinner';
+import Avatar from '../../components/common/Avatar';
+import StatusBadge from '../../components/common/StatusBadge';
+import Skeleton, { SkeletonCard } from '../../components/common/Skeleton';
+import ErrorState from '../../components/common/ErrorState';
+import PageHeader from '../../components/common/PageHeader';
 import ProfileCompletionCard from '../../components/common/ProfileCompletionCard';
 import { fmtDate } from '../../utils/format';
 
@@ -68,6 +78,7 @@ export default function Profile() {
   const fetchMe = async () => {
     try {
       setLoading(true);
+      setError(null);
       const res = await api.get('/auth/me');
       const { user, profile: memberProfile, completion: profileCompletion } = res.data;
       setMe(user);
@@ -201,414 +212,444 @@ export default function Profile() {
     }
   };
 
-  if (loading) return <LoadingSpinner />;
-  if (error) return <div className="p-6 text-center text-red-600">{error}</div>;
-
-  const inputCls = (withIcon = false) =>
-    `w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none${withIcon ? ' pl-9' : ''}`;
-  const labelCls = (withIcon = false) =>
-    `block mb-1 text-sm font-medium text-slate-700${withIcon ? ' flex items-center gap-1.5' : ''}`;
-
-  return (
-    <div className="min-h-screen bg-slate-50 p-6">
-      <div className="max-w-5xl mx-auto">
-        <h1 className="text-2xl font-bold text-slate-900 mb-1">My Profile</h1>
-        <p className="text-slate-500 mb-6">Your account details and health &amp; fitness profile</p>
-
-        <div className="mb-6">
-          <ProfileCompletionCard completion={completion} member />
+  if (loading) {
+    return (
+      <div className="page-wrap space-y-6">
+        <div className="space-y-2">
+          <Skeleton width="w-56" height="h-8" />
+          <Skeleton width="w-72" height="h-4" />
         </div>
-
+        <SkeletonCard />
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
-            <div className="bg-white rounded-xl border border-slate-200 p-6">
-              <h2 className="text-lg font-semibold text-slate-900 mb-4">Personal Details</h2>
-              <form onSubmit={handleSave} className="space-y-4">
+            <SkeletonCard />
+            <SkeletonCard />
+            <SkeletonCard />
+          </div>
+          <div className="space-y-6">
+            <SkeletonCard />
+            <SkeletonCard />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="page-wrap space-y-6">
+        <PageHeader title="My Profile" subtitle="Your account details and health &amp; fitness profile" icon={UserCircleIcon} />
+        <ErrorState message={error} onRetry={fetchMe} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="page-wrap space-y-6">
+      <PageHeader title="My Profile" subtitle="Your account details and health &amp; fitness profile" icon={UserCircleIcon} />
+
+      <ProfileCompletionCard completion={completion} member />
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+        <div className="lg:col-span-2 space-y-6">
+          <form onSubmit={handleSave} className="space-y-6">
+            <div className="card p-6">
+              <h2 className="section-title mb-4">Personal Information</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className={labelCls()}>Full Name</label>
+                  <label className="label">Full Name</label>
                   <input
                     required
                     value={profile.name}
                     onChange={(e) => setProfile({ ...profile, name: e.target.value })}
-                    className={inputCls()}
-                  />
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className={labelCls()}>Date of Birth</label>
-                    <input
-                      type="date"
-                      value={profile.dateOfBirth}
-                      onChange={(e) => setProfile({ ...profile, dateOfBirth: e.target.value })}
-                      max={new Date().toISOString().slice(0, 10)}
-                      className={inputCls()}
-                    />
-                  </div>
-                  <div>
-                    <label className={labelCls()}>Gender</label>
-                    <select
-                      value={profile.gender}
-                      onChange={(e) => setProfile({ ...profile, gender: e.target.value })}
-                      className={inputCls()}
-                    >
-                      <option value="">Select gender</option>
-                      {Object.entries(GENDER_LABELS).map(([value, label]) => (
-                        <option key={value} value={value}>{label}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-                <div>
-                  <label className={labelCls()}>Phone Numbers</label>
-                  <div className="space-y-2">
-                    {profile.phoneNumbers.map((p, i) => (
-                      <div key={i} className="flex items-center gap-2">
-                        <input
-                          value={p.number}
-                          onChange={(e) => setPhoneRow(i, { number: e.target.value })}
-                          placeholder="Phone number"
-                          className="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
-                        />
-                        <select
-                          value={p.label}
-                          onChange={(e) => setPhoneRow(i, { label: e.target.value })}
-                          className="px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
-                        >
-                          {CONTACT_LABELS.map((l) => (
-                            <option key={l} value={l}>{l}</option>
-                          ))}
-                        </select>
-                        {profile.phoneNumbers.length > 1 && (
-                          <button type="button" onClick={() => removePhoneRow(i)} className="text-red-500 hover:text-red-700 text-lg leading-none" aria-label="Remove phone number">
-                            <XMarkIcon className="h-5 w-5" aria-hidden="true" />
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                  <button type="button" onClick={addPhoneRow} className="mt-1 text-sm text-indigo-600 hover:text-indigo-800 font-medium">+ Add another number</button>
-                  <p className="text-xs text-slate-400 mt-1">The Primary number is the main contact for gym notifications and messaging.</p>
-                </div>
-                <div>
-                  <label className={labelCls()}>Address</label>
-                  <input
-                    value={profile.address}
-                    onChange={(e) => setProfile({ ...profile, address: e.target.value })}
-                    className={inputCls()}
-                  />
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className={labelCls()}>Emergency Contact Name</label>
-                    <input
-                      value={profile.emergencyName}
-                      onChange={(e) => setProfile({ ...profile, emergencyName: e.target.value })}
-                      className={inputCls()}
-                    />
-                  </div>
-                  <div>
-                    <label className={labelCls()}>Emergency Contact Phone</label>
-                    <input
-                      value={profile.emergencyPhone}
-                      onChange={(e) => setProfile({ ...profile, emergencyPhone: e.target.value })}
-                      className={inputCls()}
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className={labelCls()}>Emergency Contact Relationship</label>
-                  <input
-                    value={profile.emergencyRelationship}
-                    onChange={(e) => setProfile({ ...profile, emergencyRelationship: e.target.value })}
-                    placeholder="e.g. Spouse, Parent"
-                    className={inputCls()}
-                  />
-                </div>
-
-                <div className="pt-4 border-t border-slate-200">
-                  <h3 className="text-md font-semibold text-slate-900 mb-3">Body &amp; Fitness</h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className={labelCls()}>Height (cm)</label>
-                      <input
-                        type="number"
-                        min="40"
-                        max="300"
-                        value={profile.heightCm}
-                        onChange={(e) => setProfile({ ...profile, heightCm: e.target.value })}
-                        className={inputCls()}
-                      />
-                    </div>
-                    <div>
-                      <label className={labelCls()}>Weight (kg)</label>
-                      <input
-                        type="number"
-                        min="2"
-                        max="500"
-                        step="0.1"
-                        value={profile.weightKg}
-                        onChange={(e) => setProfile({ ...profile, weightKg: e.target.value })}
-                        className={inputCls()}
-                      />
-                    </div>
-                  </div>
-                  <div className="mt-4">
-                    <label className={labelCls()}>Activity Level</label>
-                    <select
-                      value={profile.activityLevel}
-                      onChange={(e) => setProfile({ ...profile, activityLevel: e.target.value })}
-                      className={inputCls()}
-                    >
-                      <option value="">Select activity level</option>
-                      {ACTIVITY_LEVELS.map((l) => (
-                        <option key={l} value={l}>{ACTIVITY_LABELS[l]}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="mt-4">
-                    <label className={labelCls()}>Preferred Workout Days</label>
-                    <div className="flex flex-wrap gap-2">
-                      {WEEKDAYS.map((d) => (
-                        <button
-                          key={d}
-                          type="button"
-                          onClick={() => toggleDay(d)}
-                          className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
-                            profile.preferredWorkoutDays.includes(d)
-                              ? 'bg-indigo-600 text-white border-indigo-600'
-                              : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'
-                          }`}
-                        >
-                          {d.slice(0, 3)}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="mt-4">
-                    <label className={labelCls()}>Preferred Workout Duration (minutes)</label>
-                    <input
-                      type="number"
-                      min="15"
-                      max="300"
-                      value={profile.preferredWorkoutDuration}
-                      onChange={(e) => setProfile({ ...profile, preferredWorkoutDuration: e.target.value })}
-                      className={inputCls()}
-                    />
-                  </div>
-                  <div className="mt-4">
-                    <label className={labelCls()}>Goals (comma-separated)</label>
-                    <input
-                      value={profile.goals}
-                      onChange={(e) => setProfile({ ...profile, goals: e.target.value })}
-                      placeholder="e.g. Fat loss, Strength, Endurance"
-                      className={inputCls()}
-                    />
-                  </div>
-                  <div className="mt-4">
-                    <label className={labelCls()}>Current Injuries (comma-separated)</label>
-                    <input
-                      value={profile.injuries}
-                      onChange={(e) => setProfile({ ...profile, injuries: e.target.value })}
-                      placeholder="e.g. Knee strain, Shoulder impingement"
-                      className={inputCls()}
-                    />
-                    <p className="text-xs text-slate-400 mt-1">Helps your trainer adapt exercises. This is not a substitute for medical advice.</p>
-                  </div>
-                </div>
-
-                <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-3">
-                  <p className="text-xs font-semibold text-red-700 mb-2">Health &amp; Safety (informational)</p>
-                  <div className="space-y-2">
-                    <div>
-                      <label className="block text-xs font-medium text-slate-600 mb-1">Medical Conditions</label>
-                      <input
-                        value={profile.medicalConditions}
-                        onChange={(e) => setProfile({ ...profile, medicalConditions: e.target.value })}
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-slate-600 mb-1">Allergies (comma-separated)</label>
-                      <input
-                        value={profile.allergies}
-                        onChange={(e) => setProfile({ ...profile, allergies: e.target.value })}
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-slate-600 mb-1">Medical Restrictions</label>
-                      <input
-                        value={profile.medicalRestrictions}
-                        onChange={(e) => setProfile({ ...profile, medicalRestrictions: e.target.value })}
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-slate-600 mb-1">Medical Notes</label>
-                      <textarea
-                        value={profile.medicalNotes}
-                        onChange={(e) => setProfile({ ...profile, medicalNotes: e.target.value })}
-                        rows={2}
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {(doctorRecommendation || trainerRecommendation) && (
-                  <div className="rounded-lg bg-indigo-50 border border-indigo-200 px-3 py-3">
-                    <p className="text-xs font-semibold text-indigo-700 mb-2">Recommendations on file</p>
-                    {doctorRecommendation && (
-                      <div className="mb-2">
-                        <p className="text-xs font-medium text-indigo-600">Doctor&apos;s recommendation</p>
-                        <p className="text-sm text-slate-700">{doctorRecommendation}</p>
-                      </div>
-                    )}
-                    {trainerRecommendation && (
-                      <div>
-                        <p className="text-xs font-medium text-indigo-600">Trainer&apos;s recommendation</p>
-                        <p className="text-sm text-slate-700">{trainerRecommendation}</p>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                <div className="flex items-center justify-between pt-2">
-                  <div className="text-sm">
-                    {saveMsg && <p className="text-green-600 font-medium">{saveMsg}</p>}
-                    {savedAt && (
-                      <p className="text-xs text-slate-400 mt-0.5">
-                        Saved {savedAt.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' })}
-                      </p>
-                    )}
-                  </div>
-                  <button type="submit" disabled={saving} className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-medium transition-colors disabled:opacity-50">
-                    {saving ? 'Saving...' : 'Save Changes'}
-                  </button>
-                </div>
-              </form>
-            </div>
-
-            <div className="bg-white rounded-xl border border-slate-200 p-6">
-              <h2 className="text-lg font-semibold text-slate-900 mb-4">Change Password</h2>
-              <form onSubmit={handlePasswordChange} className="space-y-4">
-                <div>
-                  <label className={labelCls()}>Current Password</label>
-                  <input
-                    required
-                    type="password"
-                    value={pwForm.currentPassword}
-                    onChange={(e) => setPwForm({ ...pwForm, currentPassword: e.target.value })}
-                    className={inputCls()}
+                    className="input"
                   />
                 </div>
                 <div>
-                  <label className={labelCls()}>New Password</label>
+                  <label className="label">Date of Birth</label>
                   <input
-                    required
-                    type="password"
-                    value={pwForm.newPassword}
-                    onChange={(e) => setPwForm({ ...pwForm, newPassword: e.target.value })}
-                    className={inputCls()}
+                    type="date"
+                    value={profile.dateOfBirth}
+                    onChange={(e) => setProfile({ ...profile, dateOfBirth: e.target.value })}
+                    max={new Date().toISOString().slice(0, 10)}
+                    className="input"
                   />
-                  <p className="text-xs text-slate-400 mt-1">At least 8 characters, with letters and numbers.</p>
                 </div>
                 <div>
-                  <label className={labelCls()}>Confirm New Password</label>
-                  <input
-                    required
-                    type="password"
-                    value={pwForm.confirmPassword}
-                    onChange={(e) => setPwForm({ ...pwForm, confirmPassword: e.target.value })}
-                    className={inputCls()}
-                  />
-                </div>
-                <div className="flex items-center justify-between pt-2">
-                  <div className="text-sm">
-                    {pwMsg && <p className="text-green-600 font-medium">{pwMsg}</p>}
-                    {pwErr && <p className="text-red-600 font-medium">{pwErr}</p>}
-                  </div>
-                  <button type="submit" disabled={pwSaving} className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 font-medium transition-colors disabled:opacity-50">
-                    {pwSaving ? 'Updating...' : 'Update Password'}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-
-          <div className="space-y-6">
-            <div className="bg-white rounded-xl border border-slate-200 p-6">
-              <div className="flex items-center gap-3 mb-5">
-                <div className="relative shrink-0">
-                  {me?.avatar ? (
-                    <img
-                      src={me.avatar}
-                      alt="Profile"
-                      className="h-14 w-14 rounded-full object-cover border border-slate-200"
-                    />
-                  ) : (
-                    <div className="h-14 w-14 bg-indigo-600 text-white rounded-full flex items-center justify-center text-lg font-semibold">
-                      {me?.name?.charAt(0)?.toUpperCase() || 'U'}
-                    </div>
-                  )}
-                </div>
-                <div className="min-w-0">
-                  <p className="font-semibold text-slate-900 truncate">{me?.name}</p>
-                  <p className="text-sm text-slate-500 truncate">{me?.email}</p>
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 text-sm font-medium text-slate-700 hover:bg-slate-50 cursor-pointer transition-colors">
-                  <CameraIcon className="h-4 w-4" aria-hidden="true" />
-                  {photoBusy ? 'Uploading...' : 'Upload photo'}
-                  <input
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp,image/gif"
-                    className="hidden"
-                    disabled={photoBusy}
-                    onChange={(e) => {
-                      const file = e.target.files && e.target.files[0];
-                      e.target.value = '';
-                      handlePhoto(file);
-                    }}
-                  />
-                </label>
-                {me?.avatar && (
-                  <button
-                    onClick={handlePhotoRemove}
-                    disabled={photoBusy}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-200 text-sm font-medium text-red-600 hover:bg-red-50 cursor-pointer transition-colors disabled:opacity-50"
+                  <label className="label">Gender</label>
+                  <select
+                    value={profile.gender}
+                    onChange={(e) => setProfile({ ...profile, gender: e.target.value })}
+                    className="input"
                   >
-                    <TrashIcon className="h-4 w-4" aria-hidden="true" />
-                    Remove
-                  </button>
+                    <option value="">Select gender</option>
+                    {Object.entries(GENDER_LABELS).map(([value, label]) => (
+                      <option key={value} value={value}>{label}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div className="card p-6">
+              <h2 className="section-title mb-4">Contact Information</h2>
+              <div>
+                <label className="label">Phone Numbers</label>
+                <div className="space-y-2">
+                  {profile.phoneNumbers.map((p, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <input
+                        value={p.number}
+                        onChange={(e) => setPhoneRow(i, { number: e.target.value })}
+                        placeholder="Phone number"
+                        className="input flex-1"
+                      />
+                      <select
+                        value={p.label}
+                        onChange={(e) => setPhoneRow(i, { label: e.target.value })}
+                        className="input w-auto"
+                      >
+                        {CONTACT_LABELS.map((l) => (
+                          <option key={l} value={l}>{l}</option>
+                        ))}
+                      </select>
+                      {profile.phoneNumbers.length > 1 && (
+                        <button type="button" onClick={() => removePhoneRow(i)} className="btn btn-sm btn-ghost text-red-600 hover:text-red-800" aria-label="Remove phone number">
+                          <XMarkIcon className="h-5 w-5" aria-hidden="true" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <button type="button" onClick={addPhoneRow} className="btn btn-sm btn-outline text-brand-700 border-brand-200 hover:bg-brand-50 mt-1">
+                  <PlusIcon className="h-4 w-4" aria-hidden="true" />
+                  Add another number
+                </button>
+                <p className="field-hint mt-2">The Primary number is the main contact for gym notifications and messaging.</p>
+              </div>
+              <div className="mt-4">
+                <label className="label">Address</label>
+                <input
+                  value={profile.address}
+                  onChange={(e) => setProfile({ ...profile, address: e.target.value })}
+                  className="input"
+                />
+              </div>
+              <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="label">Emergency Contact Name</label>
+                  <input
+                    value={profile.emergencyName}
+                    onChange={(e) => setProfile({ ...profile, emergencyName: e.target.value })}
+                    className="input"
+                  />
+                </div>
+                <div>
+                  <label className="label">Emergency Contact Phone</label>
+                  <input
+                    value={profile.emergencyPhone}
+                    onChange={(e) => setProfile({ ...profile, emergencyPhone: e.target.value })}
+                    className="input"
+                  />
+                </div>
+              </div>
+              <div className="mt-4">
+                <label className="label">Emergency Contact Relationship</label>
+                <input
+                  value={profile.emergencyRelationship}
+                  onChange={(e) => setProfile({ ...profile, emergencyRelationship: e.target.value })}
+                  placeholder="e.g. Spouse, Parent"
+                  className="input"
+                />
+              </div>
+            </div>
+
+            <div className="card p-6">
+              <h2 className="section-title mb-4">Body &amp; Fitness</h2>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="label">Height (cm)</label>
+                  <input
+                    type="number"
+                    min="40"
+                    max="300"
+                    value={profile.heightCm}
+                    onChange={(e) => setProfile({ ...profile, heightCm: e.target.value })}
+                    className="input"
+                  />
+                </div>
+                <div>
+                  <label className="label">Weight (kg)</label>
+                  <input
+                    type="number"
+                    min="2"
+                    max="500"
+                    step="0.1"
+                    value={profile.weightKg}
+                    onChange={(e) => setProfile({ ...profile, weightKg: e.target.value })}
+                    className="input"
+                  />
+                </div>
+              </div>
+              <div className="mt-4">
+                <label className="label">Activity Level</label>
+                <select
+                  value={profile.activityLevel}
+                  onChange={(e) => setProfile({ ...profile, activityLevel: e.target.value })}
+                  className="input"
+                >
+                  <option value="">Select activity level</option>
+                  {ACTIVITY_LEVELS.map((l) => (
+                    <option key={l} value={l}>{ACTIVITY_LABELS[l]}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="mt-4">
+                <label className="label">Preferred Workout Days</label>
+                <div className="flex flex-wrap gap-2">
+                  {WEEKDAYS.map((d) => (
+                    <button
+                      key={d}
+                      type="button"
+                      onClick={() => toggleDay(d)}
+                      className={`btn btn-sm ${profile.preferredWorkoutDays.includes(d) ? 'btn-primary' : 'btn-outline'}`}
+                    >
+                      {d.slice(0, 3)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="mt-4">
+                <label className="label">Preferred Workout Duration (minutes)</label>
+                <input
+                  type="number"
+                  min="15"
+                  max="300"
+                  value={profile.preferredWorkoutDuration}
+                  onChange={(e) => setProfile({ ...profile, preferredWorkoutDuration: e.target.value })}
+                  className="input"
+                />
+              </div>
+              <div className="mt-4">
+                <label className="label">Goals (comma-separated)</label>
+                <input
+                  value={profile.goals}
+                  onChange={(e) => setProfile({ ...profile, goals: e.target.value })}
+                  placeholder="e.g. Fat loss, Strength, Endurance"
+                  className="input"
+                />
+              </div>
+              <div className="mt-4">
+                <label className="label">Current Injuries (comma-separated)</label>
+                <input
+                  value={profile.injuries}
+                  onChange={(e) => setProfile({ ...profile, injuries: e.target.value })}
+                  placeholder="e.g. Knee strain, Shoulder impingement"
+                  className="input"
+                />
+                <p className="field-hint mt-1">Helps your trainer adapt exercises. This is not a substitute for medical advice.</p>
+              </div>
+            </div>
+
+            <div className="card p-6">
+              <h2 className="section-title mb-4">Health &amp; Safety</h2>
+              <div className="space-y-4">
+                <div>
+                  <label className="label">Medical Conditions</label>
+                  <input
+                    value={profile.medicalConditions}
+                    onChange={(e) => setProfile({ ...profile, medicalConditions: e.target.value })}
+                    className="input"
+                  />
+                </div>
+                <div>
+                  <label className="label">Allergies (comma-separated)</label>
+                  <input
+                    value={profile.allergies}
+                    onChange={(e) => setProfile({ ...profile, allergies: e.target.value })}
+                    className="input"
+                  />
+                </div>
+                <div>
+                  <label className="label">Medical Restrictions</label>
+                  <input
+                    value={profile.medicalRestrictions}
+                    onChange={(e) => setProfile({ ...profile, medicalRestrictions: e.target.value })}
+                    className="input"
+                  />
+                </div>
+                <div>
+                  <label className="label">Medical Notes</label>
+                  <textarea
+                    value={profile.medicalNotes}
+                    onChange={(e) => setProfile({ ...profile, medicalNotes: e.target.value })}
+                    rows={2}
+                    className="input"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {(doctorRecommendation || trainerRecommendation) && (
+              <div className="card p-6">
+                <h2 className="section-title mb-4">Recommendations on file</h2>
+                {doctorRecommendation && (
+                  <div className="mb-2">
+                    <p className="text-xs font-medium text-brand-600">Doctor&apos;s recommendation</p>
+                    <p className="text-sm text-slate-700">{doctorRecommendation}</p>
+                  </div>
+                )}
+                {trainerRecommendation && (
+                  <div>
+                    <p className="text-xs font-medium text-brand-600">Trainer&apos;s recommendation</p>
+                    <p className="text-sm text-slate-700">{trainerRecommendation}</p>
+                  </div>
                 )}
               </div>
-            </div>
+            )}
 
-            <div className="bg-white rounded-xl border border-slate-200 p-6">
-              <dl className="space-y-3 text-sm">
-                <div className="flex justify-between">
-                  <dt className="text-slate-500">Role</dt>
-                  <dd className="font-medium text-slate-900 capitalize">{me?.role}</dd>
-                </div>
-                <div className="flex justify-between">
-                  <dt className="text-slate-500">Member since</dt>
-                  <dd className="font-medium text-slate-900">{fmtDate(me?.createdAt)}</dd>
-                </div>
-              </dl>
+            <div className="card p-6 flex flex-wrap items-center justify-between gap-3">
+              <div className="text-sm">
+                {saveMsg && <p className="text-green-600 font-medium">{saveMsg}</p>}
+                {savedAt && (
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Saved {savedAt.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' })}
+                  </p>
+                )}
+              </div>
+              <button type="submit" disabled={saving} className="btn btn-md btn-primary">
+                {saving ? 'Saving...' : 'Save Changes'}
+              </button>
             </div>
+          </form>
 
-            <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-6 flex items-start gap-2.5">
-              <IdentificationIcon className="h-5 w-5 text-indigo-500 shrink-0 mt-0.5" aria-hidden="true" />
+          <div className="card p-6">
+            <h2 className="section-title mb-4">Change Password</h2>
+            <form onSubmit={handlePasswordChange} className="space-y-4">
               <div>
-                <p className="font-medium text-indigo-900">Account status</p>
-                <p className="text-sm text-indigo-700 mt-1">
-                  Your account is active. Keep your contact, fitness and health details up to date so staff can plan your training safely.
-                </p>
+                <label className="label">Current Password</label>
+                <input
+                  required
+                  type="password"
+                  value={pwForm.currentPassword}
+                  onChange={(e) => setPwForm({ ...pwForm, currentPassword: e.target.value })}
+                  className="input"
+                />
+              </div>
+              <div>
+                <label className="label">New Password</label>
+                <input
+                  required
+                  type="password"
+                  value={pwForm.newPassword}
+                  onChange={(e) => setPwForm({ ...pwForm, newPassword: e.target.value })}
+                  className="input"
+                />
+                <p className="field-hint mt-1">At least 8 characters, with letters and numbers.</p>
+              </div>
+              <div>
+                <label className="label">Confirm New Password</label>
+                <input
+                  required
+                  type="password"
+                  value={pwForm.confirmPassword}
+                  onChange={(e) => setPwForm({ ...pwForm, confirmPassword: e.target.value })}
+                  className="input"
+                />
+              </div>
+              <div className="flex items-center justify-between pt-2">
+                <div className="text-sm">
+                  {pwMsg && <p className="text-green-600 font-medium">{pwMsg}</p>}
+                  {pwErr && <p className="text-red-600 font-medium">{pwErr}</p>}
+                </div>
+                <button type="submit" disabled={pwSaving} className="btn btn-md btn-outline">
+                  {pwSaving ? 'Updating...' : 'Update Password'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <div className="space-y-6">
+          <div className="card p-6">
+            <div className="flex flex-col items-center text-center gap-4">
+              <Avatar name={me?.name} src={me?.avatar} size="lg" />
+              <div className="min-w-0">
+                <p className="font-semibold text-slate-900 truncate">{me?.name}</p>
+                <p className="text-sm text-slate-500 truncate">{me?.email}</p>
               </div>
             </div>
+            <div className="mt-5 flex flex-col gap-2">
+              <label className="btn btn-sm btn-outline w-full">
+                <CameraIcon className="h-4 w-4" aria-hidden="true" />
+                {photoBusy ? 'Uploading...' : 'Upload photo'}
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  className="hidden"
+                  disabled={photoBusy}
+                  onChange={(e) => {
+                    const file = e.target.files && e.target.files[0];
+                    e.target.value = '';
+                    handlePhoto(file);
+                  }}
+                />
+              </label>
+              {me?.avatar && (
+                <button
+                  type="button"
+                  onClick={handlePhotoRemove}
+                  disabled={photoBusy}
+                  className="btn btn-sm btn-ghost text-red-600 hover:text-red-800 w-full"
+                >
+                  <TrashIcon className="h-4 w-4" aria-hidden="true" />
+                  Remove photo
+                </button>
+              )}
+            </div>
           </div>
+
+          <div className="card p-6">
+            <h2 className="section-title mb-4">Account</h2>
+            <dl className="space-y-3 text-sm">
+              <div className="flex justify-between">
+                <dt className="text-slate-500">Role</dt>
+                <dd className="font-medium text-slate-900 capitalize">{me?.role}</dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="text-slate-500">Member since</dt>
+                <dd className="font-medium text-slate-900">{fmtDate(me?.createdAt)}</dd>
+              </div>
+              <div className="flex justify-between items-center">
+                <dt className="text-slate-500">Status</dt>
+                <dd>
+                  <StatusBadge
+                    value={me?.isActive === false ? 'inactive' : 'active'}
+                    label={me?.isActive === false ? 'Inactive' : 'Active'}
+                    tone={me?.isActive === false ? 'muted' : 'success'}
+                  />
+                </dd>
+              </div>
+            </dl>
+          </div>
+
+          {Array.isArray(completion?.requiredSections) && completion.requiredSections.length > 0 && (
+            <div className="card p-6">
+              <h2 className="section-title mb-4">Profile Sections</h2>
+              <ul className="space-y-2.5">
+                {completion.requiredSections.map((s) => (
+                  <li key={s.key || s.label} className="flex items-center justify-between gap-2">
+                    <span className="text-sm text-slate-700">{s.label}</span>
+                    <StatusBadge
+                      value={s.complete ? 'complete' : 'missing'}
+                      label={s.complete ? 'Complete' : 'Missing'}
+                      tone={s.complete ? 'success' : 'warning'}
+                    />
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       </div>
     </div>

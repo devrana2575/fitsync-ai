@@ -11,11 +11,19 @@ import {
   CheckCircleIcon,
   XCircleIcon,
   ClockIcon,
+  CalendarDaysIcon,
+  EnvelopeIcon,
+  PhoneIcon,
 } from '@heroicons/react/24/outline';
 import api from '../../services/api';
-import LoadingSpinner from '../../components/common/LoadingSpinner';
 import ErrorState from '../../components/common/ErrorState';
 import EmptyState from '../../components/common/EmptyState';
+import StatusBadge from '../../components/common/StatusBadge';
+import ProgressBar from '../../components/common/ProgressBar';
+import Avatar from '../../components/common/Avatar';
+import { Skeleton, SkeletonCard, SkeletonRow } from '../../components/common/Skeleton';
+import exerciseImage from '../../assets/exerciseImage';
+import { toINR } from '../../utils/format';
 
 function fmtDate(d) {
   if (!d) return '—';
@@ -37,8 +45,15 @@ function formatDuration(checkIn, checkOut) {
 }
 
 const attentionMap = {
-  no_recent_attendance: { label: 'No recent attendance (7+ days)', cls: 'bg-amber-100 text-amber-700' },
-  membership_expiring: { label: 'Membership expiring soon (≤30 days)', cls: 'bg-orange-100 text-orange-700' },
+  no_recent_attendance: { label: 'No recent attendance (7+ days)', cls: 'badge-warning' },
+  membership_expiring: { label: 'Membership expiring soon (≤30 days)', cls: 'badge-warning' },
+};
+
+const goalProgress = (goal) => {
+  const target = Number(goal.target);
+  if (!target) return 0;
+  const current = Number(goal.current ?? 0);
+  return Math.min(100, Math.max(0, Math.round((current / target) * 100)));
 };
 
 export default function MemberDetail() {
@@ -66,95 +81,142 @@ export default function MemberDetail() {
     fetchDetail();
   }, [fetchDetail]);
 
-  if (loading) return <LoadingSpinner />;
-  if (error) return (
-    <div className="p-6">
-      <button onClick={() => navigate(-1)} className="mb-4 inline-flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-800">
-        <ArrowLeftIcon className="h-4 w-4" aria-hidden="true" /> Back
-      </button>
-      <ErrorState message={error} onRetry={fetchDetail} />
-    </div>
-  );
+  if (loading) {
+    return (
+      <div className="page-wrap space-y-6">
+        <Skeleton width="w-32" height="h-9" />
+        <SkeletonCard className="py-10" />
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <SkeletonRow rows={4} />
+          <SkeletonRow rows={4} />
+        </div>
+      </div>
+    );
+  }
+  if (error) {
+    return (
+      <div className="page-wrap space-y-6">
+        <button onClick={() => navigate(-1)} className="btn btn-md btn-ghost">
+          <ArrowLeftIcon className="h-4 w-4" aria-hidden="true" /> Back
+        </button>
+        <ErrorState message={error} onRetry={fetchDetail} />
+      </div>
+    );
+  }
   if (!data || !data.member) return <EmptyState icon={UserIcon} message="Member not found" />;
 
   const { member, profile, membership, memberships, attendance, payments, workoutPlans, workoutLogs, goals, measurements, attention } = data;
   void member;
 
   const section = (title, Icon, children, emptyMsg) => (
-    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-      <div className="px-6 py-4 border-b border-slate-200 flex items-center gap-2">
-        <Icon className="h-5 w-5 text-slate-400" aria-hidden="true" />
-        <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
+    <div className="card flex flex-col overflow-hidden">
+      <div className="flex items-center gap-2 border-b border-slate-100 px-5 py-3.5">
+        <Icon className="h-4 w-4 text-brand-600" aria-hidden="true" />
+        <h2 className="section-title">{title}</h2>
       </div>
-      <div className="px-6 py-4">
-        {children ?? <p className="text-sm text-slate-400">{emptyMsg || 'No data available'}</p>}
+      <div className="flex-1 p-5">
+        {children ?? (
+          <EmptyState icon={Icon} message={emptyMsg || 'No data available'} />
+        )}
       </div>
     </div>
   );
 
   return (
-    <div className="p-1">
-      <button onClick={() => navigate(-1)} className="mb-4 inline-flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-800">
-        <ArrowLeftIcon className="h-4 w-4" aria-hidden="true" /> Back
-      </button>
+    <div className="page-wrap space-y-6">
+      <div className="page-header">
+        <div>
+          <button onClick={() => navigate(-1)} className="btn btn-md btn-ghost">
+            <ArrowLeftIcon className="h-4 w-4" aria-hidden="true" /> Back
+          </button>
+        </div>
+      </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 p-6 mb-6">
-        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-          <div className="h-14 w-14 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-semibold text-xl">
-            {(data.member.name || 'M').charAt(0).toUpperCase()}
-          </div>
-          <div className="flex-1">
-            <div className="flex items-center gap-3 flex-wrap">
-              <h1 className="text-2xl font-bold text-slate-900">{data.member.name}</h1>
-              <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${data.member.isActive !== false ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                {data.member.isActive !== false ? 'Active' : 'Inactive'}
-              </span>
+      <div className="card-dark relative overflow-hidden rounded-xl border-ink-700 p-6 sm:p-7">
+        <div
+          className="absolute inset-0 opacity-[0.04]"
+          style={{
+            backgroundImage: 'linear-gradient(#a3e635 1px, transparent 1px), linear-gradient(90deg, #a3e635 1px, transparent 1px)',
+            backgroundSize: '32px 32px',
+          }}
+          aria-hidden="true"
+        />
+        <div className="relative flex flex-col gap-5 sm:flex-row sm:items-start">
+          <Avatar name={data.member.name} src={data.member.avatar} size="xl" />
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-2xl font-bold text-white">{data.member.name}</h1>
+              <StatusBadge
+                value={data.member.isActive !== false ? 'active' : 'inactive'}
+                label={data.member.isActive !== false ? 'Active' : 'Inactive'}
+                tone={data.member.isActive !== false ? 'success' : 'muted'}
+              />
               {membership && (
-                <span className="inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700">
-                  {membership.plan?.name || membership.status} · {fmtDate(membership.endDate)}
+                <>
+                  <StatusBadge value={membership.status} />
+                  {membership.plan?.name && <span className="badge badge-dark">{membership.plan.name}</span>}
+                </>
+              )}
+            </div>
+
+            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-400">
+              <span className="inline-flex items-center gap-1.5">
+                <EnvelopeIcon className="h-4 w-4 text-brand-400" aria-hidden="true" />
+                {data.member.email}
+              </span>
+              {profile?.phone && (
+                <span className="inline-flex items-center gap-1.5">
+                  <PhoneIcon className="h-4 w-4 text-brand-400" aria-hidden="true" />
+                  {profile.phone}
                 </span>
               )}
             </div>
-            <p className="text-slate-500 mt-1">{data.member.email}{profile?.phone ? ` · ${profile.phone}` : ''}</p>
+
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-400">
+              <span className="inline-flex items-center gap-1">
+                <CalendarDaysIcon className="h-4 w-4 text-brand-400" aria-hidden="true" />
+                Joined {fmtDate(profile?.joinDate || data.member.createdAt)}
+              </span>
+              {profile?.assignedTrainer && (
+                <span className="badge badge-dark">
+                  Trainer: {profile.assignedTrainer.name || profile.assignedTrainer.email}
+                </span>
+              )}
+              {membership?.endDate && (
+                <span className="badge badge-dark">Plan ends {fmtDate(membership.endDate)}</span>
+              )}
+            </div>
+
             {attention && attention.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-3">
+              <div className="mt-4 flex flex-wrap gap-2">
                 {attention.map((a) => {
                   const info = attentionMap[a];
                   if (!info) return null;
-                  return (
-                    <span key={a} className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${info.cls}`}>
-                      {info.label}
-                    </span>
-                  );
+                  return <span key={a} className={info.cls}>{info.label}</span>;
                 })}
               </div>
             )}
-          </div>
-          <div className="text-sm text-slate-500 text-right">
-            <p>Joined: {fmtDate(profile?.joinDate || data.member.createdAt)}</p>
-            {profile?.assignedTrainer && <p className="mt-1">Trainer: {profile.assignedTrainer.name || profile.assignedTrainer.email}</p>}
+
+            {profile?.medicalConditions && (
+              <p className="mt-4 rounded-lg border border-amber-400/30 bg-amber-400/10 p-3 text-sm text-amber-200">
+                <span className="font-semibold">Medical conditions:</span> {profile.medicalConditions}
+              </p>
+            )}
           </div>
         </div>
-        {profile?.medicalConditions && (
-          <p className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
-            Medical conditions: {profile.medicalConditions}
-          </p>
-        )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {section('Membership', CreditCardIcon, (
           (memberships || []).length > 0 ? (
             <div className="space-y-2">
               {(memberships || []).map((m) => (
-                <div key={m._id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                  <div>
+                <div key={m._id} className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 p-3">
+                  <div className="min-w-0">
                     <p className="text-sm font-medium text-slate-900">{m.plan?.name || 'Membership'}</p>
                     <p className="text-xs text-slate-500">{fmtDate(m.startDate)} → {fmtDate(m.endDate)}</p>
                   </div>
-                  <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${m.status === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'}`}>
-                    {m.status}
-                  </span>
+                  <StatusBadge value={m.status} />
                 </div>
               ))}
             </div>
@@ -164,18 +226,18 @@ export default function MemberDetail() {
 
         {section('Attendance', ClipboardDocumentListIcon, (
           (attendance || []).length > 0 ? (
-            <div className="space-y-2 max-h-64 overflow-y-auto">
+            <div className="max-h-64 space-y-2 overflow-y-auto">
               {(attendance || []).map((r) => {
                 const active = !r.checkOutTime;
                 return (
-                  <div key={r._id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                    <div>
+                  <div key={r._id} className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 p-3">
+                    <div className="min-w-0">
                       <p className="text-sm font-medium text-slate-900">{fmtDateTime(r.checkInTime || r.date)}</p>
                       <p className="text-xs text-slate-500">
                         {active ? 'Active session' : `Checkout: ${fmtDateTime(r.checkOutTime)} · Duration ${formatDuration(r.checkInTime, r.checkOutTime)}`}
                       </p>
                     </div>
-                    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${active ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'}`}>
+                    <span className={active ? 'badge badge-success' : 'badge badge-muted'}>
                       {active ? (
                         <>
                           <ClockIcon className="h-3 w-3" aria-hidden="true" /> Active
@@ -191,27 +253,21 @@ export default function MemberDetail() {
               })}
             </div>
           ) : null,
-          'No attendance records'
+          'No attendance recorded yet'
         ))}
 
         {section('Payments', BanknotesIcon, (
           (payments || []).length > 0 ? (
-            <div className="space-y-2 max-h-64 overflow-y-auto">
+            <div className="max-h-64 space-y-2 overflow-y-auto">
               {(payments || []).map((p) => (
-                <div key={p._id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                  <div>
-                    <p className="text-sm font-medium text-slate-900">₹{p.amount?.toLocaleString?.('en-IN') ?? p.amount}</p>
+                <div key={p._id} className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 p-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-slate-900 tabular-nums">{toINR(p.amount)}</p>
                     <p className="text-xs text-slate-500">
                       {fmtDate(p.date)} · {p.method || '—'}{p.membership?.plan?.name ? ` · ${p.membership.plan.name}` : ''}
                     </p>
                   </div>
-                  <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${String(p.status || '').toUpperCase() === 'COMPLETED' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                    {p.status === 'COMPLETED' ? (
-                      <><CheckCircleIcon className="h-3 w-3" aria-hidden="true" /> {p.status}</>
-                    ) : (
-                      <><ClockIcon className="h-3 w-3" aria-hidden="true" /> {p.status || 'PENDING'}</>
-                    )}
-                  </span>
+                  <StatusBadge value={p.status} />
                 </div>
               ))}
             </div>
@@ -223,7 +279,7 @@ export default function MemberDetail() {
           (measurements || []).length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="bg-slate-50 text-left text-xs text-slate-500 uppercase">
+                <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
                   <tr>
                     <th className="px-3 py-2">Date</th>
                     <th className="px-3 py-2">Weight</th>
@@ -236,8 +292,8 @@ export default function MemberDetail() {
                     const bmi = m.bmi || (m.weight && m.height ? Math.round((m.weight / ((m.height / 100) ** 2)) * 10) / 10 : null);
                     return (
                       <tr key={m._id}>
-                        <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{fmtDate(m.date || m.createdAt)}</td>
-                        <td className="px-3 py-2 text-slate-900 font-medium">{m.weight ? `${m.weight} kg` : '—'}</td>
+                        <td className="whitespace-nowrap px-3 py-2 text-slate-600">{fmtDate(m.date || m.createdAt)}</td>
+                        <td className="px-3 py-2 font-medium text-slate-900">{m.weight ? `${m.weight} kg` : '—'}</td>
                         <td className="px-3 py-2 text-slate-600">{bmi ?? '—'}</td>
                         <td className="px-3 py-2 text-slate-600">{m.bodyFat ? `${m.bodyFat}%` : '—'}</td>
                       </tr>
@@ -252,16 +308,19 @@ export default function MemberDetail() {
 
         {section('Goals', BoltIcon, (
           (goals || []).length > 0 ? (
-            <div className="space-y-2 max-h-64 overflow-y-auto">
+            <div className="max-h-64 space-y-3 overflow-y-auto">
               {(goals || []).map((g) => (
-                <div key={g._id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                  <div>
+                <div key={g._id} className="rounded-lg bg-slate-50 p-3">
+                  <div className="flex items-center justify-between gap-3">
                     <p className="text-sm font-medium text-slate-900">{g.title}</p>
-                    <p className="text-xs text-slate-500">
-                      {g.current ?? 0} / {g.target} {g.unit || ''} · {fmtDate(g.targetDate)}
-                    </p>
+                    <StatusBadge value={g.status} />
                   </div>
-                  <span className="inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700">{g.status}</span>
+                  <p className="mt-0.5 text-xs text-slate-500">
+                    {g.current ?? 0} / {g.target} {g.unit || ''} · {fmtDate(g.targetDate)}
+                  </p>
+                  <div className="mt-2">
+                    <ProgressBar value={goalProgress(g)} tone={g.status === 'COMPLETED' ? 'success' : 'brand'} />
+                  </div>
                 </div>
               ))}
             </div>
@@ -273,7 +332,7 @@ export default function MemberDetail() {
           (workoutLogs || []).length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="bg-slate-50 text-left text-xs text-slate-500 uppercase">
+                <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
                   <tr>
                     <th className="px-3 py-2">Date</th>
                     <th className="px-3 py-2">Exercise</th>
@@ -284,14 +343,14 @@ export default function MemberDetail() {
                 <tbody className="divide-y divide-slate-100">
                   {(workoutLogs || []).slice(0, 6).map((log) => (
                     <tr key={log._id}>
-                      <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{fmtDate(log.date || log.createdAt)}</td>
-                      <td className="px-3 py-2 text-slate-900 font-medium">{log.exercise?.name || '—'}</td>
+                      <td className="whitespace-nowrap px-3 py-2 text-slate-600">{fmtDate(log.date || log.createdAt)}</td>
+                      <td className="px-3 py-2 font-medium text-slate-900">{log.exercise?.name || '—'}</td>
                       <td className="px-3 py-2 text-slate-600">{log.sets} × {log.reps}</td>
                       <td className="px-3 py-2">
                         {log.isCompleted === false ? (
-                          <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-600"><XCircleIcon className="h-3 w-3" aria-hidden="true" /> Incomplete</span>
+                          <span className="badge badge-warning"><XCircleIcon className="h-3 w-3" aria-hidden="true" /> Incomplete</span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 text-xs font-medium text-green-600"><CheckCircleIcon className="h-3 w-3" aria-hidden="true" /> Completed</span>
+                          <span className="badge badge-success"><CheckCircleIcon className="h-3 w-3" aria-hidden="true" /> Completed</span>
                         )}
                       </td>
                     </tr>
@@ -302,24 +361,33 @@ export default function MemberDetail() {
           ) : null,
           'No workout logs'
         ))}
-      </div>
 
-      <div className="space-y-6">
         {section('Workout Plans', ClipboardDocumentListIcon, (
           (workoutPlans || []).length > 0 ? (
             <div className="space-y-3">
               {(workoutPlans || []).map((plan) => (
-                <div key={plan._id} className="p-4 bg-slate-50 rounded-lg">
-                  <div className="flex items-center justify-between">
+                <div key={plan._id} className="rounded-lg bg-slate-50 p-4">
+                  <div className="flex items-center justify-between gap-2">
                     <p className="text-sm font-medium text-slate-900">{plan.name}</p>
                     {plan.trainer?.name && <p className="text-xs text-slate-500">by {plan.trainer.name}</p>}
                   </div>
-                  {plan.description && <p className="text-xs text-slate-500 mt-1">{plan.description}</p>}
+                  {plan.description && <p className="mt-1 text-xs text-slate-500">{plan.description}</p>}
                   {Array.isArray(plan.dayOfWeek) && plan.dayOfWeek.length > 0 && (
-                    <p className="text-xs text-slate-500 mt-1">Days: {plan.dayOfWeek.join(', ')}</p>
+                    <p className="mt-1 text-xs text-slate-500">Days: {plan.dayOfWeek.join(', ')}</p>
                   )}
                   {Array.isArray(plan.exercises) && plan.exercises.length > 0 && (
-                    <p className="text-xs text-slate-400 mt-1">{plan.exercises.length} exercises</p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {plan.exercises.slice(0, 6).map((ex, idx) => {
+                        const exData = ex.exercise || ex;
+                        return (
+                          <span key={idx} className="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-xs text-slate-600 ring-1 ring-slate-200">
+                            <img src={exerciseImage(exData)} alt={exData?.name || 'Exercise'} loading="lazy" className="h-4 w-4 rounded-full bg-white object-cover" />
+                            {exData?.name || 'Exercise'}
+                          </span>
+                        );
+                      })}
+                      {plan.exercises.length > 6 && <span className="self-center text-xs text-slate-400">+{plan.exercises.length - 6} more</span>}
+                    </div>
                   )}
                 </div>
               ))}

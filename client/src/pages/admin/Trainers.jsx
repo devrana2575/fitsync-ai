@@ -1,12 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { UserGroupIcon } from '@heroicons/react/24/outline';
+import { UserGroupIcon, PlusIcon } from '@heroicons/react/24/outline';
 import api from '../../services/api';
-import LoadingSpinner from '../../components/common/LoadingSpinner';
+import PageHeader from '../../components/common/PageHeader';
+import Avatar from '../../components/common/Avatar';
+import StatusBadge from '../../components/common/StatusBadge';
 import EmptyState from '../../components/common/EmptyState';
 import ErrorState from '../../components/common/ErrorState';
 import Modal from '../../components/common/Modal';
 import DataTable from '../../components/common/DataTable';
+import { SkeletonRow } from '../../components/common/Skeleton';
 
 const initialForm = { name: '', email: '', password: '', specializations: '', experience: '', maxMembers: '' };
 
@@ -113,55 +116,61 @@ export default function Trainers() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-900">Trainers</h1>
-        <button onClick={openAdd} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
-          + Add Trainer
-        </button>
-      </div>
+    <div className="page-wrap space-y-6">
+      <PageHeader
+        title="Trainers"
+        subtitle="Manage your coaching staff and their availability"
+        icon={UserGroupIcon}
+        actions={
+          <button onClick={openAdd} className="btn btn-md btn-primary">
+            <PlusIcon className="h-4 w-4" aria-hidden="true" />
+            Add Trainer
+          </button>
+        }
+      />
 
       {error ? (
-        <div className="bg-white rounded-xl border border-slate-200">
+        <div className="card p-5">
           <ErrorState message={error} onRetry={fetchTrainers} />
         </div>
-      ) : loading ? <LoadingSpinner size="lg" /> : trainers.length === 0 ? (
+      ) : loading ? <SkeletonRow rows={5} /> : trainers.length === 0 ? (
         <EmptyState icon={UserGroupIcon} message="No trainers found" />
       ) : (
         <DataTable headers={['Name', 'Email', 'Specializations', 'Experience', 'Members Assigned', 'Availability', 'Status', 'Actions']}>
           {trainers.map((t, i) => (
             <tr key={t._id} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
-              <td className="px-6 py-4 font-medium text-slate-900">{t.name}</td>
+              <td className="px-6 py-4">
+                <div className="flex items-center gap-3">
+                  <Avatar name={t.name} src={t.avatar} size="sm" />
+                  <span className="font-medium text-slate-900">{t.name}</span>
+                </div>
+              </td>
               <td className="px-6 py-4 text-slate-600">{t.email}</td>
-              <td className="px-6 py-4 text-slate-600">
+              <td className="px-6 py-4">
                 <div className="flex flex-wrap gap-1">
                   {(Array.isArray(t.profile?.specializations) ? t.profile.specializations : [t.profile?.specializations]).filter(Boolean).map((s, j) => (
-                    <span key={j} className="px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded text-xs font-medium">{s}</span>
+                    <span key={j} className="badge badge-brand">{s}</span>
                   ))}
                 </div>
               </td>
               <td className="px-6 py-4 text-slate-600">{t.profile?.experience ? `${t.profile.experience} yrs` : '—'}</td>
               <td className="px-6 py-4 text-slate-600">{t.memberCount ?? t.assignedMembers?.length ?? '—'} <span className="text-xs text-slate-400">/ {t.profile?.maxMembers ?? '—'}</span></td>
               <td className="px-6 py-4">
-                <span className={`px-2 py-1 rounded-full text-xs font-medium ${t.profile?.isAvailable !== false ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
-                  {t.profile?.isAvailable !== false ? 'Available' : 'Unavailable'}
-                </span>
+                <StatusBadge value={t.profile?.isAvailable !== false} tone={t.profile?.isAvailable !== false ? 'success' : 'warning'} label={t.profile?.isAvailable !== false ? 'Available' : 'Away'} />
                 {t.profile?.isAvailable === false && t.profile?.absenceReason && (
                   <p className="text-xs text-slate-400 mt-1 max-w-[180px] truncate" title={t.profile.absenceReason}>{t.profile.absenceReason}</p>
                 )}
               </td>
               <td className="px-6 py-4">
-                <span className={`px-2 py-1 rounded-full text-xs font-medium ${t.isActive !== false ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                  {t.isActive !== false ? 'Active' : 'Inactive'}
-                </span>
+                <StatusBadge value={t.isActive !== false} tone={t.isActive !== false ? 'success' : 'danger'} label={t.isActive !== false ? 'Active' : 'Inactive'} />
               </td>
               <td className="px-6 py-4">
-                <div className="flex flex-col gap-1">
-                  <button onClick={() => openEdit(t)} className="text-indigo-600 hover:text-indigo-800 font-medium text-sm text-left">Edit</button>
-                  <button onClick={() => toggleAvailability(t)} className={`font-medium text-sm text-left ${t.profile?.isAvailable !== false ? 'text-amber-600 hover:text-amber-800' : 'text-green-600 hover:text-green-800'}`}>
+                <div className="flex flex-col items-start gap-1">
+                  <button onClick={() => openEdit(t)} className="btn btn-sm btn-outline">Edit</button>
+                  <button onClick={() => toggleAvailability(t)} className={`btn btn-sm btn-ghost ${t.profile?.isAvailable !== false ? 'text-amber-600 hover:text-amber-800 hover:bg-amber-50' : 'text-green-600 hover:text-green-800 hover:bg-green-50'}`}>
                     {t.profile?.isAvailable !== false ? 'Mark Unavailable' : 'Back Available'}
                   </button>
-                  <button onClick={() => toggleDeactivate(t)} className={`font-medium text-sm text-left ${t.isActive !== false ? 'text-red-600 hover:text-red-800' : 'text-green-600 hover:text-green-800'}`}>
+                  <button onClick={() => toggleDeactivate(t)} className={t.isActive !== false ? 'btn btn-sm btn-danger' : 'btn btn-sm btn-ghost text-green-600 hover:text-green-800 hover:bg-green-50'}>
                     {t.isActive !== false ? 'Deactivate' : 'Activate'}
                   </button>
                 </div>
@@ -174,35 +183,35 @@ export default function Trainers() {
       <Modal isOpen={showModal} onClose={() => setShowModal(false)} title={editing ? 'Edit Trainer' : 'Add Trainer'}>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Name</label>
-            <input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+            <label className="label">Name</label>
+            <input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="input" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
-            <input required type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+            <label className="label">Email</label>
+            <input required type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="input" />
           </div>
           {!editing && (
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Password</label>
-              <input required type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+              <label className="label">Password</label>
+              <input required type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} className="input" />
             </div>
           )}
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Specializations (comma-separated)</label>
-            <input value={form.specializations} onChange={(e) => setForm({ ...form, specializations: e.target.value })} placeholder="e.g. Strength, Cardio, Yoga" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+            <label className="label">Specializations (comma-separated)</label>
+            <input value={form.specializations} onChange={(e) => setForm({ ...form, specializations: e.target.value })} placeholder="e.g. Strength, Cardio, Yoga" className="input" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Experience (years)</label>
-            <input required type="number" min="0" value={form.experience} onChange={(e) => setForm({ ...form, experience: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+            <label className="label">Experience (years)</label>
+            <input required type="number" min="0" value={form.experience} onChange={(e) => setForm({ ...form, experience: e.target.value })} className="input" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Max Members</label>
-            <input type="number" min="0" value={form.maxMembers} onChange={(e) => setForm({ ...form, maxMembers: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+            <label className="label">Max Members</label>
+            <input type="number" min="0" value={form.maxMembers} onChange={(e) => setForm({ ...form, maxMembers: e.target.value })} className="input" />
             <p className="text-xs text-slate-400 mt-1">Caps how many members can be assigned to this trainer.</p>
           </div>
           <div className="flex justify-end gap-3 pt-2">
-            <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 font-medium">Cancel</button>
-            <button type="submit" disabled={saving} className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-medium disabled:opacity-50">
+            <button type="button" onClick={() => setShowModal(false)} className="btn btn-outline btn-md">Cancel</button>
+            <button type="submit" disabled={saving} className="btn btn-md btn-primary">
               {saving ? 'Saving...' : editing ? 'Update' : 'Create'}
             </button>
           </div>

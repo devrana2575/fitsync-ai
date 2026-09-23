@@ -15,11 +15,12 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { useSocket } from '../../context/SocketContext';
 import api from '../../services/api';
+import Avatar from './Avatar';
 
 const roleStyles = {
-  admin: 'bg-red-50 text-red-700',
-  trainer: 'bg-blue-50 text-blue-700',
-  member: 'bg-emerald-50 text-emerald-700',
+  admin: 'bg-ink-900 text-brand-400 ring-1 ring-ink-700',
+  trainer: 'bg-ink-100 text-ink-800 ring-1 ring-ink-200',
+  member: 'bg-brand-500 text-ink-950',
 };
 
 const typeIcons = {
@@ -36,7 +37,7 @@ const typeTones = {
   warning: 'text-amber-500',
   success: 'text-emerald-500',
   error: 'text-red-500',
-  membership: 'text-indigo-500',
+  membership: 'text-brand-600',
   attendance: 'text-slate-500',
 };
 
@@ -161,12 +162,12 @@ export default function Navbar({ onMenuClick }) {
   };
 
   return (
-    <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 sm:px-6 sticky top-0 z-20">
+    <header className="h-16 bg-white/90 backdrop-blur border-b border-slate-200 flex items-center justify-between px-4 sm:px-6 sticky top-0 z-20">
       {toasts.length > 0 && (
         <div className="fixed top-16 right-4 z-[60] space-y-2 w-80 max-w-[calc(100vw-2rem)]">
           {toasts.map((t) => {
             const TIcon = typeIcons[t.type] || BellIcon;
-            const tone = typeTones[t.type] || 'text-indigo-500';
+            const tone = typeTones[t.type] || 'text-brand-600';
             return (
               <div key={t.id} className="bg-white rounded-xl shadow-lg shadow-slate-200/70 border border-slate-200 px-4 py-3 flex items-start gap-3 fade-in">
                 <TIcon className={`h-5 w-5 mt-0.5 shrink-0 ${tone}`} aria-hidden="true" />
@@ -217,7 +218,7 @@ export default function Navbar({ onMenuClick }) {
                   {unreadCount > 0 && (
                     <button
                       onClick={handleMarkAllRead}
-                      className="text-xs text-indigo-600 hover:text-indigo-800 font-medium"
+                      className="text-xs text-brand-700 hover:text-brand-800 font-medium"
                     >
                       Mark all read
                     </button>
@@ -244,7 +245,7 @@ export default function Navbar({ onMenuClick }) {
                           if (!n.isRead) handleMarkRead(n._id);
                         }}
                         className={`w-full text-left px-4 py-3 hover:bg-slate-50 transition-colors ${
-                          !n.isRead ? 'bg-indigo-50/40' : ''
+                          !n.isRead ? 'bg-brand-50/50' : ''
                         }`}
                       >
                         <div className="flex items-start gap-2.5">
@@ -262,7 +263,7 @@ export default function Navbar({ onMenuClick }) {
                                 {n.title}
                               </p>
                               {!n.isRead && (
-                                <span className="shrink-0 h-2 w-2 bg-indigo-500 rounded-full" />
+                                <span className="shrink-0 h-2 w-2 bg-brand-500 rounded-full" />
                               )}
                             </div>
                             <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{n.message}</p>
@@ -285,17 +286,15 @@ export default function Navbar({ onMenuClick }) {
               setShowDropdown(!showDropdown);
               setShowNotifications(false);
             }}
-            className="flex items-center gap-3 px-2.5 py-1.5 hover:bg-slate-100 rounded-lg transition-colors"
+            className="flex items-center gap-2.5 px-2.5 py-1.5 hover:bg-slate-100 rounded-lg transition-colors"
           >
-            <div className="w-8 h-8 bg-slate-900 text-white rounded-full flex items-center justify-center text-sm font-semibold">
-              {user?.name?.charAt(0)?.toUpperCase() || 'U'}
-            </div>
+            <Avatar name={user?.name} src={user?.avatar} size="sm" />
             <div className="text-left hidden md:block">
               <p className="text-sm font-medium text-slate-900 leading-tight">
                 {user?.name || 'User'}
               </p>
               <span
-                className={`text-[11px] px-1.5 py-0.5 rounded-md font-medium capitalize ${roleStyles[user?.role] || 'bg-slate-100 text-slate-600'}`}
+                className={`inline-block mt-0.5 text-[11px] px-1.5 py-0.5 rounded-md font-medium capitalize ${roleStyles[user?.role] || 'bg-slate-100 text-slate-600'}`}
               >
                 {user?.role || 'user'}
               </span>

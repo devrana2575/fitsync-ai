@@ -1,14 +1,26 @@
 import { useState, useEffect } from 'react';
-import { WrenchScrewdriverIcon, CogIcon, CheckCircleIcon, XCircleIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
+import { WrenchScrewdriverIcon, CogIcon, CheckCircleIcon, XCircleIcon, ExclamationTriangleIcon, PlusIcon } from '@heroicons/react/24/outline';
 import api from '../../services/api';
-import LoadingSpinner from '../../components/common/LoadingSpinner';
 import EmptyState from '../../components/common/EmptyState';
 import ErrorState from '../../components/common/ErrorState';
+import PageHeader from '../../components/common/PageHeader';
 import Modal from '../../components/common/Modal';
 import DataTable from '../../components/common/DataTable';
 import StatCard from '../../components/common/StatCard';
+import { SkeletonRow } from '../../components/common/Skeleton';
+import { fmtDate, fmtDateShort } from '../../utils/format';
 
 const initialForm = { name: '', category: '', condition: 'good', lastMaintenance: '', nextMaintenance: '', status: 'available', description: '' };
+
+const conditionBadge = (c) => {
+  const map = { excellent: 'badge-success', good: 'badge-info', fair: 'badge-warning', poor: 'badge-danger', needs_repair: 'badge-danger' };
+  return map[c?.toLowerCase()] || 'badge-muted';
+};
+
+const statusBadge = (s) => {
+  const map = { available: 'badge-success', in_use: 'badge-info', under_maintenance: 'badge-warning', out_of_order: 'badge-danger', issue_reported: 'badge-warning' };
+  return map[s?.toLowerCase()] || 'badge-muted';
+};
 
 export default function Equipment() {
   const [equipment, setEquipment] = useState([]);
@@ -118,32 +130,25 @@ export default function Equipment() {
     }
   };
 
-  const conditionColor = (c) => {
-    const map = { excellent: 'bg-green-100 text-green-700', good: 'bg-blue-100 text-blue-700', fair: 'bg-yellow-100 text-yellow-700', poor: 'bg-red-100 text-red-700', needs_repair: 'bg-red-100 text-red-700' };
-    return map[c?.toLowerCase()] || 'bg-slate-100 text-slate-700';
-  };
-
-  const statusColor = (s) => {
-    const map = { available: 'bg-green-100 text-green-700', in_use: 'bg-blue-100 text-blue-700', under_maintenance: 'bg-yellow-100 text-yellow-700', out_of_order: 'bg-red-100 text-red-700', issue_reported: 'bg-orange-100 text-orange-700' };
-    return map[s?.toLowerCase()] || 'bg-slate-100 text-slate-700';
-  };
-
   const filteredEquipment = conditionFilter === 'all' ? equipment : equipment.filter(e => e.condition?.toLowerCase() === conditionFilter);
 
-  const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-IN') : '—';
-
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-900">Equipment</h1>
-        <button onClick={openCreate} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
-          + Add Equipment
-        </button>
-      </div>
+    <div className="page-wrap space-y-6">
+      <PageHeader
+        title="Equipment"
+        subtitle="Track gym equipment condition and maintenance"
+        icon={CogIcon}
+        actions={
+          <button onClick={openCreate} className="btn btn-md btn-primary">
+            <PlusIcon className="h-5 w-5" aria-hidden="true" />
+            Add Equipment
+          </button>
+        }
+      />
 
       {stats && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard icon={CogIcon} label="Total Equipment" value={stats.total || equipment.length} color="indigo" />
+          <StatCard icon={CogIcon} label="Total Equipment" value={stats.total || equipment.length} color="ink" />
           <StatCard icon={CheckCircleIcon} label="Good Condition" value={stats.byCondition?.find(c => c._id === 'good')?.count || 0} color="green" />
           <StatCard icon={WrenchScrewdriverIcon} label="Needs Maintenance" value={stats.needsMaintenance || 0} color="yellow" />
           <StatCard icon={XCircleIcon} label="Poor / Needs Repair" value={(stats.byCondition?.find(c => c._id === 'poor')?.count || 0) + (stats.byCondition?.find(c => c._id === 'needs_repair')?.count || 0)} color="red" />
@@ -151,25 +156,28 @@ export default function Equipment() {
       )}
 
       {maintenance.length > 0 && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-6">
-          <h2 className="text-lg font-semibold text-yellow-800 mb-3 flex items-center gap-2"><ExclamationTriangleIcon className="h-5 w-5" aria-hidden="true" /> Maintenance Alerts</h2>
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-5">
+          <h2 className="text-base font-semibold text-amber-800 mb-3 flex items-center gap-2">
+            <ExclamationTriangleIcon className="h-5 w-5" aria-hidden="true" />
+            Maintenance Alerts
+          </h2>
           <div className="space-y-2">
             {maintenance.map((a, i) => (
-              <div key={a._id || i} className="flex items-center justify-between bg-white rounded-lg px-4 py-3 border border-yellow-100">
-                <div>
+              <div key={a._id || i} className="flex items-center justify-between gap-3 bg-white rounded-lg px-4 py-3 border border-amber-100">
+                <div className="min-w-0">
                   <span className="font-medium text-slate-900">{a.name || a.equipment?.name}</span>
                   <span className="text-sm text-slate-500 ml-2">— {a.message || `Scheduled: ${fmtDate(a.nextMaintenance || a.scheduledDate)}`}</span>
                 </div>
-                <span className="text-xs font-medium px-2 py-1 bg-yellow-100 text-yellow-700 rounded-full">Due</span>
+                <span className="badge badge-warning shrink-0">Due</span>
               </div>
             ))}
           </div>
         </div>
       )}
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3">
         <label className="text-sm font-medium text-slate-700">Condition:</label>
-        <select value={conditionFilter} onChange={(e) => setConditionFilter(e.target.value)} className="px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+        <select value={conditionFilter} onChange={(e) => setConditionFilter(e.target.value)} className="input md:max-w-xs">
           <option value="all">All</option>
           <option value="excellent">Excellent</option>
           <option value="good">Good</option>
@@ -180,35 +188,37 @@ export default function Equipment() {
       </div>
 
       {error ? (
-        <div className="bg-white rounded-xl border border-slate-200">
-          <ErrorState message={error} onRetry={fetchAll} />
+        <div className="card overflow-hidden">
+          <ErrorState message="We couldn't load your equipment. Please try again." onRetry={fetchAll} />
         </div>
-      ) : loading ? <LoadingSpinner size="lg" /> : filteredEquipment.length === 0 ? (
-        <EmptyState icon={CogIcon} message="No equipment found" />
+      ) : loading ? (
+        <SkeletonRow rows={8} />
+      ) : filteredEquipment.length === 0 ? (
+        <EmptyState icon={CogIcon} message="No equipment found" description="Try a different condition filter or add your first piece of equipment." />
       ) : (
         <DataTable headers={['Name', 'Category', 'Condition', 'Last Maintenance', 'Next Maintenance', 'Status', 'Actions']}>
-          {filteredEquipment.map((eq, i) => (
-            <tr key={eq._id} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
-              <td className="px-6 py-4 font-medium text-slate-900">
-                {eq.name}
+          {filteredEquipment.map((eq) => (
+            <tr key={eq._id} className="odd:bg-white even:bg-slate-50/50">
+              <td className="px-4 py-3 text-sm">
+                <p className="font-medium text-slate-900">{eq.name}</p>
                 {eq.status === 'issue_reported' && (
-                  <p className="text-xs font-normal text-orange-600 mt-0.5">Issue: {eq.reportedIssue || 'reported'}{eq.reportedAt ? ` · ${new Date(eq.reportedAt).toLocaleDateString('en-IN')}` : ''}</p>
+                  <p className="text-xs font-normal text-orange-600 mt-0.5">Issue: {eq.reportedIssue || 'reported'}{eq.reportedAt ? ` · ${fmtDateShort(eq.reportedAt)}` : ''}</p>
                 )}
               </td>
-              <td className="px-6 py-4 text-slate-600 capitalize">{eq.category || '—'}</td>
-              <td className="px-6 py-4">
-                <span className={`px-2 py-1 rounded-full text-xs font-medium ${conditionColor(eq.condition)}`}>{eq.condition}</span>
+              <td className="px-4 py-3 text-sm text-slate-600 capitalize">{eq.category || '—'}</td>
+              <td className="px-4 py-3 text-sm">
+                <span className={`badge ${conditionBadge(eq.condition)}`}>{eq.condition}</span>
               </td>
-              <td className="px-6 py-4 text-slate-600">{fmtDate(eq.lastMaintenance)}</td>
-              <td className="px-6 py-4 text-slate-600">{fmtDate(eq.nextMaintenance)}</td>
-              <td className="px-6 py-4">
-                <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColor(eq.status)}`}>{eq.status?.replace('_', ' ')}</span>
+              <td className="px-4 py-3 text-sm text-slate-600">{fmtDateShort(eq.lastMaintenance)}</td>
+              <td className="px-4 py-3 text-sm text-slate-600">{fmtDateShort(eq.nextMaintenance)}</td>
+              <td className="px-4 py-3 text-sm">
+                <span className={`badge ${statusBadge(eq.status)}`}>{eq.status?.replace('_', ' ')}</span>
               </td>
-              <td className="px-6 py-4">
-                <div className="flex gap-3">
-                  <button onClick={() => openIssueReport(eq)} className="text-amber-600 hover:text-amber-800 font-medium text-sm">Report Issue</button>
-                  <button onClick={() => openEdit(eq)} className="text-indigo-600 hover:text-indigo-800 font-medium text-sm">Edit</button>
-                  <button onClick={() => handleDelete(eq)} className="text-red-600 hover:text-red-800 font-medium text-sm">Delete</button>
+              <td className="px-4 py-3 text-sm">
+                <div className="flex gap-1">
+                  <button onClick={() => openIssueReport(eq)} className="btn btn-sm text-amber-600 hover:bg-amber-50">Report Issue</button>
+                  <button onClick={() => openEdit(eq)} className="btn btn-sm btn-outline">Edit</button>
+                  <button onClick={() => handleDelete(eq)} className="btn btn-sm text-red-600 hover:bg-red-50">Delete</button>
                 </div>
               </td>
             </tr>
@@ -219,16 +229,16 @@ export default function Equipment() {
       <Modal isOpen={showModal} onClose={() => setShowModal(false)} title={editing ? 'Edit Equipment' : 'Add Equipment'}>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Name</label>
-            <input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+            <label className="label">Name</label>
+            <input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="input" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Category</label>
-            <input required value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} placeholder="e.g. Cardio, Strength" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+            <label className="label">Category</label>
+            <input required value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} placeholder="e.g. Cardio, Strength" className="input" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Condition</label>
-            <select value={form.condition} onChange={(e) => setForm({ ...form, condition: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+            <label className="label">Condition</label>
+            <select value={form.condition} onChange={(e) => setForm({ ...form, condition: e.target.value })} className="input">
               <option value="excellent">Excellent</option>
               <option value="good">Good</option>
               <option value="fair">Fair</option>
@@ -238,17 +248,17 @@ export default function Equipment() {
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Last Maintenance</label>
-              <input type="date" value={form.lastMaintenance} onChange={(e) => setForm({ ...form, lastMaintenance: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+              <label className="label">Last Maintenance</label>
+              <input type="date" value={form.lastMaintenance} onChange={(e) => setForm({ ...form, lastMaintenance: e.target.value })} className="input" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Next Maintenance</label>
-              <input type="date" value={form.nextMaintenance} onChange={(e) => setForm({ ...form, nextMaintenance: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+              <label className="label">Next Maintenance</label>
+              <input type="date" value={form.nextMaintenance} onChange={(e) => setForm({ ...form, nextMaintenance: e.target.value })} className="input" />
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Status</label>
-            <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+            <label className="label">Status</label>
+            <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })} className="input">
               <option value="available">Available</option>
               <option value="in_use">In Use</option>
               <option value="under_maintenance">Under Maintenance</option>
@@ -256,12 +266,12 @@ export default function Equipment() {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
-            <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={2} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+            <label className="label">Description</label>
+            <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={2} className="input" />
           </div>
           <div className="flex justify-end gap-3 pt-2">
-            <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 font-medium">Cancel</button>
-            <button type="submit" disabled={saving} className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-medium disabled:opacity-50">
+            <button type="button" onClick={() => setShowModal(false)} className="btn btn-outline btn-md">Cancel</button>
+            <button type="submit" disabled={saving} className="btn btn-md btn-primary">
               {saving ? 'Saving...' : editing ? 'Save Changes' : 'Create'}
             </button>
           </div>
@@ -271,15 +281,15 @@ export default function Equipment() {
       <Modal isOpen={showIssueModal} onClose={() => setShowIssueModal(false)} title={`Report Issue — ${issueTarget?.name || 'Equipment'}`}>
         <form onSubmit={submitIssueReport} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">What's wrong?</label>
-            <textarea required value={issueText} onChange={(e) => setIssueText(e.target.value)} rows={3} placeholder="e.g. Treadmill belt slipping, loose handlebar" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+            <label className="label">What's wrong?</label>
+            <textarea required value={issueText} onChange={(e) => setIssueText(e.target.value)} rows={3} placeholder="e.g. Treadmill belt slipping, loose handlebar" className="input" />
           </div>
           <p className="text-xs text-slate-500 -mt-2">
             The equipment is flagged as having a reported issue and the admins are notified to schedule maintenance and follow up.
           </p>
           <div className="flex justify-end gap-3 pt-2">
-            <button type="button" onClick={() => setShowIssueModal(false)} className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 font-medium">Cancel</button>
-            <button type="submit" disabled={issueSaving} className="px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-medium disabled:opacity-50">
+            <button type="button" onClick={() => setShowIssueModal(false)} className="btn btn-outline btn-md">Cancel</button>
+            <button type="submit" disabled={issueSaving} className="btn btn-md btn-danger">
               {issueSaving ? 'Reporting...' : 'Report Issue'}
             </button>
           </div>

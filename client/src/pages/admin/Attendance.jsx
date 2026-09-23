@@ -6,11 +6,14 @@ import {
   MapPinIcon,
 } from '@heroicons/react/24/outline';
 import api from '../../services/api';
-import LoadingSpinner from '../../components/common/LoadingSpinner';
 import EmptyState from '../../components/common/EmptyState';
 import ErrorState from '../../components/common/ErrorState';
+import PageHeader from '../../components/common/PageHeader';
 import DataTable from '../../components/common/DataTable';
 import StatCard from '../../components/common/StatCard';
+import Avatar from '../../components/common/Avatar';
+import { SkeletonRow } from '../../components/common/Skeleton';
+import { fmtDate, fmtTime, formatDuration } from '../../utils/format';
 
 export default function Attendance() {
   const [records, setRecords] = useState([]);
@@ -63,14 +66,6 @@ export default function Attendance() {
     }
   };
 
-  const formatDuration = (checkIn, checkOut) => {
-    if (!checkOut) return '—';
-    const diff = new Date(checkOut) - new Date(checkIn);
-    const hrs = Math.floor(diff / 3600000);
-    const mins = Math.floor((diff % 3600000) / 60000);
-    return `${hrs}h ${mins}m`;
-  };
-
   const handleCheckOut = async (id) => {
     setCheckOutId(id);
     try {
@@ -97,20 +92,24 @@ export default function Attendance() {
   };
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-slate-900">Attendance</h1>
+    <div className="page-wrap space-y-6">
+      <PageHeader
+        title="Attendance"
+        subtitle="Check members in and out, review daily records"
+        icon={ClipboardDocumentCheckIcon}
+      />
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <StatCard icon={ClipboardDocumentCheckIcon} label="Today's Count" value={todayStats?.count || todayRecords.length} color="indigo" />
-        <StatCard icon={CalendarDaysIcon} label="Date" value={date} color="blue" />
+        <StatCard icon={ClipboardDocumentCheckIcon} label="Today's Count" value={todayStats?.count || todayRecords.length} color="brand" />
+        <StatCard icon={CalendarDaysIcon} label="Date" value={fmtDate(date)} color="blue" />
         <StatCard icon={CheckCircleIcon} label="Checked Out" value={todayRecords.filter(r => r.checkOutTime).length} color="green" />
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 p-6">
-        <h2 className="text-lg font-semibold text-slate-900 mb-4">Manual Check-In</h2>
+      <div className="card p-5">
+        <h2 className="card-title mb-4">Manual Check-In</h2>
         <form onSubmit={handleCheckIn} className="flex items-end gap-4">
           <div className="flex-1">
-            <label className="block text-sm font-medium text-slate-700 mb-1">Select Member</label>
+            <label className="label">Select Member</label>
             <div className="relative">
               {selectedMember ? (
                 <div className="flex items-center gap-2 px-3 py-2 border border-slate-300 rounded-lg bg-slate-50">
@@ -124,13 +123,13 @@ export default function Attendance() {
                   value={memberSearch}
                   onChange={(e) => setMemberSearch(e.target.value)}
                   placeholder="Search member (name, email or phone)..."
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                  className="input"
                 />
               )}
               {memberSearch && !selectedMember && filteredMembers.length > 0 && (
                 <ul className="absolute z-10 mt-1 w-full bg-white border border-slate-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
                   {filteredMembers.slice(0, 20).map((m) => (
-                    <li key={m._id} onClick={() => handleMemberSelect(m)} className="px-3 py-2 text-sm hover:bg-indigo-50 cursor-pointer">
+                    <li key={m._id} onClick={() => handleMemberSelect(m)} className="px-3 py-2 text-sm hover:bg-brand-50 cursor-pointer">
                       {m.name} <span className="text-slate-500">({m.email})</span>
                     </li>
                   ))}
@@ -141,37 +140,46 @@ export default function Attendance() {
               )}
             </div>
           </div>
-          <button type="submit" disabled={checkInLoading || !selectedMember} className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 whitespace-nowrap">
+          <button type="submit" disabled={checkInLoading || !selectedMember} className="btn btn-md btn-primary whitespace-nowrap">
             {checkInLoading ? 'Checking in...' : 'Check In'}
           </button>
         </form>
       </div>
 
       <div className="flex items-center gap-4">
-        <label className="text-sm font-medium text-slate-700">Filter by Date:</label>
-        <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+        <label className="label mb-0">Filter by Date:</label>
+        <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="input w-auto" />
       </div>
 
       {error ? (
-        <div className="bg-white rounded-xl border border-slate-200">
+        <div className="card overflow-hidden">
           <ErrorState message={error} onRetry={fetchAll} />
         </div>
-      ) : loading ? <LoadingSpinner size="lg" /> : records.length === 0 ? (
+      ) : loading ? (
+        <SkeletonRow rows={8} />
+      ) : records.length === 0 ? (
         <EmptyState icon={MapPinIcon} message={`No attendance records for ${date}`} />
       ) : (
         <DataTable headers={['Member', 'Check-in', 'Check-out', 'Duration', 'Method', 'Date']}>
-          {records.map((r, i) => (
-            <tr key={r._id} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
-              <td className="px-6 py-4 font-medium text-slate-900">{r.user?.name || r.member?.name || '—'}</td>
-              <td className="px-6 py-4 text-slate-600">{r.checkInTime ? new Date(r.checkInTime).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '—'}</td>
-              <td className="px-6 py-4 text-slate-600">{r.checkOutTime ? new Date(r.checkOutTime).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : (
-                <button onClick={() => handleCheckOut(r._id)} disabled={checkOutId === r._id} className="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-medium transition-colors disabled:opacity-50">
-                  {checkOutId === r._id ? 'Checking out...' : 'Check Out'}
-                </button>
-              )}</td>
-              <td className="px-6 py-4 text-slate-600">{formatDuration(r.checkInTime, r.checkOutTime)}</td>
-              <td className="px-6 py-4 text-slate-600 capitalize">{r.method || 'manual'}</td>
-              <td className="px-6 py-4 text-slate-600">{r.checkInTime ? new Date(r.checkInTime).toLocaleDateString('en-IN') : '—'}</td>
+          {records.map((r) => (
+            <tr key={r._id} className="odd:bg-white even:bg-slate-50/50">
+              <td className="px-4 py-3 text-sm">
+                <div className="flex items-center gap-2">
+                  <Avatar name={r.user?.name || r.member?.name} size="sm" />
+                  <span className="font-medium text-slate-900">{r.user?.name || r.member?.name || '—'}</span>
+                </div>
+              </td>
+              <td className="px-4 py-3 text-sm text-slate-600">{fmtTime(r.checkInTime)}</td>
+              <td className="px-4 py-3 text-sm text-slate-600">
+                {r.checkOutTime ? fmtTime(r.checkOutTime) : (
+                  <button onClick={() => handleCheckOut(r._id)} disabled={checkOutId === r._id} className="btn btn-sm btn-primary">
+                    {checkOutId === r._id ? 'Checking out...' : 'Check Out'}
+                  </button>
+                )}
+              </td>
+              <td className="px-4 py-3 text-sm text-slate-600">{formatDuration(new Date(r.checkOutTime) - new Date(r.checkInTime))}</td>
+              <td className="px-4 py-3 text-sm text-slate-600 capitalize">{r.method || 'manual'}</td>
+              <td className="px-4 py-3 text-sm text-slate-600">{fmtDate(r.checkInTime)}</td>
             </tr>
           ))}
         </DataTable>

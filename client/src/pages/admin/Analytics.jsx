@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { ArrowPathIcon } from '@heroicons/react/24/outline';
+import { ArrowPathIcon, ChartBarIcon } from '@heroicons/react/24/outline';
 import api from '../../services/api';
-import LoadingSpinner from '../../components/common/LoadingSpinner';
 import ErrorState from '../../components/common/ErrorState';
+import EmptyState from '../../components/common/EmptyState';
+import PageHeader from '../../components/common/PageHeader';
+import { Skeleton } from '../../components/common/Skeleton';
 
-const COLORS = ['#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
+const COLORS = ['#84cc16', '#22c55e', '#f59e0b', '#ef4444', '#38bdf8', '#a78bfa'];
 
 export default function Analytics() {
   const [revenue, setRevenue] = useState([]);
@@ -80,112 +82,137 @@ export default function Analytics() {
 
   const handleRefresh = () => fetchAll(true);
 
-  if (loading) return <LoadingSpinner size="lg" />;
-
   const fmtCurrency = (v) => `₹${Number(v || 0).toLocaleString('en-IN')}`;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-900">Advanced Analytics</h1>
-        <button onClick={handleRefresh} disabled={refreshing} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50">
-          <ArrowPathIcon className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} aria-hidden="true" />
-          Refresh
-        </button>
-      </div>
+    <div className="page-wrap space-y-6">
+      <PageHeader
+        title="Advanced Analytics"
+        subtitle="Deep-dive trends across revenue, attendance and usage"
+        icon={ChartBarIcon}
+        actions={
+          <button onClick={handleRefresh} disabled={refreshing} className="btn btn-outline btn-md">
+            <ArrowPathIcon className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} aria-hidden="true" />
+            {refreshing ? 'Refreshing...' : 'Refresh'}
+          </button>
+        }
+      />
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        <div className="bg-white rounded-xl border border-slate-200 p-6">
-          <h2 className="text-lg font-semibold text-slate-900 mb-4">Revenue Trend</h2>
-          {errors.revenue ? (
-            <ErrorState message="Failed to load revenue data" onRetry={handleRefresh} />
-          ) : revenue.length > 0 ? (
-            <ResponsiveContainer width="100%" height={400}>
-              <LineChart data={revenue}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-                <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} />
-                <Tooltip formatter={(v) => fmtCurrency(v)} />
-                <Legend />
-                <Line type="monotone" dataKey="revenue" stroke="#6366f1" strokeWidth={3} dot={{ r: 5, fill: '#6366f1' }} activeDot={{ r: 7 }} />
-              </LineChart>
-            </ResponsiveContainer>
-          ) : <EmptyState />}
-        </div>
+        <ChartCard
+          title="Revenue Trend"
+          subtitle="Monthly revenue from the gym"
+          loading={loading}
+          error={errors.revenue && "We couldn't load the revenue trend."}
+          onRetry={handleRefresh}
+          hasData={revenue.length > 0}
+        >
+          <ResponsiveContainer width="100%" height={400}>
+            <LineChart data={revenue}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+              <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} />
+              <Tooltip formatter={(v) => fmtCurrency(v)} />
+              <Legend />
+              <Line type="monotone" dataKey="revenue" stroke="#84cc16" strokeWidth={3} dot={{ r: 5, fill: '#84cc16' }} activeDot={{ r: 7 }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </ChartCard>
 
-        <div className="bg-white rounded-xl border border-slate-200 p-6">
-          <h2 className="text-lg font-semibold text-slate-900 mb-4">Attendance Trend</h2>
-          {errors.attendance ? (
-            <ErrorState message="Failed to load attendance data" onRetry={handleRefresh} />
-          ) : attendance.length > 0 ? (
-            <ResponsiveContainer width="100%" height={400}>
-              <BarChart data={attendance}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                <XAxis dataKey="day" tick={{ fontSize: 12 }} />
-                <YAxis tick={{ fontSize: 12 }} />
-                <Tooltip />
-                <Legend />
-                <Bar dataKey="count" fill="#6366f1" radius={[6, 6, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          ) : <EmptyState />}
-        </div>
+        <ChartCard
+          title="Attendance Trend"
+          subtitle="Daily check-ins over the selected window"
+          loading={loading}
+          error={errors.attendance && "We couldn't load the attendance trend."}
+          onRetry={handleRefresh}
+          hasData={attendance.length > 0}
+        >
+          <ResponsiveContainer width="100%" height={400}>
+            <BarChart data={attendance}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <XAxis dataKey="day" tick={{ fontSize: 12 }} />
+              <YAxis tick={{ fontSize: 12 }} />
+              <Tooltip />
+              <Legend />
+              <Bar dataKey="count" fill="#84cc16" radius={[6, 6, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartCard>
 
-        <div className="bg-white rounded-xl border border-slate-200 p-6">
-          <h2 className="text-lg font-semibold text-slate-900 mb-4">Peak Hours Analysis</h2>
-          {errors.peakHours ? (
-            <ErrorState message="Failed to load peak hours data" onRetry={handleRefresh} />
-          ) : peakHours.length > 0 ? (
-            <ResponsiveContainer width="100%" height={400}>
-              <BarChart data={peakHours}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                <XAxis dataKey="hour" tick={{ fontSize: 12 }} />
-                <YAxis tick={{ fontSize: 12 }} />
-                <Tooltip />
-                <Legend />
-                <Bar dataKey="count" fill="#22c55e" radius={[6, 6, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          ) : <EmptyState />}
-        </div>
+        <ChartCard
+          title="Peak Hours Analysis"
+          subtitle="Busiest hours of the day across the gym"
+          loading={loading}
+          error={errors.peakHours && "We couldn't load the peak hours data."}
+          onRetry={handleRefresh}
+          hasData={peakHours.length > 0}
+        >
+          <ResponsiveContainer width="100%" height={400}>
+            <BarChart data={peakHours}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <XAxis dataKey="hour" tick={{ fontSize: 12 }} />
+              <YAxis tick={{ fontSize: 12 }} />
+              <Tooltip />
+              <Legend />
+              <Bar dataKey="count" fill="#22c55e" radius={[6, 6, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartCard>
 
-        <div className="bg-white rounded-xl border border-slate-200 p-6">
-          <h2 className="text-lg font-semibold text-slate-900 mb-4">Membership Distribution</h2>
-          {errors.membershipDist ? (
-            <ErrorState message="Failed to load membership data" onRetry={handleRefresh} />
-          ) : membershipDist.length > 0 ? (
-            <ResponsiveContainer width="100%" height={400}>
-              <PieChart>
-                <Pie
-                  data={membershipDist}
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={140}
-                  innerRadius={60}
-                  dataKey="count"
-                  nameKey="plan"
-                  paddingAngle={2}
-                  label={({ plan, percent }) => `${plan} (${(percent * 100).toFixed(0)}%)`}
-                >
-                  {membershipDist.map((_, i) => (
-                    <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(v) => v} />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
-          ) : <EmptyState />}
-        </div>
+        <ChartCard
+          title="Membership Distribution"
+          subtitle="Current memberships split across plan types"
+          loading={loading}
+          error={errors.membershipDist && "We couldn't load the membership breakdown."}
+          onRetry={handleRefresh}
+          hasData={membershipDist.length > 0}
+        >
+          <ResponsiveContainer width="100%" height={400}>
+            <PieChart>
+              <Pie
+                data={membershipDist}
+                cx="50%"
+                cy="50%"
+                outerRadius={140}
+                innerRadius={60}
+                dataKey="count"
+                nameKey="plan"
+                paddingAngle={2}
+                label={({ plan, percent }) => `${plan} (${(percent * 100).toFixed(0)}%)`}
+              >
+                {membershipDist.map((_, i) => (
+                  <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                ))}
+              </Pie>
+              <Tooltip formatter={(v) => v} />
+              <Legend />
+            </PieChart>
+          </ResponsiveContainer>
+        </ChartCard>
       </div>
     </div>
   );
 }
 
-function EmptyState() {
+function ChartCard({ title, subtitle, loading, error, onRetry, hasData, children }) {
   return (
-    <div className="flex items-center justify-center h-[400px] text-slate-400">
-      No data available
+    <div className="card p-5">
+      <div className="mb-4">
+        <h2 className="card-title">{title}</h2>
+        {subtitle && <p className="text-sm text-slate-500 mt-0.5">{subtitle}</p>}
+      </div>
+      {loading ? (
+        <div className="space-y-3">
+          <Skeleton width="w-2/3" height="h-3" />
+          <Skeleton height="h-[340px]" />
+        </div>
+      ) : error ? (
+        <ErrorState message={error} onRetry={onRetry} />
+      ) : !hasData ? (
+        <EmptyState icon={ChartBarIcon} message="No data available" />
+      ) : (
+        children
+      )}
     </div>
   );
 }

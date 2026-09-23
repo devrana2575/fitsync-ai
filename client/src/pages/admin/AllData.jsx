@@ -1,10 +1,11 @@
 import { useState, useEffect, useMemo } from 'react';
 import { ServerStackIcon, ChevronDownIcon, ChevronRightIcon, ArrowPathIcon, PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
 import api from '../../services/api';
-import LoadingSpinner from '../../components/common/LoadingSpinner';
 import ErrorState from '../../components/common/ErrorState';
 import StatCard from '../../components/common/StatCard';
+import PageHeader from '../../components/common/PageHeader';
 import Modal from '../../components/common/Modal';
+import { SkeletonCard } from '../../components/common/Skeleton';
 
 const IGNORED_KEYS = new Set(['__v']);
 
@@ -69,7 +70,7 @@ function EditModal({ collectionLabel, id, fields, onClose, onSave, saving }) {
   const inputFor = (f) => {
     if (typeof f.value === 'boolean') {
       return (
-        <select value={values[f.key]} onChange={(e) => setValue(f.key, e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+        <select value={values[f.key]} onChange={(e) => setValue(f.key, e.target.value)} className="input">
           <option value="true">true</option>
           <option value="false">false</option>
         </select>
@@ -82,7 +83,7 @@ function EditModal({ collectionLabel, id, fields, onClose, onSave, saving }) {
         value={values[f.key]}
         onChange={(e) => setValue(f.key, e.target.value)}
         rows={typeof f.value === 'object' && f.value !== null ? 4 : undefined}
-        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none font-mono text-xs"
+        className="input font-mono text-xs"
       />
     );
   };
@@ -96,15 +97,15 @@ function EditModal({ collectionLabel, id, fields, onClose, onSave, saving }) {
         <div className="max-h-[50vh] overflow-y-auto space-y-3 pr-1">
           {fields.map((f) => (
             <div key={f.key}>
-              <label className="block text-sm font-medium text-slate-700 mb-1">{f.key}</label>
+              <label className="label">{f.key}</label>
               {inputFor(f)}
             </div>
           ))}
         </div>
         {error && <p className="text-sm text-red-600">{error}</p>}
         <div className="flex justify-end gap-3 pt-2">
-          <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 font-medium">Cancel</button>
-          <button type="submit" disabled={saving} className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-medium disabled:opacity-50">
+          <button type="button" onClick={onClose} className="btn btn-outline btn-md">Cancel</button>
+          <button type="submit" disabled={saving} className="btn btn-md btn-primary">
             {saving ? 'Saving...' : 'Save Changes'}
           </button>
         </div>
@@ -118,13 +119,13 @@ function CollectionCard({ collection, expanded, onToggle, onEdit, onDelete }) {
   const columns = useMemo(() => (rows.length > 0 ? pickColumns(rows[0]) : []), [rows]);
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-      <button onClick={onToggle} className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-slate-50 transition-colors">
-        <div className="flex items-center gap-3">
-          {expanded ? <ChevronDownIcon className="h-4 w-4 text-slate-400" /> : <ChevronRightIcon className="h-4 w-4 text-slate-400" />}
-          <span className="font-semibold text-slate-900">{label}</span>
-          <span className="text-xs font-medium px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-full">{count} records</span>
-          {count > rows.length && <span className="text-xs text-slate-400">showing latest {rows.length}</span>}
+    <div className="card">
+      <button onClick={onToggle} className="w-full flex items-center justify-between gap-3 px-5 py-4 hover:bg-slate-50 transition-colors rounded-t-xl">
+        <div className="flex items-center gap-3 min-w-0">
+          {expanded ? <ChevronDownIcon className="h-4 w-4 text-slate-400 shrink-0" /> : <ChevronRightIcon className="h-4 w-4 text-slate-400 shrink-0" />}
+          <span className="font-semibold text-slate-900 truncate">{label}</span>
+          <span className="badge badge-brand shrink-0">{count} records</span>
+          {count > rows.length && <span className="text-xs text-slate-400 shrink-0">showing latest {rows.length}</span>}
         </div>
       </button>
 
@@ -154,11 +155,11 @@ function CollectionCard({ collection, expanded, onToggle, onEdit, onDelete }) {
                         </td>
                       ))}
                       <td className="pl-4 pr-5 py-2.5 whitespace-nowrap">
-                        <div className="flex gap-3">
-                          <button onClick={() => onEdit(row)} className="flex items-center gap-1 text-indigo-600 hover:text-indigo-800 font-medium text-sm">
+                        <div className="flex gap-1">
+                          <button onClick={() => onEdit(row)} className="btn btn-sm btn-outline">
                             <PencilSquareIcon className="h-4 w-4" /> Edit
                           </button>
-                          <button onClick={() => onDelete(row)} className="flex items-center gap-1 text-red-600 hover:text-red-800 font-medium text-sm">
+                          <button onClick={() => onDelete(row)} className="btn btn-sm text-red-600 hover:bg-red-50">
                             <TrashIcon className="h-4 w-4" /> Delete
                           </button>
                         </div>
@@ -254,31 +255,38 @@ export default function AllData() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <h1 className="text-2xl font-bold text-slate-900">All Data</h1>
-        <div className="flex items-center gap-2">
-          <button onClick={expandAll} className="px-3 py-2 rounded-lg border border-slate-300 text-sm font-medium text-slate-700 hover:bg-slate-50">Expand All</button>
-          <button onClick={collapseAll} className="px-3 py-2 rounded-lg border border-slate-300 text-sm font-medium text-slate-700 hover:bg-slate-50">Collapse All</button>
-          <button onClick={refresh} className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-            <ArrowPathIcon className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} /> Refresh
-          </button>
-        </div>
-      </div>
+    <div className="page-wrap space-y-6">
+      <PageHeader
+        title="All Data"
+        subtitle="Raw records across every collection — edit or delete with care"
+        icon={ServerStackIcon}
+        actions={
+          <>
+            <button onClick={expandAll} className="btn btn-outline btn-sm">Expand All</button>
+            <button onClick={collapseAll} className="btn btn-outline btn-sm">Collapse All</button>
+            <button onClick={refresh} className="btn btn-md btn-primary">
+              <ArrowPathIcon className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} aria-hidden="true" />
+              {refreshing ? 'Refreshing...' : 'Refresh'}
+            </button>
+          </>
+        }
+      />
 
       {!loading && !error && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <StatCard icon={ServerStackIcon} label="Collections" value={data.length} color="indigo" />
+          <StatCard icon={ServerStackIcon} label="Collections" value={data.length} color="ink" />
           <StatCard icon={ServerStackIcon} label="Total Records" value={totalRecords} color="green" />
         </div>
       )}
 
       {error ? (
-        <div className="bg-white rounded-xl border border-slate-200">
-          <ErrorState message={error} onRetry={fetchAll} />
+        <div className="card overflow-hidden">
+          <ErrorState message="We couldn't load your data. Please try again." onRetry={fetchAll} />
         </div>
       ) : loading ? (
-        <LoadingSpinner size="lg" />
+        <div className="space-y-3">
+          {Array.from({ length: 5 }).map((_, i) => <SkeletonCard key={i} />)}
+        </div>
       ) : (
         <div className="space-y-3">
           {data.map((c) => (

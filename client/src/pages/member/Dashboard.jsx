@@ -9,13 +9,24 @@ import {
   MapPinIcon,
   ArrowPathIcon,
   ClipboardDocumentCheckIcon,
+  ArrowRightIcon,
+  CalendarDaysIcon,
+  BuildingOffice2Icon,
+  AcademicCapIcon,
+  CheckCircleIcon,
 } from '@heroicons/react/24/outline';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import StatCard from '../../components/common/StatCard';
-import LoadingSpinner from '../../components/common/LoadingSpinner';
 import ErrorState from '../../components/common/ErrorState';
+import PageHeader from '../../components/common/PageHeader';
+import StatusBadge from '../../components/common/StatusBadge';
+import ProgressBar from '../../components/common/ProgressBar';
+import Avatar from '../../components/common/Avatar';
+import { SkeletonCard } from '../../components/common/Skeleton';
 import ProfileCompletionCard from '../../components/common/ProfileCompletionCard';
+import exerciseImage from '../../assets/exerciseImage';
+import { fmtDate } from '../../utils/format';
 
 export default function MemberDashboard() {
   const { user } = useAuth();
@@ -106,7 +117,24 @@ export default function MemberDashboard() {
     [goals]
   );
 
-  if (loading) return <LoadingSpinner />;
+  if (loading) {
+    return (
+      <div className="page-wrap space-y-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)}
+        </div>
+        <SkeletonCard />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="lg:col-span-2 space-y-4">
+            <SkeletonCard />
+            <SkeletonCard />
+          </div>
+          <SkeletonCard />
+        </div>
+        <SkeletonCard />
+      </div>
+    );
+  }
 
   const stats = {
     attendancePercentage: dashboard?.attendancePercentage ?? 0,
@@ -125,146 +153,288 @@ export default function MemberDashboard() {
     return names[new Date().getDay()];
   };
 
+  const greeting = user?.name || 'Athlete';
+  const todayDate = new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+  const msStart = dashboard?.membership?.startDate ? new Date(dashboard.membership.startDate) : null;
+  const msEnd = membership.expiryDate ? new Date(membership.expiryDate) : null;
+  const now = new Date();
+  const membershipDaysLeft = msEnd ? Math.max(0, Math.ceil((msEnd - now) / 86400000)) : null;
+  const membershipProgress = msStart && msEnd && msEnd > msStart
+    ? Math.min(100, Math.max(0, Math.round(((now - msStart) / (msEnd - msStart)) * 100)))
+    : (String(membership.status).toLowerCase() === 'active' ? 100 : 0);
+  const progressTone = membershipDaysLeft === 0 ? 'danger' : membershipDaysLeft !== null && membershipDaysLeft <= 7 ? 'warning' : 'brand';
+
+  const trainer = dashboard?.trainer;
+
+  const workoutExercises = todayWorkout?.exercises || [];
+  const totalSets = workoutExercises.reduce((sum, ex) => sum + (Number(ex.sets) || 0), 0);
+
   return (
-    <div className="min-h-screen bg-slate-50 p-6">
-      <div className="max-w-7xl mx-auto">
-        <div className="mb-8 flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900">My Dashboard</h1>
-            <p className="text-slate-500 mt-1">Welcome back, {user?.name}</p>
-          </div>
-          <button onClick={handleRefresh} disabled={refreshing} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50">
+    <div className="page-wrap space-y-6">
+      <PageHeader
+        title="My Dashboard"
+        subtitle={`Welcome back, ${user?.name || 'Athlete'} — here's your command center.`}
+        icon={ChartBarIcon}
+        actions={
+          <button onClick={handleRefresh} disabled={refreshing} className="btn btn-md btn-outline">
             <ArrowPathIcon className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} aria-hidden="true" />
             Refresh
           </button>
+        }
+      />
+
+      {completion && !completion.allRequiredComplete && (
+        <ProfileCompletionCard completion={completion} member />
+      )}
+
+      {errors.dashboard ? (
+        <div className="card p-5">
+          <ErrorState message="We couldn't load your dashboard right now. Please try again." onRetry={handleRefresh} />
         </div>
+      ) : (
+        <>
+          <div className="card-dark relative overflow-hidden rounded-xl border-ink-700 p-6 sm:p-8">
+            <div
+              className="absolute inset-0 opacity-[0.05]"
+              style={{
+                backgroundImage: 'linear-gradient(#a3e635 1px, transparent 1px), linear-gradient(90deg, #a3e635 1px, transparent 1px)',
+                backgroundSize: '32px 32px',
+              }}
+              aria-hidden="true"
+            />
+            <div className="relative">
+              <div className="flex flex-wrap items-center gap-2 text-brand-400">
+                <CalendarDaysIcon className="h-5 w-5" aria-hidden="true" />
+                <p className="text-sm font-medium">{todayDate}</p>
+              </div>
+              <h1 className="mt-2 text-3xl font-bold text-white sm:text-4xl">Welcome back, {greeting}</h1>
+              <p className="mt-1 text-sm text-slate-400">
+                {dashboard?.todayCheckIn
+                  ? (dashboard.todayCheckOut
+                      ? 'Checked in and completed today\u2019s visit. Great work!'
+                      : 'Checked in — remember to check out before you leave.')
+                  : 'You haven\u2019t checked in yet today.'}
+              </p>
 
-        {completion && !completion.allRequiredComplete && (
-          <div className="mb-6">
-            <ProfileCompletionCard completion={completion} member />
+              <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <button onClick={handleCheckIn} disabled={refreshing} className="btn btn-md btn-primary justify-start">
+                  <MapPinIcon className="h-5 w-5 shrink-0" aria-hidden="true" />
+                  <span className="text-left leading-tight">
+                    <span className="block font-semibold">Check In</span>
+                    <span className="block text-xs font-normal text-ink-900/70">Mark your attendance</span>
+                  </span>
+                </button>
+                <button onClick={() => navigate('/member/membership')} className="btn btn-md btn-outline-dark justify-start">
+                  <BuildingOffice2Icon className="h-5 w-5 shrink-0" aria-hidden="true" />
+                  <span className="text-left leading-tight">
+                    <span className="block font-semibold">View Membership</span>
+                    <span className="block text-xs font-normal text-slate-400">Plan & renewals</span>
+                  </span>
+                </button>
+                <button onClick={() => navigate('/member/workouts')} className="btn btn-md btn-outline-dark justify-start">
+                  <BoltIcon className="h-5 w-5 shrink-0" aria-hidden="true" />
+                  <span className="text-left leading-tight">
+                    <span className="block font-semibold">Log Workout</span>
+                    <span className="block text-xs font-normal text-slate-400">Record your workout</span>
+                  </span>
+                </button>
+                <button onClick={() => navigate('/member/progress')} className="btn btn-md btn-outline-dark justify-start">
+                  <ClipboardDocumentCheckIcon className="h-5 w-5 shrink-0" aria-hidden="true" />
+                  <span className="text-left leading-tight">
+                    <span className="block font-semibold">Record Measurement</span>
+                    <span className="block text-xs font-normal text-slate-400">Track body metrics</span>
+                  </span>
+                </button>
+              </div>
+            </div>
           </div>
-        )}
 
-        {errors.dashboard ? (
-          <ErrorState message="Failed to load dashboard data" onRetry={handleRefresh} />
-        ) : (
-          <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              <StatCard icon={ChartBarIcon} label="Attendance %" value={`${stats.attendancePercentage ?? 0}%`} color="green" />
-              <StatCard icon={BoltIcon} label="Total Workouts" value={stats.totalWorkouts ?? 0} color="blue" />
-              <StatCard icon={ClipboardDocumentListIcon} label="Recent Workouts" value={stats.recentWorkouts ?? 0} color="indigo" />
-              <StatCard icon={FlagIcon} label="Active Goals" value={errors.goals ? '—' : activeGoals.length} color="purple" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatCard icon={ChartBarIcon} label="Attendance %" value={`${stats.attendancePercentage ?? 0}%`} color="green" />
+            <StatCard icon={BoltIcon} label="Total Workouts" value={stats.totalWorkouts ?? 0} color="blue" />
+            <StatCard icon={ClipboardDocumentListIcon} label="Recent Workouts" value={stats.recentWorkouts ?? 0} color="brand" />
+            <StatCard icon={FlagIcon} label="Active Goals" value={errors.goals ? '—' : activeGoals.length} color="ink" />
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+            <div className="lg:col-span-2 space-y-4">
+              <div className="card p-5">
+                <div className="mb-4 flex items-center gap-2">
+                  <BoltIcon className="h-5 w-5 text-brand-600" aria-hidden="true" />
+                  <h2 className="card-title">Today&apos;s Workout</h2>
+                  <span className="badge badge-info ml-auto">{todayName()}</span>
+                </div>
+                {todayWorkout ? (
+                  <>
+                    <div className="flex flex-wrap items-start justify-between gap-4">
+                      <div>
+                        <h3 className="text-lg font-semibold text-slate-900">{todayWorkout.name}</h3>
+                        <p className="mt-0.5 text-sm text-slate-500">
+                          {workoutExercises.length} exercises{todayWorkout.description ? ` · ${todayWorkout.description}` : ''}
+                        </p>
+                        {totalSets > 0 && <p className="text-xs text-slate-400">{totalSets} total sets planned</p>}
+                      </div>
+                      <button onClick={() => navigate('/member/workouts')} className="btn btn-sm btn-primary">
+                        View Plan <ArrowRightIcon className="h-4 w-4" aria-hidden="true" />
+                      </button>
+                    </div>
+                    <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                      {workoutExercises.slice(0, 6).map((ex, idx) => {
+                        const exData = ex.exercise || ex;
+                        return (
+                          <div key={idx} className="flex items-center gap-3 rounded-lg border border-slate-100 bg-slate-50 p-2.5">
+                            <img
+                              src={exerciseImage(exData)}
+                              alt={exData?.name || 'Exercise'}
+                              loading="lazy"
+                              className="h-10 w-10 shrink-0 rounded-lg bg-white object-cover"
+                            />
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-medium text-slate-900">{exData?.name || 'Exercise'}</p>
+                              <p className="text-xs text-slate-500">
+                                {ex.sets ? `${ex.sets} sets` : ''}{ex.sets && ex.reps ? ' × ' : ''}{ex.reps ? `${ex.reps} reps` : ''}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex flex-col items-center py-8 text-center">
+                    <div className="mb-3 rounded-full bg-brand-100 p-3">
+                      <CheckCircleIcon className="h-6 w-6 text-brand-600" aria-hidden="true" />
+                    </div>
+                    <p className="text-sm font-medium text-slate-700">Rest day — no workout scheduled.</p>
+                    <p className="mt-1 text-xs text-slate-400">Check your plans or log a workout and keep the momentum going.</p>
+                    <button onClick={() => navigate('/member/workouts')} className="btn btn-md btn-outline mt-4">
+                      Browse Workout Plans <ArrowRightIcon className="h-4 w-4" aria-hidden="true" />
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div className="card p-5">
+                <div className="mb-4 flex items-center gap-2">
+                  <BuildingOffice2Icon className="h-5 w-5 text-brand-600" aria-hidden="true" />
+                  <h2 className="card-title">Membership</h2>
+                </div>
+                {membership.planName ? (
+                  <>
+                    <div className="flex flex-wrap items-start justify-between gap-4">
+                      <div>
+                        <h3 className="text-xl font-bold text-slate-900">{membership.planName}</h3>
+                        <div className="mt-1.5">
+                          <StatusBadge value={membership.status} />
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm text-slate-500">Plan ends</p>
+                        <p className="text-base font-semibold text-slate-900 tabular-nums">{fmtDate(membership.expiryDate)}</p>
+                      </div>
+                    </div>
+                    {membershipDaysLeft !== null && (
+                      <div className="mt-4">
+                        <div className="mb-1.5 flex items-baseline gap-1.5">
+                          <span className="text-2xl font-semibold text-slate-900 tabular-nums">{membershipDaysLeft}</span>
+                          <span className="text-sm text-slate-500">
+                            day{membershipDaysLeft === 1 ? '' : 's'} remaining
+                          </span>
+                        </div>
+                        <ProgressBar value={membershipProgress} tone={progressTone} />
+                      </div>
+                    )}
+                    <div className="mt-4">
+                      <button onClick={() => navigate('/member/membership')} className="btn btn-md btn-outline w-full sm:w-auto">
+                        Manage Membership <ArrowRightIcon className="h-4 w-4" aria-hidden="true" />
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex flex-col items-center py-8 text-center">
+                    <div className="mb-3 rounded-full bg-slate-100 p-3">
+                      <BuildingOffice2Icon className="h-6 w-6 text-slate-400" aria-hidden="true" />
+                    </div>
+                    <p className="text-sm font-medium text-slate-700">No active membership</p>
+                    <p className="mt-1 text-xs text-slate-400">Pick a plan to keep training and unlock perks.</p>
+                    <button onClick={() => navigate('/member/membership')} className="btn btn-md btn-primary mt-4">
+                      View Membership Plans <ArrowRightIcon className="h-4 w-4" aria-hidden="true" />
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
 
-            {(todayWorkout || dashboard?.todayCheckIn === true || dashboard?.todayCheckIn === false) && (
-              <div className="bg-white rounded-xl border border-slate-200 p-6 mb-8">
-                <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="card p-5 self-start">
+              <div className="mb-4 flex items-center gap-2">
+                <AcademicCapIcon className="h-5 w-5 text-brand-600" aria-hidden="true" />
+                <h2 className="card-title">Your Trainer</h2>
+              </div>
+              {trainer && trainer.name ? (
+                <div className="space-y-3">
                   <div className="flex items-center gap-3">
-                    <ClipboardDocumentListIcon className="h-6 w-6 text-indigo-600" aria-hidden="true" />
-                    <div>
-                      <h2 className="text-base font-semibold text-slate-900">Today ({todayName()})</h2>
-                      {dashboard.todayCheckIn ? (
-                        dashboard.todayCheckOut ? (
-                          <p className="text-sm text-green-600">Checked in and completed today&apos;s visit</p>
-                        ) : (
-                          <p className="text-sm text-green-600">Checked in — remember to check out</p>
-                        )
-                      ) : (
-                        <p className="text-sm text-slate-500">You haven&apos;t checked in yet today</p>
+                    <Avatar name={trainer.name} src={trainer.avatar} size="lg" />
+                    <div className="min-w-0">
+                      <p className="text-base font-semibold text-slate-900">{trainer.name}</p>
+                      {Array.isArray(trainer.profile?.specializations) && trainer.profile.specializations.length > 0 && (
+                        <p className="truncate text-xs text-slate-500">{trainer.profile.specializations.join(', ')}</p>
                       )}
                     </div>
                   </div>
-                  {todayWorkout ? (
-                    <div className="text-right">
-                      <p className="text-sm font-medium text-slate-900">{todayWorkout.name}</p>
-                      <p className="text-xs text-slate-500">{todayWorkout.exercises?.length || 0} exercises</p>
-                      <button onClick={() => navigate('/member/workouts')} className="mt-1 text-xs font-medium text-indigo-600 hover:text-indigo-800">View plan</button>
-                    </div>
-                  ) : (
-                    <p className="text-sm text-slate-400">No workout scheduled today</p>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {membership.planName && (
-              <div className="bg-white rounded-xl border border-slate-200 p-6 mb-8">
-                <h2 className="text-lg font-semibold text-slate-900 mb-3">Membership</h2>
-                <div className="flex flex-wrap gap-6">
-                  <div>
-                    <p className="text-sm text-slate-500">Plan</p>
-                    <p className="text-base font-medium text-slate-900">{membership.planName}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-slate-500">Expiry</p>
-                    <p className="text-base font-medium text-slate-900">
-                      {membership.expiryDate
-                        ? new Date(membership.expiryDate).toLocaleDateString('en-IN', { month: 'long', day: 'numeric', year: 'numeric' })
-                        : '—'}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-slate-500">Status</p>
-                    <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${membership.status?.toLowerCase() === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                      {membership.status || 'unknown'}
-                    </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {trainer.profile?.isAvailable !== false && <span className="badge badge-success">Available</span>}
+                    {trainer.profile?.isAvailable === false && <span className="badge badge-muted">Away</span>}
+                    {trainer.profile?.experience ? <span className="badge badge-brand">{trainer.profile.experience} yr experience</span> : null}
                   </div>
                 </div>
-              </div>
-            )}
-          </>
-        )}
+              ) : (
+                <div className="flex flex-col items-center py-8 text-center">
+                  <div className="mb-3 rounded-full bg-slate-100 p-3">
+                    <AcademicCapIcon className="h-6 w-6 text-slate-400" aria-hidden="true" />
+                  </div>
+                  <p className="text-sm font-medium text-slate-700">Get assigned a trainer</p>
+                  <p className="mt-1 text-xs text-slate-400">Premium plans include dedicated coach support.</p>
+                  <button onClick={() => navigate('/member/membership')} className="btn btn-md btn-outline mt-4">
+                    View Plans <ArrowRightIcon className="h-4 w-4" aria-hidden="true" />
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-          <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 p-6">
-            <h2 className="text-lg font-semibold text-slate-900 mb-4">Weight Trend</h2>
+          <div className="card p-5">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <ChartBarIcon className="h-5 w-5 text-brand-600" aria-hidden="true" />
+                <h2 className="card-title">Weight Trend</h2>
+              </div>
+              {weightData.length > 0 && <span className="text-xs text-slate-400">{weightData.length} measurement{weightData.length === 1 ? '' : 's'}</span>}
+            </div>
             {errors.measurements ? (
-              <ErrorState message="Failed to load measurement data" onRetry={handleRefresh} />
+              <ErrorState message="We couldn't load your measurements right now. Please try again." onRetry={handleRefresh} />
             ) : weightData.length > 0 ? (
               <ResponsiveContainer width="100%" height={250}>
-                <LineChart data={weightData}>
+                <LineChart data={weightData} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                   <XAxis dataKey="date" tick={{ fontSize: 12 }} stroke="#94a3b8" />
                   <YAxis tick={{ fontSize: 12 }} stroke="#94a3b8" />
                   <Tooltip />
-                  <Line type="monotone" dataKey="weight" stroke="#6366f1" strokeWidth={2} dot={{ fill: '#6366f1' }} />
+                  <Line type="monotone" dataKey="weight" stroke="#84cc16" strokeWidth={2} dot={{ fill: '#84cc16' }} activeDot={{ r: 5 }} />
                 </LineChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-[250px] flex items-center justify-center text-slate-400 text-sm">
-                No measurement data yet. Record your first measurement!
+              <div className="flex h-[250px] flex-col items-center justify-center text-center">
+                <p className="text-sm font-medium text-slate-600">No measurements recorded yet</p>
+                <p className="mt-1 text-xs text-slate-400">Record your first measurement to see your weight trend.</p>
+                <button onClick={() => navigate('/member/progress')} className="btn btn-md btn-primary mt-4">
+                  Record Measurement
+                </button>
               </div>
             )}
           </div>
-
-          <div className="bg-white rounded-xl border border-slate-200 p-6">
-            <h2 className="text-lg font-semibold text-slate-900 mb-4">Quick Actions</h2>
-            <div className="space-y-3">
-              <button onClick={handleCheckIn} className="w-full px-4 py-3 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors text-left flex items-center gap-3">
-                <MapPinIcon className="h-5 w-5 shrink-0" aria-hidden="true" />
-                <div>
-                  <p className="font-semibold">Check In</p>
-                  <p className="text-indigo-200 text-xs">Mark your attendance</p>
-                </div>
-              </button>
-              <button onClick={() => navigate('/member/workouts')} className="w-full px-4 py-3 bg-white border border-slate-200 text-slate-900 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors text-left flex items-center gap-3">
-                <BoltIcon className="h-5 w-5 shrink-0 text-slate-500" aria-hidden="true" />
-                <div>
-                  <p className="font-semibold">Log Workout</p>
-                  <p className="text-slate-500 text-xs">Record your workout</p>
-                </div>
-              </button>
-              <button onClick={() => navigate('/member/progress')} className="w-full px-4 py-3 bg-white border border-slate-200 text-slate-900 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors text-left flex items-center gap-3">
-                <ClipboardDocumentCheckIcon className="h-5 w-5 shrink-0 text-slate-500" aria-hidden="true" />
-                <div>
-                  <p className="font-semibold">Record Measurement</p>
-                  <p className="text-slate-500 text-xs">Track body metrics</p>
-                </div>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+        </>
+      )}
     </div>
   );
 }

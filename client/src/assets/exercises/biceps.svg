@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" width="400" height="300">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0e141c"/>
+      <stop offset="1" stop-color="#141c26"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="300" fill="url(#bg)"/>
+  <g stroke="#ffffff" stroke-opacity="0.06" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" fill="none" transform="translate(200,150) rotate(-14) scale(1.7)">
+    <line x1="-110" y1="0" x2="110" y2="0"/>
+    <rect x="-98" y="-42" width="10" height="84" rx="3"/>
+    <rect x="-76" y="-42" width="10" height="84" rx="3"/>
+    <rect x="66" y="-42" width="10" height="84" rx="3"/>
+    <rect x="88" y="-42" width="10" height="84" rx="3"/>
+  </g>
+  <g stroke="#a3e635" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="338" y1="34" x2="370" y2="34"/>
+    <rect x="330" y="26" width="9" height="16" rx="2"/>
+    <rect x="369" y="26" width="9" height="16" rx="2"/>
+  </g>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <g stroke="#a3e635" stroke-width="7">
+      <line x1="190" y1="112" x2="228" y2="112"/>
+      <rect x="182" y="104" width="9" height="16" rx="3"/>
+      <rect x="228" y="104" width="9" height="16" rx="3"/>
+      <line x1="192" y1="128" x2="192" y2="112"/>
+      <line x1="196" y1="140" x2="220" y2="182"/>
+      <line x1="220" y1="182" x2="200" y2="196"/>
+      <line x1="200" y1="196" x2="196" y2="248"/>
+    </g>
+    <g stroke="#f8fafc" stroke-width="7">
+      <line x1="190" y1="112" x2="210" y2="112"/>
+      <line x1="196" y1="140" x2="205" y2="158"/>
+    </g>
+    <circle cx="200" cy="120" r="11" stroke="#a3e635" stroke-width="6"/>
+    <g stroke="#a3e635" stroke-width="7">
+      <line x1="200" y1="196" x2="204" y2="248"/>
+      <line x1="192" y1="238" x2="206" y2="238"/>
+    </g>
+  </g>
+  <text x="200" y="272" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="22" letter-spacing="4" fill="#64748b">BICEPS</text>
+</svg>

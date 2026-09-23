@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { MapPinIcon, CreditCardIcon, GlobeAltIcon } from '@heroicons/react/24/outline';
 import api from '../../services/api';
-import LoadingSpinner from '../../components/common/LoadingSpinner';
 import ErrorState from '../../components/common/ErrorState';
 import StatCard from '../../components/common/StatCard';
+import PageHeader from '../../components/common/PageHeader';
+import { Skeleton, SkeletonCard } from '../../components/common/Skeleton';
 
 const COMMON_TIMEZONES = [
   'Asia/Kolkata',
@@ -81,21 +82,34 @@ export default function Settings() {
     }
   };
 
-  const inputCls = 'w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none';
-
-  if (loading) return <LoadingSpinner size="lg" />;
+  if (loading) {
+    return (
+      <div className="page-wrap space-y-6">
+        <Skeleton width="w-64" height="h-8" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {Array.from({ length: 2 }).map((_, i) => <SkeletonCard key={i} />)}
+        </div>
+        <SkeletonCard />
+        <SkeletonCard />
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-slate-900">Gym Settings</h1>
+    <div className="page-wrap space-y-6">
+      <PageHeader
+        title="Gym Settings"
+        subtitle="Configure your gym's identity, timezone and payments"
+        icon={GlobeAltIcon}
+      />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <StatCard icon={GlobeAltIcon} label="Gym Timezone" value={form.timezone || '—'} color="indigo" />
-        <StatCard icon={MapPinIcon} label="Location" value={form.address || '—'} color="blue" />
+        <StatCard icon={GlobeAltIcon} label="Gym Timezone" value={form.timezone || '—'} color="green" />
+        <StatCard icon={MapPinIcon} label="Location" value={form.address || '—'} color="cyan" />
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 p-5 flex items-center gap-4">
-        <div className={`shrink-0 p-3 rounded-lg ring-1 ${payment ? paymentMeta[payment.method].cls : 'bg-slate-100 text-slate-500 ring-slate-100'}`}>
+      <div className="card p-5 flex items-center gap-4">
+        <div className={`shrink-0 p-3 rounded-lg ring-1 ${payment ? paymentMeta[payment.method]?.cls : 'bg-slate-100 text-slate-500 ring-slate-100'}`}>
           <CreditCardIcon className="h-5 w-5" aria-hidden="true" />
         </div>
         <div className="min-w-0">
@@ -130,8 +144,8 @@ export default function Settings() {
       </div>
 
       {error && (
-        <div className="bg-white rounded-xl border border-slate-200">
-          <ErrorState message={error} onRetry={fetchSettings} />
+        <div className="card overflow-hidden">
+          <ErrorState message="We couldn't load your settings. Please try again." onRetry={fetchSettings} />
         </div>
       )}
 
@@ -143,51 +157,51 @@ export default function Settings() {
         </div>
       )}
 
-      <div className="bg-white rounded-xl border border-slate-200 p-6">
+      <div className="card p-6">
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Gym Name</label>
-              <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className={inputCls} placeholder="e.g. Powerhouse Gym" />
+              <label className="label">Gym Name</label>
+              <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="input" placeholder="e.g. Powerhouse Gym" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Phone</label>
-              <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className={inputCls} />
+              <label className="label">Phone</label>
+              <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="input" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
-              <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className={inputCls} />
+              <label className="label">Email</label>
+              <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="input" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Currency</label>
-              <input maxLength={3} value={form.currency} onChange={(e) => setForm({ ...form, currency: e.target.value.toUpperCase() })} className={inputCls} />
+              <label className="label">Currency</label>
+              <input maxLength={3} value={form.currency} onChange={(e) => setForm({ ...form, currency: e.target.value.toUpperCase() })} className="input" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Timezone</label>
+              <label className="label">Timezone</label>
               <input
                 list="timezone-options"
                 value={form.timezone}
                 onChange={(e) => setForm({ ...form, timezone: e.target.value })}
-                className={inputCls}
+                className="input"
               />
               <datalist id="timezone-options">
                 {COMMON_TIMEZONES.map((tz) => <option key={tz} value={tz} />)}
               </datalist>
-              <p className="text-xs text-slate-400 mt-1">Used for gym-day boundaries, attendance day-keys, stats and revenue months.</p>
+              <p className="field-hint">Used for gym-day boundaries, attendance day-keys, stats and revenue months.</p>
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Operating Hours</label>
-              <input value={form.operatingHours} onChange={(e) => setForm({ ...form, operatingHours: e.target.value })} className={inputCls} placeholder="e.g. Mon–Sat 6:00 AM – 10:00 PM" />
+              <label className="label">Operating Hours</label>
+              <input value={form.operatingHours} onChange={(e) => setForm({ ...form, operatingHours: e.target.value })} className="input" placeholder="e.g. Mon–Sat 6:00 AM – 10:00 PM" />
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Address</label>
-            <textarea value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} rows={2} className={inputCls} />
+            <label className="label">Address</label>
+            <textarea value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} rows={2} className="input" />
           </div>
 
           <div className="flex items-center justify-end gap-3 pt-2">
             {saved && <span className="text-sm text-green-600 font-medium">Settings saved</span>}
-            <button type="submit" disabled={saving} className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-medium disabled:opacity-50">
+            <button type="submit" disabled={saving} className="btn btn-md btn-primary">
               {saving ? 'Saving...' : 'Save Settings'}
             </button>
           </div>

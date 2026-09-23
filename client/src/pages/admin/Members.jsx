@@ -187,7 +187,7 @@ export default function Members() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-slate-900">Members</h1>
-        <button onClick={openAdd} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
+        <button onClick={openAdd} className="btn btn-md btn-primary">
           + Add Member
         </button>
       </div>
@@ -251,7 +251,7 @@ export default function Members() {
                 <td className="px-6 py-4">
                   <div className="flex gap-3">
                     <button onClick={() => navigate(`/admin/members/${m._id}`)} className="text-slate-600 hover:text-slate-900 font-medium text-sm">View</button>
-                    <button onClick={() => openEdit(m)} className="text-indigo-600 hover:text-indigo-800 font-medium text-sm">Edit</button>
+                    <button onClick={() => openEdit(m)} className="text-brand-700 hover:text-brand-800 font-medium text-sm">Edit</button>
                     <button onClick={() => toggleDeactivate(m)} className={`font-medium text-sm ${m.isActive ? 'text-red-600 hover:text-red-800' : 'text-green-600 hover:text-green-800'}`}>
                       {m.isActive ? 'Deactivate' : 'Activate'}
                     </button>
@@ -318,7 +318,7 @@ export default function Members() {
                   </div>
                 ))}
               </div>
-              <button type="button" onClick={addPhoneRow} className="mt-1 text-sm text-indigo-600 hover:text-indigo-800 font-medium">+ Add another number</button>
+              <button type="button" onClick={addPhoneRow} className="mt-1 text-sm text-brand-700 hover:text-brand-800 font-medium">+ Add another number</button>
             </div>
           )}
           <div className="grid grid-cols-2 gap-4">
@@ -376,7 +376,7 @@ export default function Members() {
                   })}
                   className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
                     form.preferredWorkoutDays.includes(d)
-                      ? 'bg-indigo-600 text-white border-indigo-600'
+                      ? 'bg-brand-500 text-ink-950 border-brand-500'
                       : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'
                   }`}
                 >
@@ -420,7 +420,7 @@ export default function Members() {
           </div>
           <div className="flex justify-end gap-3 pt-2">
             <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 font-medium">Cancel</button>
-            <button type="submit" disabled={saving} className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-medium disabled:opacity-50">
+            <button type="submit" disabled={saving} className="btn btn-md btn-primary w-full disabled:opacity-50">
               {saving ? 'Saving...' : editing ? 'Update' : 'Create'}
             </button>
           </div>
@@ -429,3 +429,4 @@ export default function Members() {
     </div>
   );
 }
+// writetest $(Get-Date -Format o)
