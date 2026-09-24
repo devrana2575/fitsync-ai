@@ -393,7 +393,7 @@ export default function Memberships() {
           </div>
           {planForm.paymentMode === 'INSTALLMENT' && Number(planForm.installments) > 1 && (
             <p className="text-xs text-warning bg-warning/10 border border-warning/25 rounded-lg px-3 py-2">
-              Installment amount = ₹{(Number(planForm.price) / Number(planForm.installments)).toFixed(2)} per installment. The membership activates only after the full price is covered.
+              Installment amount = ₹{(Number(planForm.price) / Number(planForm.installments)).toFixed(2)} per installment (the last installment may differ by a few rupees). The membership activates only after the full price is covered.
             </p>
           )}
 
@@ -452,7 +452,7 @@ export default function Memberships() {
             {memberSearch && !assignForm.selectedMember && filteredMembers.length > 0 && (
               <ul className="absolute z-10 mt-1 w-full bg-surface-elevated border border-border rounded-lg shadow-pop max-h-48 overflow-y-auto">
                 {filteredMembers.slice(0, 20).map((m) => (
-                  <li key={m._id} onClick={() => handleAssignMemberSelect(m)} className="px-3 py-2 text-sm hover:bg-brand-50 cursor-pointer">
+                  <li key={m._id} onClick={() => handleAssignMemberSelect(m)} className="px-3 py-2 text-sm hover:bg-brand-500/12 cursor-pointer">
                     {m.name} <span className="text-slate-500">({m.email})</span>
                   </li>
                 ))}

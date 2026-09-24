@@ -1,10 +1,5 @@
 const mongoose = require('mongoose');
 
-// Convenient stable currency rounding for installment amounts. The server is
-// authoritative for all money maths - prices are stored in major units (INR)
-// and installments are derived deterministically from the configured price.
-const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
-
 const membershipPlanSchema = new mongoose.Schema({
   name: {
     type: String,
@@ -63,10 +58,15 @@ const membershipPlanSchema = new mongoose.Schema({
   },
   // ---- Payment configuration ----------------------------------------------
   // FULL        - single payment equal to plan.price completes the plan
-  // INSTALLMENT - the plan explicitly permits fixed installments. Every
-  //               recorded payment must equal `installmentAmount` exactly;
-  //               arbitrary partial amounts are rejected. The membership
-  //               becomes ACTIVE only after the full plan price is covered.
+  // INSTALLMENT - the plan explicitly permits fixed installments. Paid
+  //               OFF-LINE (gym counter / cash / UPI); every recorded payment
+  //               must equal the NEXT DUE amount in the exact
+  //               `installmentSchedule` (remainder in the final installment,
+  //               so the schedule sums EXACTLY to price) - arbitrary partial
+  //               amounts are rejected. The membership becomes ACTIVE only
+  //               after the full plan price is covered. Online checkouts
+  //               charge the full price in one payment and are never
+  //               validated here.
   paymentMode: {
     type: String,
     enum: ['FULL', 'INSTALLMENT'],
@@ -84,6 +84,25 @@ const membershipPlanSchema = new mongoose.Schema({
     type: Number,
     min: 0,
     default: 0
+  },
+  // Amount of the FINAL (nth) installment. When price does not divide evenly
+  // into the requested installment count the remainder (in integer paise) is
+  // added here, so sum(installments) === price exactly. Equals installmentAmount
+  // when price divides evenly. Zero for FULL plans.
+  finalInstallmentAmount: {
+    type: Number,
+    min: 0,
+    default: 0
+  },
+  // Exact per-installment schedule: [{ seq, amount }] for seq 1..installments.
+  // Amounts sum EXACTLY to price (integer-paise math; the remainder lands in
+  // the final entry). Empty for FULL plans. Read-only - derived in pre('save').
+  installmentSchedule: {
+    type: [{
+      seq: Number,
+      amount: Number
+    }],
+    default: []
   },
   isActive: {
     type: Boolean,
@@ -105,12 +124,33 @@ membershipPlanSchema.pre('validate', function (next) {
   next();
 });
 
+// Exact installment schedule in integer paise: pricePaise / installments with
+// the remainder accumulated into the FINAL installment. Because every amount
+// is an exact paise-derived 2dp value, the schedule sums EXACTLY to price
+// (sum(installmentSchedule amounts) === pricePaise / 100 === price).
 membershipPlanSchema.pre('save', function (next) {
   if (this.isModified('price') || this.isModified('installments') || this.isModified('paymentMode')) {
     if (this.paymentMode === 'INSTALLMENT' && this.installments > 1) {
-      this.installmentAmount = round2(Number(this.price) / this.installments);
+      const pricePaise = Math.round(Number(this.price) * 100);
+      const n = this.installments;
+      if (!Number.isInteger(pricePaise) || pricePaise <= 0) {
+        this.installmentAmount = 0;
+        this.finalInstallmentAmount = 0;
+        this.installmentSchedule = [];
+      } else {
+        const basePaise = Math.floor(pricePaise / n);
+        const finalPaise = pricePaise - basePaise * (n - 1);
+        this.installmentAmount = basePaise / 100;
+        this.finalInstallmentAmount = finalPaise / 100;
+        this.installmentSchedule = Array.from({ length: n }, (_, i) => ({
+          seq: i + 1,
+          amount: (i === n - 1 ? finalPaise : basePaise) / 100
+        }));
+      }
     } else {
       this.installmentAmount = 0;
+      this.finalInstallmentAmount = 0;
+      this.installmentSchedule = [];
     }
   }
   if (!this.trainerIncluded) this.trainerAllocationMode = 'NONE';

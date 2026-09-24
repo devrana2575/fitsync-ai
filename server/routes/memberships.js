@@ -8,6 +8,8 @@ const Notification = require('../models/Notification');
 const { auth, authorize } = require('../middleware/auth');
 const { parsePagination } = require('../utils/helpers');
 const { allocateTrainerForMembership } = require('../utils/trainerAllocation');
+const { cancelOtherActiveMemberships } = require('../utils/membershipActivation');
+const { ensurePlanSnapshot, buildPlanSnapshot } = require('../utils/planSnapshot');
 const { serializeMembership } = require('../utils/membershipView');
 const { canTrainerAccessMember } = require('../utils/access');
 const { logAudit } = require('../utils/audit');
@@ -102,30 +104,34 @@ router.post('/', auth, authorize('admin'), async (req, res) => {
     end.setDate(end.getDate() + plan.duration);
 
     if (isComplimentary) {
-      const existingActive = await Membership.findOne({ user: userId, status: 'ACTIVE' });
-      if (existingActive) {
-        existingActive.status = 'CANCELLED';
-        await existingActive.save();
-        await logAudit({
-          actor: req.user._id,
-          user: existingActive.user,
-          action: 'cancelled',
-          entity: 'Membership',
-          entityId: existingActive._id,
-          reason: 'superseded by a new complimentary grant'
-        });
-      }
+      // Supersede any existing ACTIVE membership before the new grant lands.
+      // The DB partial unique index backs this up: if another request races us
+      // into ACTIVE, Membership.create below rejects with E11000 and we
+      // reconcile competitors and retry exactly once.
+      await cancelOtherActiveMemberships(userId);
     }
 
-    const membership = await Membership.create({
+    const membershipData = {
       user: userId,
       plan: planId,
       startDate: start,
       endDate: end,
       status: isComplimentary ? 'ACTIVE' : 'PENDING',
       autoRenew: Boolean(autoRenew),
+      // Freeze the commercial terms at purchase time so later plan edits never
+      // rewrite this membership's financials (see utils/planSnapshot).
+      planSnapshot: buildPlanSnapshot(plan),
       ...(isComplimentary ? { activatedAt: new Date() } : {})
-    });
+    };
+
+    let membership;
+    try {
+      membership = await Membership.create(membershipData);
+    } catch (error) {
+      if (!error || error.code !== 11000) throw error;
+      await cancelOtherActiveMemberships(userId);
+      membership = await Membership.create(membershipData);
+    }
 
     if (isComplimentary) await applyEntitlement(membership._id);
 
@@ -170,7 +176,19 @@ router.put('/:id/renew', auth, authorize('admin'), async (req, res) => {
     membership.endDate = newEnd;
     membership.status = 'ACTIVE';
     membership.activatedAt = new Date();
-    await membership.save();
+    // Counter renewals commit to the terms the membership was created under.
+    ensurePlanSnapshot(membership, membership.plan);
+
+    await cancelOtherActiveMemberships(membership.user, membership._id);
+    try {
+      await membership.save();
+    } catch (error) {
+      // A concurrent activation may have won the ACTIVE slot first. Supersede
+      // it and retry the ACTIVE transition exactly once.
+      if (!error || error.code !== 11000) throw error;
+      await cancelOtherActiveMemberships(membership.user, membership._id);
+      await membership.save();
+    }
 
     await applyEntitlement(membership._id);
 
@@ -230,7 +248,7 @@ router.put('/:id/suspend', auth, authorize('admin'), async (req, res) => {
 // back to life: if the window is over the membership moves to EXPIRED instead.
 router.put('/:id/reactivate', auth, authorize('admin'), async (req, res) => {
   try {
-    const membership = await Membership.findById(req.params.id);
+    const membership = await Membership.findById(req.params.id).populate('plan');
     if (!membership) return res.status(404).json({ message: 'Membership not found' });
     if (membership.status !== 'SUSPENDED') {
       return res.status(400).json({ message: 'Only a SUSPENDED membership can be reactivated' });
@@ -239,7 +257,20 @@ router.put('/:id/reactivate', auth, authorize('admin'), async (req, res) => {
     membership.status = membership.endDate >= now ? 'ACTIVE' : 'EXPIRED';
     membership.suspendedReason = '';
     membership.suspendedAt = null;
-    await membership.save();
+    ensurePlanSnapshot(membership, membership.plan);
+
+    if (membership.status === 'ACTIVE') {
+      // Re-entering the ACTIVE slot must come at the cost of any other ACTIVE
+      // membership for the same user (one-ACTIVE invariant).
+      await cancelOtherActiveMemberships(membership.user, membership._id);
+    }
+    try {
+      await membership.save();
+    } catch (error) {
+      if (!error || error.code !== 11000) throw error;
+      await cancelOtherActiveMemberships(membership.user, membership._id);
+      await membership.save();
+    }
     await logAudit({
       actor: req.user._id,
       user: membership.user,
@@ -328,13 +359,22 @@ router.get('/:id', auth, authorize('admin'), async (req, res) => {
       .filter((p) => p.status === 'COMPLETED')
       .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
 
+    // Financials derive from the snapshot the membership committed to at
+    // purchase time; the live plan price stays irrelevant for money math.
+    // A real snapshot always carries the plan name (utils/planSnapshot) -
+    // memberships created before the field existed have no snapshot and fall
+    // back to the live plan.
+    const settledPrice = membership.planSnapshot && membership.planSnapshot.name && membership.planSnapshot.price != null
+      ? Number(membership.planSnapshot.price)
+      : (Number(membership.plan && membership.plan.price) || 0);
+
     const enriched = await serializeMembership(membership);
 
     res.json({
       membership: { ...membership, ...enriched },
       payments,
       paidTotal,
-      remaining: Math.max((Number(membership.plan?.price) || 0) - paidTotal, 0)
+      remaining: Math.max(settledPrice - paidTotal, 0)
     });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });

@@ -3,7 +3,10 @@ const router = express.Router();
 const GymSetting = require('../models/GymSetting');
 const { auth, authorize } = require('../middleware/auth');
 const { setGymTimezone } = require('../utils/gymTime');
+const { rescheduleCronJobs } = require('../utils/cron');
 const { describePaymentConfig } = require('../utils/paymentConfig');
+
+const isTestEnv = () => process.env.NODE_ENV === 'test';
 
 const isValidTimezone = (tz) => {
   try {
@@ -57,8 +60,19 @@ router.put('/', auth, authorize('admin'), async (req, res) => {
     }
 
     // Keep the in-memory gym-timezone cache in sync so all date math uses the
-    // freshly configured zone immediately.
-    if (payload.timezone) setGymTimezone(payload.timezone);
+    // freshly configured zone immediately, then re-register the scheduled jobs
+    // so expiry/reminder crons fire on the new gym-local clock. Test runs never
+    // register cron timers (they would keep the event loop alive).
+    if (payload.timezone) {
+      setGymTimezone(payload.timezone);
+      if (!isTestEnv()) {
+        try {
+          rescheduleCronJobs();
+        } catch (error) {
+          console.error('[settings] cron reschedule failed:', error.message);
+        }
+      }
+    }
 
     res.json({ settings });
   } catch (error) {

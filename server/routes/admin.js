@@ -35,9 +35,12 @@ const EDITABLE_FIELDS = {
   // status is not editable through AllData: activation must flow through the
   // payment-verified paths (or explicit admin flows in the memberships API).
   memberships: ['startDate', 'endDate', 'autoRenew'],
-  // status is not editable through AllData: completion/refund state is
-  // governed by payments/verify & payment lifecycle rules.
-  payments: ['amount', 'method', 'transactionId', 'notes', 'date'],
+  // Payment records are a financial LEDGER, not debug rows. amount, status,
+  // transactionId, date and every gateway/verification field must only change
+  // through explicit validated business operations (POST/PUT/verify/refund in
+  // the payments API, gateway webhooks). AllData may only annotate with notes,
+  // so a stray edit can never silently rewrite money or completion state.
+  payments: ['notes'],
   attendances: ['date', 'checkInTime', 'checkOutTime', 'method', 'duration'],
   exercises: ['name', 'category', 'muscleGroup', 'difficulty', 'description', 'equipment', 'isActive'],
   equipment: ['name', 'category', 'brand', 'model', 'condition', 'status', 'purchaseDate', 'lastMaintenance', 'nextMaintenance', 'location', 'isActive', 'description', 'notes', 'reportedIssue', 'reportedAt'],

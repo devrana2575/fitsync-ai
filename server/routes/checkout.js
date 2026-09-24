@@ -10,7 +10,8 @@ const User = require('../models/User');
 const { auth, authorize } = require('../middleware/auth');
 const { activateMembershipFromPayment } = require('../utils/membershipActivation');
 const razorpayGateway = require('../utils/razorpayGateway');
-const { completeGatewayPayment, failGatewayPayment } = require('../utils/paymentLifecycle');
+const stripeGateway = require('../utils/stripeGateway');
+const { completeGatewayPayment, failGatewayPayment, refundGatewayPayment } = require('../utils/paymentLifecycle');
 const {
   getUpiId,
   getUpiName,
@@ -20,11 +21,6 @@ const {
   razorpayConfigured,
   getRazorpayKeyId
 } = require('../utils/paymentConfig');
-
-let stripe = null;
-if (process.env.STRIPE_SECRET_KEY && process.env.STRIPE_SECRET_KEY.startsWith('sk_')) {
-  stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-}
 
 const isProduction = () => process.env.NODE_ENV === 'production';
 
@@ -76,7 +72,7 @@ router.post('/create', auth, authorize('member'), async (req, res) => {
     const plan = await MembershipPlan.findOne({ _id: planId, isActive: true });
     if (!plan) return res.status(404).json({ message: 'Plan not found' });
 
-    if (!stripe && !upiConfigured() && !razorpayConfigured()) {
+    if (!stripeConfigured() && !upiConfigured() && !razorpayConfigured()) {
       if (isProduction()) {
         return res.status(503).json({ message: 'Online payments are not configured. Please contact the gym to complete your purchase.' });
       }
@@ -139,13 +135,14 @@ router.post('/create', auth, authorize('member'), async (req, res) => {
       amount: plan.price,
       method: 'online',
       status: 'PENDING',
+      gateway: stripeConfigured() ? 'stripe' : undefined,
       transactionId,
       notes: `Online checkout for ${plan.name}`,
       date: new Date()
     });
 
-    if (stripe) {
-      const session = await stripe.checkout.sessions.create({
+    if (stripeConfigured()) {
+      const session = await stripeGateway.createCheckoutSession({
         payment_method_types: ['card'],
         mode: 'payment',
         line_items: [{
@@ -161,8 +158,12 @@ router.post('/create', auth, authorize('member'), async (req, res) => {
         client_reference_id: String(payment._id),
         metadata: { paymentId: String(payment._id), membershipId: String(membership._id), userId: String(req.user._id), planId: String(planId) }
       });
+      if (!session || !session.id) {
+        throw new Error('Stripe did not return a checkout session id');
+      }
 
       payment.transactionId = session.id;
+      payment.gatewayStatus = 'created';
       await payment.save();
 
       return res.status(201).json({ url: session.url, mode: 'stripe', payment: payment._id, membership: membership._id });
@@ -213,7 +214,7 @@ router.post('/confirm/:paymentId', auth, authorize('member'), async (req, res) =
       return res.status(403).json({ message: 'Not your payment' });
     }
     if (payment.status === 'COMPLETED') return res.json({ message: 'Payment already completed', payment });
-    if (stripe) return res.status(400).json({ message: 'Use the Stripe checkout flow' });
+    if (stripeConfigured()) return res.status(400).json({ message: 'Use the Stripe checkout flow' });
     // A gateway payment (Razorpay/Stripe) can only ever be completed by the
     // gateway itself - a member endpoint must never try to confirm it, even in
     // development. Manual/UPI payments stay PENDING until an admin verifies.
@@ -512,35 +513,151 @@ router.post('/upi/confirm/:paymentId', auth, authorize('member'), async (req, re
 });
 
 // ----------------------------------------------------------------
-// Stripe webhook (handles checkout.session.completed)
+// Stripe webhook (checkout.session.completed / payment_intent.succeeded /
+// charge.refunded)
 // ----------------------------------------------------------------
+// Signature verification is MANDATORY and unconditional: a webhook body is
+// never trusted without a valid Stripe signature. Every state transition goes
+// through the atomic, status-guarded paymentLifecycle helpers so concurrent or
+// repeated deliveries can never double-complete a payment or double-activate a
+// membership.
 const webhookHandler = async (req, res) => {
+  let event;
   try {
-    let event = req.body;
     const signature = req.headers['stripe-signature'];
-    if (stripe && process.env.STRIPE_WEBHOOK_SECRET && signature) {
-      const raw = Buffer.isBuffer(req.body) ? req.body : req.rawBody;
-      event = stripe.webhooks.constructEvent(raw, signature, process.env.STRIPE_WEBHOOK_SECRET);
+    if (!signature) {
+      return res.status(400).json({ message: 'Missing stripe-signature header' });
     }
+    if (!process.env.STRIPE_WEBHOOK_SECRET) {
+      return res.status(503).json({ message: 'Webhook is not configured' });
+    }
+
+    const raw = Buffer.isBuffer(req.body) ? req.body : req.rawBody;
+    try {
+      event = stripeGateway.verifyWebhookSignature(raw, signature);
+    } catch (error) {
+      console.error('[checkout/stripe-webhook] signature verification failed:', error.message);
+      return res.status(400).json({ message: 'Invalid webhook signature' });
+    }
+
+    if (!event || typeof event !== 'object' || !event.type) {
+      return res.status(400).json({ message: 'Invalid webhook event' });
+    }
+  } catch (error) {
+    console.error('[checkout/stripe-webhook] handler error:', error.message);
+    return res.status(500).json({ message: 'Webhook processing error' });
+  }
+
+  try {
+    const eventObject = event.data && event.data.object ? event.data.object : {};
+    const paymentId = eventObject.metadata?.paymentId || eventObject.client_reference_id;
 
     if (event.type === 'checkout.session.completed') {
-      const session = event.data.object;
-      const paymentId = session.metadata?.paymentId || session.client_reference_id;
-      const payment = await Payment.findById(paymentId);
-      if (payment && payment.status !== 'COMPLETED') {
-        payment.status = 'COMPLETED';
-        payment.transactionId = session.payment_intent || payment.transactionId;
-        payment.notes = `${payment.notes || ''} (Stripe ${session.id})`.trim();
-        await payment.save();
+      const session = eventObject;
+      const payment = paymentId ? await Payment.findById(paymentId) : null;
+      if (!payment) {
+        console.warn('[checkout/stripe-webhook] checkout.session.completed references an unknown payment');
+        return res.status(200).json({ received: true });
+      }
+      if (payment.gateway !== 'stripe') {
+        console.warn(`[checkout/stripe-webhook] payment ${payment._id} gateway is ${payment.gateway}, expected stripe`);
+        return res.status(400).json({ message: 'Payment was not created through Stripe' });
+      }
+      if (payment.status === 'FAILED' || payment.status === 'REFUNDED') {
+        console.warn(`[checkout/stripe-webhook] refusing to complete ${payment.status} payment ${payment._id}`);
+        return res.status(200).json({ received: true });
+      }
+      if (Number(payment.amount) * 100 !== Number(session.amount_total)) {
+        console.warn(`[checkout/stripe-webhook] amount mismatch for payment ${payment._id}: expected ${Number(payment.amount) * 100}, got ${session.amount_total}`);
+        return res.status(200).json({ received: true });
+      }
+      if (String(session.currency || 'inr').toLowerCase() !== 'inr') {
+        console.warn(`[checkout/stripe-webhook] currency mismatch for payment ${payment._id}: ${session.currency}`);
+        return res.status(200).json({ received: true });
+      }
 
-        await activateMembershipFromPayment(payment.membership);
+      const result = await completeGatewayPayment(payment._id, {
+        gateway: 'stripe',
+        gatewayPaymentId: session.payment_intent || session.id,
+        gatewayStatus: 'completed',
+        gatewayEventId: event.id,
+        notes: `${payment.notes || 'Online payment'} (Stripe checkout ${session.id})`.trim()
+      });
+
+      if (result.outcome === 'completed') {
         await notifyPaymentReceived(payment.user, payment.amount);
       }
+      return res.status(200).json({ received: true });
     }
 
-    res.json({ received: true });
+    if (event.type === 'payment_intent.succeeded') {
+      const pi = eventObject;
+      const payment = paymentId ? await Payment.findById(paymentId) : null;
+      if (!payment) {
+        console.warn('[checkout/stripe-webhook] payment_intent.succeeded references an unknown payment');
+        return res.status(200).json({ received: true });
+      }
+      if (payment.gateway !== 'stripe') {
+        console.warn(`[checkout/stripe-webhook] payment ${payment._id} gateway is ${payment.gateway}, expected stripe`);
+        return res.status(400).json({ message: 'Payment was not created through Stripe' });
+      }
+      if (payment.status === 'FAILED' || payment.status === 'REFUNDED') {
+        console.warn(`[checkout/stripe-webhook] refusing to complete ${payment.status} payment ${payment._id}`);
+        return res.status(200).json({ received: true });
+      }
+      if (Number(payment.amount) * 100 !== Number(pi.amount)) {
+        console.warn(`[checkout/stripe-webhook] amount mismatch for payment ${payment._id}: expected ${Number(payment.amount) * 100}, got ${pi.amount}`);
+        return res.status(200).json({ received: true });
+      }
+      if (String(pi.currency || 'inr').toLowerCase() !== 'inr') {
+        console.warn(`[checkout/stripe-webhook] currency mismatch for payment ${payment._id}: ${pi.currency}`);
+        return res.status(200).json({ received: true });
+      }
+
+      const result = await completeGatewayPayment(payment._id, {
+        gateway: 'stripe',
+        gatewayPaymentId: pi.id,
+        gatewayStatus: 'succeeded',
+        gatewayEventId: event.id,
+        notes: `${payment.notes || 'Online payment'} (Stripe payment_intent ${pi.id})`.trim()
+      });
+
+      if (result.outcome === 'completed') {
+        await notifyPaymentReceived(payment.user, payment.amount);
+      }
+      return res.status(200).json({ received: true });
+    }
+
+    if (event.type === 'charge.refunded') {
+      const charge = eventObject;
+      const byIntent = charge.payment_intent || charge.id
+        ? await Payment.findOne({ gatewayPaymentId: charge.payment_intent || charge.id })
+        : null;
+      const payment = byIntent || (paymentId ? await Payment.findById(paymentId) : null);
+      if (!payment) {
+        console.warn('[checkout/stripe-webhook] charge.refunded references an unknown payment');
+        return res.status(200).json({ received: true });
+      }
+      if (payment.gateway !== 'stripe') {
+        console.warn(`[checkout/stripe-webhook] payment ${payment._id} gateway is ${payment.gateway}, expected stripe`);
+        return res.status(400).json({ message: 'Payment was not created through Stripe' });
+      }
+
+      // refundGatewayPayment atomically moves COMPLETED -> REFUNDED and revokes
+      // the linked membership. Idempotent under re-delivery.
+      await refundGatewayPayment(payment._id, {
+        gatewayStatus: 'refunded',
+        gatewayEventId: event.id,
+        notes: `${payment.notes || ''} (Stripe refund ${charge.balance_transaction || charge.id})`.trim()
+      });
+      return res.status(200).json({ received: true });
+    }
+
+    // Any other event is acknowledged without action so Stripe stops retrying.
+    return res.status(200).json({ received: true });
   } catch (error) {
-    res.status(400).json({ message: `Webhook error: ${error.message}` });
+    console.error('[checkout/stripe-webhook] processing error:', error.message);
+    return res.status(500).json({ message: 'Webhook processing error' });
   }
 };
 

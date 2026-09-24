@@ -8,12 +8,46 @@ const PLAN_ALLOCATION_MODES = ['NONE', 'SHARED', 'ASSIGNED', 'DEDICATED'];
 
 const coerceBool = (value) => value === true || value === 'true' || value === 1;
 
-// Mirrors the model's rounding so updates that bypass the save middleware
-// (findByIdAndUpdate) still store an exact stored installment amount.
-const computeInstallmentAmount = ({ price, paymentMode, installments }) =>
-  paymentMode === 'INSTALLMENT' && Number(installments) > 1
-    ? Math.round((Number(price) / Number(installments) + Number.EPSILON) * 100) / 100
-    : 0;
+// Mirrors the model's integer-paise schedule derivation so updates that bypass
+// the save middleware (findByIdAndUpdate) still store an exact schedule: the
+// remainder lands in the FINAL installment and the amounts sum EXACTLY to price.
+const computeInstallmentSchedule = ({ price, paymentMode, installments }) => {
+  if (paymentMode !== 'INSTALLMENT' || Number(installments) <= 1) {
+    return { installmentAmount: 0, finalInstallmentAmount: 0, installmentSchedule: [] };
+  }
+  const pricePaise = Math.round(Number(price) * 100);
+  const n = Number(installments);
+  if (!Number.isInteger(pricePaise) || pricePaise <= 0) {
+    return { installmentAmount: 0, finalInstallmentAmount: 0, installmentSchedule: [] };
+  }
+  const basePaise = Math.floor(pricePaise / n);
+  const finalPaise = pricePaise - basePaise * (n - 1);
+  return {
+    installmentAmount: basePaise / 100,
+    finalInstallmentAmount: finalPaise / 100,
+    installmentSchedule: Array.from({ length: n }, (_, i) => ({
+      seq: i + 1,
+      amount: (i === n - 1 ? finalPaise : basePaise) / 100
+    }))
+  };
+};
+
+// Explicit offline-installment policy surfaced on the plan read payloads.
+// INSTALLMENT plans are paid at the gym counter in fixed installments;
+// online gateways (Razorpay/Stripe) always charge the full plan price in one
+// payment and immediately close the membership. Read-only, never persisted.
+const buildInstallmentPolicy = (plan) => {
+  const installment = Boolean(plan && plan.paymentMode === 'INSTALLMENT' && Number(plan.installments) > 1);
+  return {
+    supported: installment,
+    mode: installment ? 'offline_counter_only' : 'online_full',
+    onlineInstallments: false,
+    note: 'Installments are paid at the gym counter; online checkout charges the full plan price in one payment.'
+  };
+};
+
+const withInstallmentPolicy = (plans) =>
+  (plans || []).map((p) => ({ ...p, installmentPolicy: buildInstallmentPolicy(p) }));
 
 const normalizePlanPayload = (body) => {
   const {
@@ -56,7 +90,7 @@ const planConfigValidationError = ({ trainerAllocationMode, paymentMode, install
 router.get('/', auth, async (req, res) => {
   try {
     const plans = await MembershipPlan.find({ isActive: true }).sort({ price: 1 }).lean();
-    res.json({ plans });
+    res.json({ plans: withInstallmentPolicy(plans) });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }
@@ -65,7 +99,7 @@ router.get('/', auth, async (req, res) => {
 router.get('/all', auth, authorize('admin'), async (req, res) => {
   try {
     const plans = await MembershipPlan.find().sort({ createdAt: -1 }).lean();
-    res.json({ plans });
+    res.json({ plans: withInstallmentPolicy(plans) });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }
@@ -136,7 +170,7 @@ router.put('/:id', auth, authorize('admin'), async (req, res) => {
       update.installments = payload.installments;
     }
     if (req.body.price !== undefined || req.body.paymentMode !== undefined || req.body.installments !== undefined) {
-      update.installmentAmount = computeInstallmentAmount(payload);
+      Object.assign(update, computeInstallmentSchedule(payload));
     }
 
     const plan = await MembershipPlan.findByIdAndUpdate(req.params.id, update, { new: true, runValidators: true });

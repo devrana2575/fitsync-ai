@@ -60,18 +60,62 @@ const describePaymentConfig = () => {
   return { method: 'unconfigured', live: false, webhookConfigured: false };
 };
 
-// Called at startup. In production the server must not boot without a real
-// gateway configured - the placeholder UPI id and razorpay test keys are
-// explicitly rejected.
+// A credential is "present" when it holds a real value - an empty shell or a
+// `#`-prefixed commented-out value counts as absent and requires no check.
+const isPresentCredential = (value) => Boolean(value) && !value.startsWith('#');
+
+// Called at startup. Beyond refusing to boot without any real gateway, this
+// rejects ANY present-but-invalid gateway credential in production:
+//   - a present RAZORPAY_KEY_ID that is not rzp_live_* (e.g. rzp_test_*),
+//   - a present STRIPE_SECRET_KEY that is not sk_live_* (e.g. sk_test_*),
+//   - a live STRIPE_SECRET_KEY with no STRIPE_WEBHOOK_SECRET (Stripe checkout
+//     can never complete without the signed completion webhook).
+// A single leftover test key fails the whole boot even when another live
+// gateway exists, so checkout can never silently select a test gateway.
 const ensureProductionPaymentConfig = () => {
   if (process.env.NODE_ENV !== 'production') return;
-  if (hasRealPaymentConfig()) return;
-  throw new Error(
-    '[payment-config] NODE_ENV=production requires a real payment configuration. ' +
-    'Set RAZORPAY_KEY_ID (rzp_live_...) with RAZORPAY_KEY_SECRET, STRIPE_SECRET_KEY ' +
-    '(sk_live_...), or UPI_ID to a real UPI id. Test/placeholder keys are never ' +
-    'acceptable as a production checkout gateway.'
-  );
+
+  const razorpayKeyId = getRazorpayKeyId();
+  if (isPresentCredential(razorpayKeyId) && !razorpayKeyId.startsWith('rzp_live_')) {
+    throw new Error(
+      '[payment-config] NODE_ENV=production requires a real payment configuration. ' +
+      'RAZORPAY_KEY_ID is present but is NOT a live key (expected rzp_live_...). ' +
+      'Razorpay test keys (rzp_test_...) are never acceptable as a production ' +
+      'checkout gateway.'
+    );
+  }
+
+  const stripeSecretKey = (process.env.STRIPE_SECRET_KEY || '').trim();
+  if (isPresentCredential(stripeSecretKey) && !stripeSecretKey.startsWith('sk_live_')) {
+    throw new Error(
+      '[payment-config] NODE_ENV=production requires a real payment configuration. ' +
+      'STRIPE_SECRET_KEY is present but is NOT a live key (expected sk_live_...). ' +
+      'Stripe test keys (sk_test_...) are never acceptable as a production ' +
+      'checkout gateway.'
+    );
+  }
+
+  if (
+    isPresentCredential(stripeSecretKey) &&
+    stripeSecretKey.startsWith('sk_live_') &&
+    !Boolean((process.env.STRIPE_WEBHOOK_SECRET || '').trim())
+  ) {
+    throw new Error(
+      '[payment-config] NODE_ENV=production requires a real payment configuration. ' +
+      'STRIPE_SECRET_KEY is a live key (sk_live_...) so STRIPE_WEBHOOK_SECRET ' +
+      'must also be set and non-empty - without the signed completion webhook ' +
+      'a Stripe checkout can never complete.'
+    );
+  }
+
+  if (!hasRealPaymentConfig()) {
+    throw new Error(
+      '[payment-config] NODE_ENV=production requires a real payment configuration. ' +
+      'Set RAZORPAY_KEY_ID (rzp_live_...) with RAZORPAY_KEY_SECRET, STRIPE_SECRET_KEY ' +
+      '(sk_live_...), or UPI_ID to a real UPI id. Test/placeholder keys are never ' +
+      'acceptable as a production checkout gateway.'
+    );
+  }
 };
 
 module.exports = {

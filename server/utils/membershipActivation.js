@@ -1,5 +1,6 @@
 const Membership = require('../models/Membership');
 const { allocateTrainerForMembership } = require('./trainerAllocation');
+const { ensurePlanSnapshot } = require('./planSnapshot');
 const { logAudit } = require('./audit');
 
 // Authoritative membership-activation path. Every legitimate paid activation
@@ -15,13 +16,21 @@ const { logAudit } = require('./audit');
 // - after activation, applies the plan's trainer entitlement via the
 //   deterministic allocation service. Allocation can never block activation:
 //   no eligible trainer results in a PENDING assignment, not a failed flow.
-const activateMembershipFromPayment = async (membershipId) => {
-  if (!membershipId) return;
-  const membership = await Membership.findById(membershipId).populate('plan');
-  if (!membership || membership.status === 'ACTIVE' || membership.status === 'CANCELLED') return;
+//
+// The one-ACTIVE-per-user invariant is enforced twice: logically here (we
+// supersede competitors) and physically by the DB partial unique index on
+// { user: 1 } filtered to status ACTIVE. Concurrent activations that both pass
+// the read side can still collide on the ACTIVE transition; the loser of that
+// race observes E11000 and reconciles competitor state before a single retry.
 
+// Cancel every OTHER ACTIVE membership for the same user so a newly activated
+// membership is never in competition for the one-ACTIVE-per-user invariant.
+// Excluding the membership being activated keeps renewals of an already-ACTIVE
+// record from cancelling themselves. Returns the superseded documents.
+const cancelOtherActiveMemberships = async (userId, excludeMembershipId) => {
+  if (!userId) return [];
   const superseded = await Membership.find(
-    { user: membership.user, status: 'ACTIVE', _id: { $ne: membership._id } }
+    { user: userId, status: 'ACTIVE', _id: { $ne: excludeMembershipId } }
   ).select('_id user status');
   for (const other of superseded) {
     other.status = 'CANCELLED';
@@ -34,6 +43,13 @@ const activateMembershipFromPayment = async (membershipId) => {
       reason: 'superseded by a new active membership'
     });
   }
+  return superseded;
+};
+
+const activateMembershipFromPayment = async (membershipId) => {
+  if (!membershipId) return;
+  const membership = await Membership.findById(membershipId).populate('plan');
+  if (!membership || membership.status === 'ACTIVE' || membership.status === 'CANCELLED') return;
 
   const now = new Date();
   if (membership.status === 'EXPIRED' || !membership.endDate || membership.endDate <= now) {
@@ -45,9 +61,26 @@ const activateMembershipFromPayment = async (membershipId) => {
     membership.startDate = start;
     membership.endDate = end;
   }
+
+  // Commercial terms are frozen at (re-)activation. ensurePlanSnapshot keeps an
+  // existing snapshot untouched, so re-opening an EXPIRED membership preserves
+  // the terms it originally committed to (never today's live plan).
+  ensurePlanSnapshot(membership, membership.plan);
+
   membership.status = 'ACTIVE';
   membership.activatedAt = new Date();
-  await membership.save();
+
+  await cancelOtherActiveMemberships(membership.user, membership._id);
+  try {
+    await membership.save();
+  } catch (error) {
+    // E11000: two activations for the same user raced past the read side and
+    // both tried to land ACTIVE. Reconcile the competitor's state and retry the
+    // ACTIVE transition exactly once; a second failure propagates.
+    if (!error || error.code !== 11000) throw error;
+    await cancelOtherActiveMemberships(membership.user, membership._id);
+    await membership.save();
+  }
   await logAudit({
     action: 'activated',
     entity: 'Membership',
@@ -86,4 +119,4 @@ const cancelLinkedMembership = async (membershipId) => {
   }
 };
 
-module.exports = { activateMembershipFromPayment, cancelLinkedMembership };
+module.exports = { activateMembershipFromPayment, cancelLinkedMembership, cancelOtherActiveMemberships };

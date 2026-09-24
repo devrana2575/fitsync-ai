@@ -418,7 +418,7 @@ export default function Progress() {
               name="photo"
               accept="image/*"
               onChange={handlePhotoChange}
-              className="input file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-brand-50 file:text-brand-400"
+              className="input file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-brand-500 file:text-ink-950"
             />
           </div>
           <div className="flex justify-end">

@@ -120,7 +120,7 @@ test('admin shows paid/remaining for an installment membership', async () => {
   const my = await request('GET', '/api/memberships/my', { token: member.token });
   const membershipId = my.body.memberships[0]._id;
 
-  const detail = await request('GET', `/api/memberships/${membershipId}`, { token });
+const detail = await request('GET', `/api/memberships/${membershipId}`, { token });
   assert.equal(detail.status, 200);
   assert.equal(detail.body.paidTotal, 500);
   assert.equal(detail.body.remaining, 500);

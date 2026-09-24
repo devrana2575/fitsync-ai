@@ -104,7 +104,7 @@ export default function Payments() {
         </div>
       )}
       {banner === 'pending' && (
-        <div className="flex items-center gap-2 rounded-lg bg-warning/10 px-4 py-3 text-sm font-medium text-warning ring-1 ring-amber-200">
+        <div className="flex items-center gap-2 rounded-lg bg-warning/10 px-4 py-3 text-sm font-medium text-warning ring-1 ring-warning/25">
           <ClockIcon className="h-5 w-5 shrink-0" aria-hidden="true" />
           We received your payment request. Your membership activates once the payment is confirmed and verified.
         </div>

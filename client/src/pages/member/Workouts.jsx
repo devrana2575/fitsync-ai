@@ -227,7 +227,7 @@ export default function Workouts() {
                           {rec.reasons.slice(0, 2).map((reason, idx) => (
                             <span
                               key={idx}
-                              className="inline-flex items-center gap-1 rounded-full bg-brand-50 px-2.5 py-1 text-xs text-brand-700"
+                              className="inline-flex items-center gap-1 rounded-full bg-brand-500/12 px-2.5 py-1 text-xs text-brand-400"
                             >
                               <SparklesIcon className="h-3 w-3" aria-hidden="true" />
                               {reason}

@@ -128,7 +128,15 @@ router.get('/my', auth, async (req, res) => {
 
 router.get('/today', auth, authorize('admin', 'trainer'), async (req, res) => {
   try {
+    // Build the day filter first, then scope it for trainers so the same
+    // filter drives both the count and the records query. Admins are never
+    // narrowed, mirroring GET / and /batch-today.
     const filter = findTodayFilter();
+    if (req.user.role === 'trainer') {
+      const accessible = await getTrainerAccessibleMemberIds(req.user._id);
+      if (accessible.length === 0) return res.json({ records: [], count: 0 });
+      filter.user = { $in: accessible };
+    }
     const count = await Attendance.countDocuments(filter);
     const records = await Attendance.find(filter)
       .select('user date dayKey checkInTime checkOutTime')

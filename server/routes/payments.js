@@ -11,6 +11,7 @@ const { parsePagination } = require('../utils/helpers');
 const { activateMembershipFromPayment, cancelLinkedMembership } = require('../utils/membershipActivation');
 const { validateManualPaymentAmount, isMembershipFullyPaid } = require('../utils/paymentTerms');
 const razorpayGateway = require('../utils/razorpayGateway');
+const stripeGateway = require('../utils/stripeGateway');
 const { getGymMonthStart, getGymTimezone } = require('../utils/gymTime');
 const { logAudit } = require('../utils/audit');
 
@@ -251,6 +252,23 @@ router.put('/:id', auth, authorize('admin'), async (req, res) => {
           }
           update.gatewayStatus = 'refunded';
           update.notes = `${existing.notes || ''} (Razorpay refund ${refund && refund.id ? refund.id : ''})`.trim();
+        } else if (existing.gateway === 'stripe' && existing.gatewayPaymentId) {
+          // Stripe refunds follow the same rule: the gateway must confirm the
+          // refund BEFORE the local record may become REFUNDED. Amount is in
+          // the smallest currency unit (paise for INR).
+          let refund;
+          try {
+            refund = await stripeGateway.createRefund({
+              paymentIntent: existing.gatewayPaymentId,
+              amount: Math.round(existing.amount * 100),
+              reason: 'admin refund'
+            });
+          } catch (error) {
+            console.error('[payments/refund] Stripe refund failed:', error.message);
+            return res.status(502).json({ message: 'Stripe did not confirm the refund. The payment was not marked refunded.' });
+          }
+          update.gatewayStatus = 'refunded';
+          update.notes = `${existing.notes || ''} (Stripe refund ${refund && refund.id ? refund.id : 'confirmed'})`.trim();
         }
         update.status = 'REFUNDED';
         update.confirmedBy = req.user._id;

@@ -14,6 +14,21 @@ const notifyAdmins = async (title, message, data = {}) => {
   );
 };
 
+// In-process promise-based mutex. The whole allocation critical section (from
+// reading/creating the MemberProfile through choosing the trainer and saving)
+// runs inside `withAllocationLock`, so concurrent activations serialize into a
+// single queue and every caller recomputes the eligibility pool fresh AFTER the
+// previous assignment is committed. This prevents two simultaneous activations
+// from both observing memberCount 0 and both picking the same trainer past
+// maxMembers. The chain tolerates failures (one rejection must not deadlock or
+// poison the queue).
+let allocationLock = Promise.resolve();
+const withAllocationLock = (asyncFn) => {
+  const run = allocationLock.then(asyncFn, asyncFn);
+  allocationLock = run.then(() => undefined, () => undefined);
+  return run;
+};
+
 // Deterministic eligibility pool, ordered by ascending workload:
 //   1. Trainer with an active User account + TrainerProfile.
 //   2. Profile.isAvailable is not false (absence/leave is respected).
@@ -72,7 +87,13 @@ const eligibleTrainers = async ({ requiredSpecialization }) => {
 //   (unless force), otherwise picks the lowest-load eligible trainer.
 // - No eligible trainer: membership remains ACTIVE but the assignment enters
 //   PENDING with a reason, and admins are notified. Never blocks activation.
-const allocateTrainerForMembership = async (membershipId, { force = false } = {}) => {
+//
+// The body runs inside the allocation mutex so capacity is never oversubscribed
+// by concurrent activations (see withAllocationLock above).
+const allocateTrainerForMembership = (membershipId, options) =>
+  withAllocationLock(() => allocateTrainerForMembershipUnlocked(membershipId, options));
+
+const allocateTrainerForMembershipUnlocked = async (membershipId, { force = false } = {}) => {
   const Membership = require('../models/Membership');
   const membership = await Membership.findById(membershipId).populate('plan');
   if (!membership || membership.status !== 'ACTIVE' || !membership.plan) {

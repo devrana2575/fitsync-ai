@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useRef, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import {
   CheckCircleIcon,
   ExclamationTriangleIcon,
@@ -76,6 +76,15 @@ export default function ToastProvider({ children }) {
     dialog?.resolve?.(result);
     setDialog(null);
   };
+
+  useEffect(() => {
+    if (!dialog) return;
+    const onKey = (e) => {
+      if (e.key === 'Escape') closeDialog(dialog.promptInput ? null : false);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [dialog]);
 
   const toast = {
     success: (title, message) => push('success', title, message),

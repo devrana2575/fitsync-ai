@@ -37,10 +37,33 @@ const serializeMembership = async (membershipRaw, { withPayments = false } = {})
   // Work on the populated lean/document object regardless of input shape.
   const m = membershipRaw && membershipRaw._doc ? membershipRaw._doc : membershipRaw;
   const id = m._id || membershipRaw._id;
-  const plan = (m.plan && m.plan._doc) ? m.plan._doc : (m.plan || null);
+  const livePlan = (m.plan && m.plan._doc) ? m.plan._doc : (m.plan || null);
   const start = m.startDate ? new Date(m.startDate) : null;
   const end = m.endDate ? new Date(m.endDate) : null;
   const now = new Date();
+
+  // Commercial terms (name/price/duration/payment schedule) come from the
+  // immutable planSnapshot captured at purchase time when present; legacy rows
+  // without a snapshot fall back to the live plan. Trainer entitlement stays
+  // on the LIVE plan: it is a service entitlement the gym may adjust, not a
+  // committed commercial term.
+  // A real snapshot always carries the plan name (built by
+  // utils/planSnapshot); a default/empty subdoc or legacy row without one
+  // must fall back to the live plan.
+  const snapshot = m.planSnapshot && m.planSnapshot.name ? m.planSnapshot : null;
+  const sourcePlan = livePlan || {};
+  const plan = snapshot
+    ? {
+      ...sourcePlan,
+      name: snapshot.name || sourcePlan.name,
+      price: snapshot.price,
+      duration: snapshot.duration != null ? snapshot.duration : sourcePlan.duration,
+      paymentMode: snapshot.paymentMode || sourcePlan.paymentMode,
+      installments: snapshot.installments || sourcePlan.installments,
+      installmentAmount: snapshot.installmentAmount != null ? snapshot.installmentAmount : sourcePlan.installmentAmount
+    }
+    : sourcePlan;
+  const price = Number(plan.price) || 0;
 
   const durationDays = start && end ? Math.max(0, Math.round((end - start) / DAY_MS)) : null;
   const daysRemaining = end ? Math.max(0, Math.ceil((end - now) / DAY_MS)) : null;
@@ -62,7 +85,6 @@ const serializeMembership = async (membershipRaw, { withPayments = false } = {})
       if (p.status === 'COMPLETED') paidTotal += Number(p.amount) || 0;
       else if (p.status === 'PENDING') pendingTotal += Number(p.amount) || 0;
     }
-    const price = Number(plan && plan.price) || 0;
     if (price > 0 && paidTotal >= price) paymentStatus = 'PAID';
     else if (payments.some((p) => p.status === 'COMPLETED')) paymentStatus = 'PARTIAL';
   }
@@ -89,13 +111,13 @@ const serializeMembership = async (membershipRaw, { withPayments = false } = {})
     payments,
     paidTotal,
     pendingTotal,
-    remaining: Math.max((Number(plan && plan.price) || 0) - paidTotal, 0),
+    remaining: Math.max(price - paidTotal, 0),
     paymentStatus,
-    trainerEntitlement: plan ? {
-      trainerIncluded: Boolean(plan.trainerIncluded),
-      trainerAllocationMode: plan.trainerAllocationMode || 'NONE',
-      workoutPlanIncluded: Boolean(plan.workoutPlanIncluded),
-      requiredSpecialization: plan.requiredSpecialization || null
+    trainerEntitlement: livePlan ? {
+      trainerIncluded: Boolean(livePlan.trainerIncluded),
+      trainerAllocationMode: livePlan.trainerAllocationMode || 'NONE',
+      workoutPlanIncluded: Boolean(livePlan.workoutPlanIncluded),
+      requiredSpecialization: livePlan.requiredSpecialization || null
     } : null,
     trainer: premium.trainer,
     trainerAssignmentStatus: premium.assignmentStatus,

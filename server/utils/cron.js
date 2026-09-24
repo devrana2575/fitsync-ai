@@ -5,6 +5,24 @@ const Notification = require('../models/Notification');
 const User = require('../models/User');
 const { bulkCreateNotifications } = require('./notify');
 const { logAudit } = require('./audit');
+const { getGymTimezone, gymWallTimeToUtc, setGymTimezone } = require('./gymTime');
+
+// Translate the intended gym-local trigger wall-clocks to UTC cron
+// expressions so the host's wall clock never matters. Returns one entry per
+// scheduled job; the returned timezone is always Etc/UTC because the UTC
+// wall-clock expression is what node-cron must run against.
+const buildCronExpressions = (gymTimezone) => {
+  setGymTimezone(gymTimezone);
+  const pad = (n) => String(n).padStart(2, '0');
+  const daily = gymWallTimeToUtc(8, 0); // generateNotifications daily 08:00 gym time
+  const monday = gymWallTimeToUtc(12, 0); // generateNotifications Monday 12:00 gym time
+  const expiry = gymWallTimeToUtc(0, 15); // expireMemberships daily 00:15 gym time
+  return [
+    { expression: `${pad(daily.minute)} ${pad(daily.hour)} * * *`, timezone: 'Etc/UTC', target: 'generateNotifications_daily' },
+    { expression: `${pad(monday.minute)} ${pad(monday.hour)} * * 1`, timezone: 'Etc/UTC', target: 'generateNotifications_monday' },
+    { expression: `${pad(expiry.minute)} ${pad(expiry.hour)} * * *`, timezone: 'Etc/UTC', target: 'expireMemberships_daily' }
+  ];
+};
 
 const generateNotifications = async () => {
   try {
@@ -123,12 +141,12 @@ const expireMemberships = async () => {
 const scheduledJobs = [];
 
 const startCronJobs = () => {
-  scheduledJobs.push(
-    cron.schedule('0 8 * * *', generateNotifications),
-    cron.schedule('0 12 * * 1', generateNotifications),
-    cron.schedule('15 0 * * *', expireMemberships)
-  );
-  console.log('[Cron] Scheduled notification + membership expiry jobs');
+  const expressions = buildCronExpressions(getGymTimezone());
+  const handlers = [generateNotifications, generateNotifications, expireMemberships];
+  expressions.forEach((job, i) => {
+    scheduledJobs.push(cron.schedule(job.expression, handlers[i], { timezone: job.timezone }));
+  });
+  console.log('[Cron] Scheduled notification + membership expiry jobs (Etc/UTC)');
 };
 
 const stopCronJobs = () => {
@@ -138,4 +156,12 @@ const stopCronJobs = () => {
   scheduledJobs.length = 0;
 };
 
-module.exports = { startCronJobs, stopCronJobs, generateNotifications, expireMemberships };
+// Re-register every scheduled job. Safe to call repeatedly: any previously
+// registered jobs are stopped first (idempotent). Invoked by the settings
+// route after a runtime gym-timezone change.
+const rescheduleCronJobs = () => {
+  stopCronJobs();
+  startCronJobs();
+};
+
+module.exports = { startCronJobs, stopCronJobs, rescheduleCronJobs, generateNotifications, expireMemberships, buildCronExpressions };

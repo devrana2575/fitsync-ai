@@ -131,7 +131,7 @@ export default function Attendance() {
               {memberSearch && !selectedMember && filteredMembers.length > 0 && (
                 <ul className="absolute z-10 mt-1 w-full bg-surface-elevated border border-border rounded-lg shadow-pop max-h-48 overflow-y-auto">
                   {filteredMembers.slice(0, 20).map((m) => (
-                    <li key={m._id} onClick={() => handleMemberSelect(m)} className="px-3 py-2 text-sm hover:bg-brand-50 cursor-pointer">
+                    <li key={m._id} onClick={() => handleMemberSelect(m)} className="px-3 py-2 text-sm hover:bg-brand-500/12 cursor-pointer">
                       {m.name} <span className="text-slate-500">({m.email})</span>
                     </li>
                   ))}

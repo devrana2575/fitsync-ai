@@ -339,7 +339,7 @@ export default function Payments() {
             {memberSearch && !selectedMember && filteredMembers.length > 0 && (
               <ul className="absolute z-10 mt-1 w-full bg-surface-elevated border border-border rounded-lg shadow-pop max-h-48 overflow-y-auto">
                 {filteredMembers.slice(0, 20).map((m) => (
-                  <li key={m._id} onClick={() => handleMemberSelect(m)} className="px-3 py-2 text-sm hover:bg-brand-50 cursor-pointer">
+                  <li key={m._id} onClick={() => handleMemberSelect(m)} className="px-3 py-2 text-sm hover:bg-brand-500/12 cursor-pointer">
                     {m.name} <span className="text-slate-500">({m.email})</span>
                   </li>
                 ))}
@@ -384,7 +384,7 @@ export default function Payments() {
             <label className="label">Amount (₹)</label>
             <input required type="number" min="0" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} className="input" />
             {form.planId && form.status === 'completed' && (
-              <p className="text-xs text-slate-400 mt-1">Plan-based completed payments must match the plan price exactly (or the fixed installment amount for installment plans).</p>
+              <p className="text-xs text-slate-400 mt-1">Plan-based completed payments must match the plan price exactly (or the next due installment for installment plans - amounts that differ are rejected).</p>
             )}
           </div>
           <div>

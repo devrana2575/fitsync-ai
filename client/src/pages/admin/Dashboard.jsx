@@ -188,7 +188,7 @@ export default function Dashboard() {
             <h2 className="card-title">Expiring Soon</h2>
             <button
               onClick={() => navigate('/admin/memberships')}
-              className="btn btn-ghost btn-sm text-brand-700 hover:bg-brand-50"
+              className="btn btn-ghost btn-sm text-brand-400 hover:bg-brand-500/120/12"
             >
               View all
               <ArrowRightIcon className="h-4 w-4" aria-hidden="true" />

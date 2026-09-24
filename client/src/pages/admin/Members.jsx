@@ -253,7 +253,7 @@ export default function Members() {
                 <td className="px-6 py-4">
                   <div className="flex gap-3">
                     <button onClick={() => navigate(`/admin/members/${m._id}`)} className="text-slate-600 hover:text-slate-900 font-medium text-sm">View</button>
-                    <button onClick={() => openEdit(m)} className="text-brand-300 hover:text-brand-800 font-medium text-sm">Edit</button>
+                    <button onClick={() => openEdit(m)} className="text-brand-400 hover:text-brand-300 font-medium text-sm">Edit</button>
                     <button onClick={() => toggleDeactivate(m)} className={`font-medium text-sm ${m.isActive ? 'text-danger hover:text-danger' : 'text-success hover:text-success'}`}>
                       {m.isActive ? 'Deactivate' : 'Activate'}
                     </button>
@@ -320,7 +320,7 @@ export default function Members() {
                   </div>
                 ))}
               </div>
-              <button type="button" onClick={addPhoneRow} className="mt-1 text-sm text-brand-300 hover:text-brand-800 font-medium">+ Add another number</button>
+              <button type="button" onClick={addPhoneRow} className="mt-1 text-sm text-brand-400 hover:text-brand-300 font-medium">+ Add another number</button>
             </div>
           )}
           <div className="grid grid-cols-2 gap-4">

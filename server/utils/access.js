@@ -88,6 +88,7 @@ module.exports = {
   isAdmin,
   isTrainer,
   canTrainerAccessMember,
+  getTrainerAccessibleMemberIds,
   filterAccessibleMemberIds,
   sanitizeMemberProfileForViewer
 };

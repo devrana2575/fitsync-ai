@@ -126,7 +126,7 @@ export default function TrainerDashboard() {
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <div className="card p-5">
           <div className="flex items-center gap-4">
-            <span className="shrink-0 p-3 rounded-lg ring-1 bg-brand-100 text-brand-300 ring-brand-200">
+            <span className="shrink-0 p-3 rounded-lg ring-1 bg-brand-500/15 text-brand-400 ring-brand-500/25">
               <UserGroupIcon className="h-5 w-5" aria-hidden="true" />
             </span>
             <div className="min-w-0 flex-1">
@@ -259,7 +259,7 @@ export default function TrainerDashboard() {
                   onClick={() => navigate(action.path)}
                   className="flex w-full items-center gap-3 rounded-xl border border-slate-200 px-4 py-3 text-left hover:bg-slate-50 hover:border-slate-300 transition-colors"
                 >
-                  <span className="shrink-0 p-2 rounded-lg bg-brand-100 text-brand-300">
+                  <span className="shrink-0 p-2 rounded-lg bg-brand-500/15 text-brand-400">
                     <action.icon className="h-5 w-5" aria-hidden="true" />
                   </span>
                   <span className="flex-1 min-w-0">
