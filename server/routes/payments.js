@@ -14,6 +14,7 @@ const razorpayGateway = require('../utils/razorpayGateway');
 const stripeGateway = require('../utils/stripeGateway');
 const { getGymMonthStart, getGymTimezone } = require('../utils/gymTime');
 const { logAudit } = require('../utils/audit');
+const { buildPlanSnapshot } = require('../utils/planSnapshot');
 
 const makeReceiptNumber = () => `INV-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${crypto.randomBytes(2).toString('hex').toUpperCase()}`;
 
@@ -125,13 +126,16 @@ router.post('/', auth, authorize('admin'), async (req, res) => {
 
         // Always created PENDING - activation happens only through
         // activateMembershipFromPayment() once the payment is COMPLETED.
+        // Commercial terms are frozen at creation so later plan edits never
+        // change this member's committed installment schedule.
         const membership = await Membership.create({
           user: userId,
           plan: plan._id,
           startDate: start,
           endDate: end,
           status: 'PENDING',
-          autoRenew: false
+          autoRenew: false,
+          planSnapshot: buildPlanSnapshot(plan)
         });
         targetMembership = membership._id;
       }

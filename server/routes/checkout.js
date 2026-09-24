@@ -12,6 +12,7 @@ const { activateMembershipFromPayment } = require('../utils/membershipActivation
 const razorpayGateway = require('../utils/razorpayGateway');
 const stripeGateway = require('../utils/stripeGateway');
 const { completeGatewayPayment, failGatewayPayment, refundGatewayPayment } = require('../utils/paymentLifecycle');
+const { buildPlanSnapshot } = require('../utils/planSnapshot');
 const {
   getUpiId,
   getUpiName,
@@ -86,7 +87,10 @@ router.post('/create', auth, authorize('member'), async (req, res) => {
         plan: planId,
         startDate: start,
         endDate: end,
-        status: 'PENDING'
+        status: 'PENDING',
+        // Freeze the commercial terms at contract creation - the committed
+        // installment/schedule/trainer terms must not follow later plan edits.
+        planSnapshot: buildPlanSnapshot(plan)
       });
 
       const payment = await Payment.create({
@@ -125,7 +129,9 @@ router.post('/create', auth, authorize('member'), async (req, res) => {
       plan: planId,
       startDate: start,
       endDate: end,
-      status: 'PENDING'
+      status: 'PENDING',
+      // Freeze the committed terms at checkout creation (Stripe/UPI).
+      planSnapshot: buildPlanSnapshot(plan)
     });
 
     const transactionId = `STRIPE-${membership._id}-${Date.now()}`;
@@ -284,7 +290,9 @@ router.post('/razorpay/order', auth, authorize('member'), async (req, res) => {
         plan: plan._id,
         startDate: start,
         endDate: end,
-        status: 'PENDING'
+        status: 'PENDING',
+        // Freeze the committed terms at Razorpay order creation.
+        planSnapshot: buildPlanSnapshot(plan)
       });
 
       payment = await Payment.create({

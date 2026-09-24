@@ -46,9 +46,9 @@ export default function Register() {
     >
       <div className="mt-3 flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg bg-ink-900 border border-ink-700 mb-4">
         <span className="h-6 w-6 rounded-full bg-brand-500 flex items-center justify-center shrink-0">
-          <UserGroupIcon className="h-3.5 w-3.5 text-ink-950" aria-hidden="true" />
+          <UserGroupIcon className="h-3.5 w-3.5 text-slate-400" aria-hidden="true" />
         </span>
-        <p className="text-xs text-slate-300">
+        <p className="text-xs text-slate-400">
           You're signing up as{' '}
           <span className="font-semibold text-brand-400">Member</span>
         </p>

@@ -119,7 +119,7 @@ export default function Attendance() {
             <label className="label">Select Assigned Member</label>
             <div className="relative">
               {selectedMember ? (
-                <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-200 bg-slate-50">
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-200 bg-surface">
                   <span className="flex-1 text-sm text-slate-900">
                     {availableMembers.find((m) => String(m._id) === String(selectedMember))?.name || 'Member selected'}
                   </span>
@@ -176,7 +176,7 @@ export default function Attendance() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-slate-50 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                <tr className="bg-surface text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                   <th className="px-6 py-3">Member</th>
                   <th className="px-6 py-3">Check-in</th>
                   <th className="px-6 py-3">Check-out</th>
@@ -185,7 +185,7 @@ export default function Attendance() {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {records.map((r, i) => (
-                  <tr key={r._id} className={i % 2 === 0 ? 'bg-transparent' : 'bg-slate-100/40'}>
+                  <tr key={r._id} className={i % 2 === 0 ? 'bg-transparent' : 'bg-surface/60'}>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <Avatar name={r.user?.name || r.member?.name} size="sm" />

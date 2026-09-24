@@ -323,7 +323,7 @@ export default function Memberships() {
             {memberships.length === 0 ? <EmptyState icon={ClipboardDocumentListIcon} message="No active memberships" /> : (
               <DataTable headers={['Member', 'Plan', 'Start Date', 'End Date', 'Status', 'Actions']}>
                 {memberships.map((m) => (
-                  <tr key={m._id} className="odd:bg-transparent even:bg-slate-100/40">
+                  <tr key={m._id} className="odd:bg-transparent even:bg-surface/60">
                     <td className="px-4 py-3 text-sm">
                       <div className="flex items-center gap-2">
                         <Avatar name={m.user?.name || m.member?.name} size="sm" />
@@ -388,7 +388,7 @@ export default function Memberships() {
             </div>
             <div>
               <label className="label">Installments (if applicable)</label>
-              <input type="number" min="1" value={planForm.installments} onChange={(e) => setPlanForm({ ...planForm, installments: e.target.value })} disabled={planForm.paymentMode !== 'INSTALLMENT'} className="input bg-slate-50 disabled:opacity-50" />
+              <input type="number" min="1" value={planForm.installments} onChange={(e) => setPlanForm({ ...planForm, installments: e.target.value })} disabled={planForm.paymentMode !== 'INSTALLMENT'} className="input bg-surface disabled:opacity-50" />
             </div>
           </div>
           {planForm.paymentMode === 'INSTALLMENT' && Number(planForm.installments) > 1 && (
@@ -404,7 +404,7 @@ export default function Memberships() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="label">Trainer Allocation</label>
-              <select value={planForm.trainerAllocationMode} onChange={(e) => setPlanForm({ ...planForm, trainerAllocationMode: e.target.value })} disabled={!planForm.trainerIncluded} className="input bg-slate-50 disabled:opacity-50">
+              <select value={planForm.trainerAllocationMode} onChange={(e) => setPlanForm({ ...planForm, trainerAllocationMode: e.target.value })} disabled={!planForm.trainerIncluded} className="input bg-surface disabled:opacity-50">
                 {ALLOCATION_MODES.map((mode) => (
                   <option key={mode} value={mode}>{mode}</option>
                 ))}
@@ -437,7 +437,7 @@ export default function Memberships() {
           <div className="relative">
             <label className="label">Select Member</label>
             {assignForm.selectedMember ? (
-              <div className="flex items-center gap-2 px-3 py-2 border border-slate-300 rounded-lg bg-slate-50">
+              <div className="flex items-center gap-2 px-3 py-2 border border-slate-300 rounded-lg bg-surface">
                 <span className="flex-1 text-sm text-slate-900">{assignForm.selectedMember.name} ({assignForm.selectedMember.email})</span>
                 <button type="button" onClick={() => setAssignForm({ ...assignForm, selectedMember: null })} className="text-slate-400 hover:text-slate-600 text-lg leading-none">&times;</button>
               </div>
@@ -479,7 +479,7 @@ export default function Memberships() {
             <input id="complimentary" type="checkbox" checked={assignForm.complimentary} onChange={(e) => setAssignForm({ ...assignForm, complimentary: e.target.checked })} className="h-4 w-4 text-brand-400 border-slate-300 rounded focus:ring-brand-500" />
             <label htmlFor="complimentary" className="text-sm font-medium text-slate-700">Complementary / free grant (activate immediately)</label>
           </div>
-          <div className={`rounded-lg px-3 py-2 text-xs ${assignForm.complimentary ? 'bg-warning/10 text-warning border border-warning/25' : 'bg-slate-50 text-slate-500 border border-slate-200'}`}>
+          <div className={`rounded-lg px-3 py-2 text-xs ${assignForm.complimentary ? 'bg-warning/10 text-warning border border-warning/25' : 'bg-surface text-slate-500 border border-slate-200'}`}>
             {assignForm.complimentary
               ? 'A complimentary/offline grant activates the membership immediately — use only for free or counter-collected memberships.'
               : 'This membership is created as PENDING and does not grant access yet. Record the payment on the Payments page (Plan-based entry) to activate it.'}
@@ -542,7 +542,7 @@ export default function Memberships() {
             <div className="card overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead className="bg-slate-50">
+                  <thead className="bg-surface">
                     <tr>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Receipt</th>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Amount</th>

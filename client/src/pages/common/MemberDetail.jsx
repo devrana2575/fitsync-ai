@@ -136,7 +136,7 @@ export default function MemberDetail() {
         <div
           className="absolute inset-0 opacity-[0.04]"
           style={{
-            backgroundImage: 'linear-gradient(#a3e635 1px, transparent 1px), linear-gradient(90deg, #a3e635 1px, transparent 1px)',
+            backgroundImage: 'linear-gradient(#2a3037 1px, transparent 1px), linear-gradient(90deg, #2a3037 1px, transparent 1px)',
             backgroundSize: '32px 32px',
           }}
           aria-hidden="true"
@@ -211,7 +211,7 @@ export default function MemberDetail() {
           (memberships || []).length > 0 ? (
             <div className="space-y-2">
               {(memberships || []).map((m) => (
-                <div key={m._id} className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 p-3">
+                <div key={m._id} className="flex items-center justify-between gap-3 rounded-lg bg-surface p-3">
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-slate-900">{m.plan?.name || 'Membership'}</p>
                     <p className="text-xs text-slate-500">{fmtDate(m.startDate)} → {fmtDate(m.endDate)}</p>
@@ -230,7 +230,7 @@ export default function MemberDetail() {
               {(attendance || []).map((r) => {
                 const active = !r.checkOutTime;
                 return (
-                  <div key={r._id} className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 p-3">
+                  <div key={r._id} className="flex items-center justify-between gap-3 rounded-lg bg-surface p-3">
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-slate-900">{fmtDateTime(r.checkInTime || r.date)}</p>
                       <p className="text-xs text-slate-500">
@@ -260,7 +260,7 @@ export default function MemberDetail() {
           (payments || []).length > 0 ? (
             <div className="max-h-64 space-y-2 overflow-y-auto">
               {(payments || []).map((p) => (
-                <div key={p._id} className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 p-3">
+                <div key={p._id} className="flex items-center justify-between gap-3 rounded-lg bg-surface p-3">
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-slate-900 tabular-nums">{toINR(p.amount)}</p>
                     <p className="text-xs text-slate-500">
@@ -279,7 +279,7 @@ export default function MemberDetail() {
           (measurements || []).length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
+                <thead className="bg-surface text-left text-xs uppercase text-slate-500">
                   <tr>
                     <th className="px-3 py-2">Date</th>
                     <th className="px-3 py-2">Weight</th>
@@ -310,7 +310,7 @@ export default function MemberDetail() {
           (goals || []).length > 0 ? (
             <div className="max-h-64 space-y-3 overflow-y-auto">
               {(goals || []).map((g) => (
-                <div key={g._id} className="rounded-lg bg-slate-50 p-3">
+                <div key={g._id} className="rounded-lg bg-surface p-3">
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-sm font-medium text-slate-900">{g.title}</p>
                     <StatusBadge value={g.status} />
@@ -332,7 +332,7 @@ export default function MemberDetail() {
           (workoutLogs || []).length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
+                <thead className="bg-surface text-left text-xs uppercase text-slate-500">
                   <tr>
                     <th className="px-3 py-2">Date</th>
                     <th className="px-3 py-2">Exercise</th>
@@ -366,7 +366,7 @@ export default function MemberDetail() {
           (workoutPlans || []).length > 0 ? (
             <div className="space-y-3">
               {(workoutPlans || []).map((plan) => (
-                <div key={plan._id} className="rounded-lg bg-slate-50 p-4">
+                <div key={plan._id} className="rounded-lg bg-surface p-4">
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-sm font-medium text-slate-900">{plan.name}</p>
                     {plan.trainer?.name && <p className="text-xs text-slate-500">by {plan.trainer.name}</p>}
@@ -380,7 +380,7 @@ export default function MemberDetail() {
                       {plan.exercises.slice(0, 6).map((ex, idx) => {
                         const exData = ex.exercise || ex;
                         return (
-                          <span key={idx} className="inline-flex items-center gap-1.5 rounded-full bg-slate-200/60 px-2.5 py-1 text-xs text-slate-400 ring-1 ring-inset ring-slate-300/50">
+                          <span key={idx} className="inline-flex items-center gap-1.5 rounded-full bg-surface-elevated px-2.5 py-1 text-xs text-slate-400 ring-1 ring-inset ring-slate-300/50">
                             <img src={exerciseImage(exData)} alt={exData?.name || 'Exercise'} loading="lazy" className="h-4 w-4 rounded-full bg-surface object-cover" />
                             {exData?.name || 'Exercise'}
                           </span>

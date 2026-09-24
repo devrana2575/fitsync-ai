@@ -440,7 +440,7 @@ export default function Workouts() {
             <div className="card overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead className="bg-slate-50">
+                  <thead className="bg-surface">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Date</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Exercise</th>
@@ -451,7 +451,7 @@ export default function Workouts() {
                   </thead>
                   <tbody className="divide-y divide-slate-200">
                     {history.map((log, idx) => (
-                      <tr key={log._id || log.id || idx} className="hover:bg-slate-50 transition-colors">
+                      <tr key={log._id || log.id || idx} className="hover:bg-surface transition-colors">
                         <td className="px-6 py-4 text-sm text-slate-900">
                           {fmtDate(log.createdAt || log.date)}
                         </td>

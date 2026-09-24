@@ -7,7 +7,7 @@ import EmptyState from '../../components/common/EmptyState';
 import PageHeader from '../../components/common/PageHeader';
 import { Skeleton } from '../../components/common/Skeleton';
 
-const COLORS = ['#B7F34A', '#35C979', '#F4B740', '#EF5B63', '#5EA7FF', '#A78BFA'];
+const COLORS = ['#18A878', '#35C979', '#F4B740', '#EF5B63', '#5EA7FF', '#A78BFA'];
 
 export default function Analytics() {
   const [revenue, setRevenue] = useState([]);
@@ -114,7 +114,7 @@ export default function Analytics() {
               <YAxis tickLine={false} axisLine={{ stroke: "#292f35" }} tick={{ fontSize: 12, fill: "#6f7983" }} tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} />
               <Tooltip formatter={(v) => fmtCurrency(v)} contentStyle={{ backgroundColor: '#181c20', border: '1px solid #292f35', borderRadius: '0.75rem', color: '#f3f5f4' }} labelStyle={{ color: '#9aa4ad' }} itemStyle={{ color: '#f3f5f4' }} />
               <Legend wrapperStyle={{ color: '#9aa4ad' }} />
-              <Line type="monotone" dataKey="revenue" stroke="#B7F34A" strokeWidth={3} dot={{ r: 5, fill: '#B7F34A' }} activeDot={{ r: 7 }} />
+              <Line type="monotone" dataKey="revenue" stroke="#18A878" strokeWidth={3} dot={{ r: 5, fill: '#18A878' }} activeDot={{ r: 7 }} />
             </LineChart>
           </ResponsiveContainer>
         </ChartCard>
@@ -134,7 +134,7 @@ export default function Analytics() {
               <YAxis tickLine={false} axisLine={{ stroke: "#292f35" }} tick={{ fontSize: 12, fill: "#6f7983" }} />
               <Tooltip contentStyle={{ backgroundColor: '#181c20', border: '1px solid #292f35', borderRadius: '0.75rem', color: '#f3f5f4' }} labelStyle={{ color: '#9aa4ad' }} itemStyle={{ color: '#f3f5f4' }} />
               <Legend wrapperStyle={{ color: '#9aa4ad' }} />
-              <Bar dataKey="count" fill="#B7F34A" radius={[6, 6, 0, 0]} />
+              <Bar dataKey="count" fill="#18A878" radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>

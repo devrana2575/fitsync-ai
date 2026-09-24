@@ -316,10 +316,10 @@ export default function Membership() {
     }
     return (
       <div className="flex flex-col items-center py-6 text-center">
-        <div className="mb-3 rounded-full bg-slate-200/60 p-3">
+        <div className="mb-3 rounded-full bg-surface-elevated p-3">
           <UserIcon className="h-6 w-6 text-slate-400" aria-hidden="true" />
         </div>
-        <p className="text-sm font-medium text-slate-300">No trainer assigned yet</p>
+        <p className="text-sm font-medium text-slate-400">No trainer assigned yet</p>
         <p className="mt-1 text-xs text-slate-500">Pick a plan that includes coach support to get one.</p>
         <button onClick={scrollToPlans} className="btn btn-md btn-primary mt-4">
           Browse Plans <ArrowRightIcon className="h-4 w-4" aria-hidden="true" />
@@ -357,7 +357,7 @@ export default function Membership() {
             <div
               className="absolute inset-0 opacity-[0.04]"
               style={{
-                backgroundImage: 'linear-gradient(#a3e635 1px, transparent 1px), linear-gradient(90deg, #a3e635 1px, transparent 1px)',
+                backgroundImage: 'linear-gradient(#2a3037 1px, transparent 1px), linear-gradient(90deg, #2a3037 1px, transparent 1px)',
                 backgroundSize: '32px 32px',
               }}
               aria-hidden="true"
@@ -425,7 +425,7 @@ export default function Membership() {
                   {buildIncludes(currentPlan)
                     .filter(Boolean)
                     .map((item, idx) => (
-                      <li key={idx} className="flex items-start gap-2 text-sm text-slate-200">
+                      <li key={idx} className="flex items-start gap-2 text-sm text-slate-500">
                         <CheckCircleIcon className="mt-0.5 h-4 w-4 shrink-0 text-brand-400" aria-hidden="true" />
                         <span>{item}</span>
                       </li>
@@ -553,7 +553,7 @@ export default function Membership() {
         {(current?.payments || []).length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-slate-100/50">
+              <thead className="bg-surface/60">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Date</th>
                   <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Amount</th>
@@ -564,7 +564,7 @@ export default function Membership() {
               </thead>
               <tbody className="divide-y divide-border">
                 {(current.payments || []).map((p) => (
-                  <tr key={p._id} className="odd:bg-transparent even:bg-slate-100/40">
+                  <tr key={p._id} className="odd:bg-transparent even:bg-surface/60">
                     <td className="px-6 py-4 text-sm text-slate-500">{fmtDate(p.date)}</td>
                     <td className="px-6 py-4 text-sm font-semibold text-slate-900 tabular-nums">{toINR(p.amount)}</td>
                     <td className="px-6 py-4 text-sm text-slate-500 capitalize">{(p.method || '—').toUpperCase()}</td>
@@ -589,7 +589,7 @@ export default function Membership() {
         {memberships.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-slate-100/50">
+              <thead className="bg-surface/60">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Plan</th>
                   <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Start</th>
@@ -599,7 +599,7 @@ export default function Membership() {
               </thead>
               <tbody className="divide-y divide-border">
                 {memberships.map((m) => (
-                  <tr key={m._id} className="odd:bg-transparent even:bg-slate-100/40">
+                  <tr key={m._id} className="odd:bg-transparent even:bg-surface/60">
                     <td className="px-6 py-4 text-sm font-medium text-slate-900">{m.plan?.name || '—'}</td>
                     <td className="px-6 py-4 text-sm text-slate-500">{fmtDate(m.startDate)}</td>
                     <td className="px-6 py-4 text-sm text-slate-500">{fmtDate(m.endDate)}</td>

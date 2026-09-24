@@ -216,7 +216,7 @@ export default function Notifications() {
             <button
               type="button"
               onClick={() => setToggle('emailNotifications')}
-              className={`relative inline-flex h-5 w-10 shrink-0 rounded-full transition-colors ${preferences.emailNotifications ? 'bg-brand-500' : 'bg-slate-200/60'}`}
+              className={`relative inline-flex h-5 w-10 shrink-0 rounded-full transition-colors ${preferences.emailNotifications ? 'bg-brand-500' : 'bg-surface-elevated'}`}
             >
               <span
                 className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${preferences.emailNotifications ? 'translate-x-4' : 'translate-x-0'}`}
@@ -232,7 +232,7 @@ export default function Notifications() {
             <button
               type="button"
               onClick={() => setToggle('smsNotifications')}
-              className={`relative inline-flex h-5 w-10 shrink-0 rounded-full transition-colors ${preferences.smsNotifications ? 'bg-brand-500' : 'bg-slate-200/60'}`}
+              className={`relative inline-flex h-5 w-10 shrink-0 rounded-full transition-colors ${preferences.smsNotifications ? 'bg-brand-500' : 'bg-surface-elevated'}`}
             >
               <span
                 className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${preferences.smsNotifications ? 'translate-x-4' : 'translate-x-0'}`}
@@ -250,7 +250,7 @@ export default function Notifications() {
                     key={t.value}
                     type="button"
                     onClick={() => toggleNotifyType(t.value)}
-                    className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${active ? 'border-brand-500 bg-brand-500 text-ink-950' : 'border-border bg-surface text-slate-400 hover:bg-surface-hover'}`}
+                    className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${active ? 'border-brand-500 bg-brand-500 text-slate-400' : 'border-border bg-surface text-slate-400 hover:bg-surface-hover'}`}
                   >
                     {t.label}
                   </button>
@@ -283,7 +283,7 @@ export default function Notifications() {
               <button
                 key={n._id}
                 onClick={() => { if (unread) handleMarkRead(n._id); }}
-                className={`card w-full p-5 text-left transition-colors hover:bg-slate-100/40 ${unread ? 'border-l-4 border-l-brand-500' : ''}`}
+                className={`card w-full p-5 text-left transition-colors hover:bg-surface/60 ${unread ? 'border-l-4 border-l-brand-500' : ''}`}
               >
                 <div className="flex items-start gap-3">
                   <TypeIcon className={`h-5 w-5 mt-0.5 shrink-0 ${typeTones[n.type] || 'text-slate-400'}`} aria-hidden="true" />

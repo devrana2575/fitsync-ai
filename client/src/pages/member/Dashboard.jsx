@@ -200,7 +200,7 @@ export default function MemberDashboard() {
             <div
               className="absolute inset-0 opacity-[0.05]"
               style={{
-                backgroundImage: 'linear-gradient(#a3e635 1px, transparent 1px), linear-gradient(90deg, #a3e635 1px, transparent 1px)',
+                backgroundImage: 'linear-gradient(#2a3037 1px, transparent 1px), linear-gradient(90deg, #2a3037 1px, transparent 1px)',
                 backgroundSize: '32px 32px',
               }}
               aria-hidden="true"
@@ -224,7 +224,7 @@ export default function MemberDashboard() {
                   <MapPinIcon className="h-5 w-5 shrink-0" aria-hidden="true" />
                   <span className="text-left leading-tight">
                     <span className="block font-semibold">Check In</span>
-                    <span className="block text-xs font-normal text-ink-900/70">Mark your attendance</span>
+                    <span className="block text-xs font-normal text-slate-400/70">Mark your attendance</span>
                   </span>
                 </button>
                 <button onClick={() => navigate('/member/membership')} className="btn btn-md btn-outline-dark justify-start">
@@ -285,7 +285,7 @@ export default function MemberDashboard() {
                       {workoutExercises.slice(0, 6).map((ex, idx) => {
                         const exData = ex.exercise || ex;
                         return (
-                          <div key={idx} className="flex items-center gap-3 rounded-lg border border-slate-100 bg-slate-50 p-2.5">
+                          <div key={idx} className="flex items-center gap-3 rounded-lg border border-slate-100 bg-surface p-2.5">
                             <img
                               src={exerciseImage(exData)}
                               alt={exData?.name || 'Exercise'}
@@ -422,7 +422,7 @@ export default function MemberDashboard() {
                   <XAxis dataKey="date" tickLine={false} axisLine={{ stroke: "#292f35" }} tick={{ fontSize: 12, fill: "#6f7983" }} />
                   <YAxis tickLine={false} axisLine={{ stroke: "#292f35" }} tick={{ fontSize: 12, fill: "#6f7983" }} />
                   <Tooltip contentStyle={{ backgroundColor: '#181c20', border: '1px solid #292f35', borderRadius: '0.75rem', color: '#f3f5f4' }} labelStyle={{ color: '#9aa4ad' }} itemStyle={{ color: '#f3f5f4' }} />
-                  <Line type="monotone" dataKey="weight" stroke="#B7F34A" strokeWidth={2} dot={{ fill: '#B7F34A' }} activeDot={{ r: 5 }} />
+                  <Line type="monotone" dataKey="weight" stroke="#18A878" strokeWidth={2} dot={{ fill: '#18A878' }} activeDot={{ r: 5 }} />
                 </LineChart>
               </ResponsiveContainer>
             ) : (

@@ -22,7 +22,7 @@ import ErrorState from '../../components/common/ErrorState';
 import Skeleton, { SkeletonCard } from '../../components/common/Skeleton';
 import { toINR, fmtDateShort, daysUntil } from '../../utils/format';
 
-const PIE_COLORS = ['#B7F34A', '#35C979', '#F4B740', '#EF5B63', '#5EA7FF', '#A78BFA'];
+const PIE_COLORS = ['#18A878', '#35C979', '#F4B740', '#EF5B63', '#5EA7FF', '#A78BFA'];
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -206,7 +206,7 @@ export default function Dashboard() {
                   <li key={m?._id}>
                     <button
                       onClick={() => m?.user?._id && navigate(`/admin/members/${m.user._id}`)}
-                      className="w-full flex items-center justify-between py-3 text-left hover:bg-slate-50 rounded-lg px-2 transition-colors"
+                      className="w-full flex items-center justify-between py-3 text-left hover:bg-surface rounded-lg px-2 transition-colors"
                     >
                       <span className="min-w-0">
                         <span className="block text-sm font-medium text-slate-900 truncate">
@@ -268,7 +268,7 @@ export default function Dashboard() {
               <YAxis tickLine={false} axisLine={{ stroke: "#292f35" }} tick={{ fontSize: 12, fill: "#6f7983" }} />
               <Tooltip formatter={(v) => toINR(v)} contentStyle={{ backgroundColor: '#181c20', border: '1px solid #292f35', borderRadius: '0.75rem', color: '#f3f5f4' }} labelStyle={{ color: '#9aa4ad' }} itemStyle={{ color: '#f3f5f4' }} />
               <Legend wrapperStyle={{ color: '#9aa4ad' }} />
-              <Line type="monotone" dataKey="revenue" stroke="#B7F34A" strokeWidth={2} dot={{ r: 4 }} />
+              <Line type="monotone" dataKey="revenue" stroke="#18A878" strokeWidth={2} dot={{ r: 4 }} />
             </LineChart>
           </ResponsiveContainer>
         </ChartCard>
@@ -281,7 +281,7 @@ export default function Dashboard() {
               <YAxis tickLine={false} axisLine={{ stroke: "#292f35" }} tick={{ fontSize: 12, fill: "#6f7983" }} />
               <Tooltip contentStyle={{ backgroundColor: '#181c20', border: '1px solid #292f35', borderRadius: '0.75rem', color: '#f3f5f4' }} labelStyle={{ color: '#9aa4ad' }} itemStyle={{ color: '#f3f5f4' }} />
               <Legend wrapperStyle={{ color: '#9aa4ad' }} />
-              <Bar dataKey="count" fill="#B7F34A" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="count" fill="#18A878" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>

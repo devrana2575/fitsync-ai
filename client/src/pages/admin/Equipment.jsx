@@ -201,7 +201,7 @@ export default function Equipment() {
       ) : (
         <DataTable headers={['Name', 'Category', 'Condition', 'Last Maintenance', 'Next Maintenance', 'Status', 'Actions']}>
           {filteredEquipment.map((eq) => (
-            <tr key={eq._id} className="odd:bg-transparent even:bg-slate-100/40">
+            <tr key={eq._id} className="odd:bg-transparent even:bg-surface/60">
               <td className="px-4 py-3 text-sm">
                 <p className="font-medium text-slate-900">{eq.name}</p>
                 {eq.status === 'issue_reported' && (

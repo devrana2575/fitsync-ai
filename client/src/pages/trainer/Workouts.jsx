@@ -275,7 +275,7 @@ export default function Workouts() {
               </div>
               <div className="space-y-3">
                 {form.exercises.map((ex, idx) => (
-                  <div key={idx} className="grid grid-cols-2 md:grid-cols-6 gap-3 p-3 bg-slate-50/70 rounded-xl border border-slate-200">
+                  <div key={idx} className="grid grid-cols-2 md:grid-cols-6 gap-3 p-3 bg-surface/70 rounded-xl border border-slate-200">
                     <div className="col-span-2 md:col-span-2">
                       <label className={labelCls}>Exercise</label>
                       <select
@@ -349,7 +349,7 @@ export default function Workouts() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-slate-50 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                <tr className="bg-surface text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                   <th className="px-6 py-3">Plan Name</th>
                   <th className="px-6 py-3">Member</th>
                   <th className="px-6 py-3">Goal</th>
@@ -365,7 +365,7 @@ export default function Workouts() {
                 {plans.map((plan, i) => {
                   const firstExercise = plan.exercises?.[0]?.exercise;
                   return (
-                    <tr key={plan._id || plan.id} className={i % 2 === 0 ? 'bg-transparent' : 'bg-slate-100/40'}>
+                    <tr key={plan._id || plan.id} className={i % 2 === 0 ? 'bg-transparent' : 'bg-surface/60'}>
                       <td className="px-6 py-4">
                         <div className="min-w-0 max-w-xs">
                           <p className="text-sm font-semibold text-slate-900 break-words">{plan.name}</p>

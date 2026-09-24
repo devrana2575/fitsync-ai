@@ -203,7 +203,7 @@ export default function Attendance() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-slate-50 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                <tr className="bg-surface text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                   <th className="px-6 py-3">Date</th>
                   <th className="px-6 py-3">Check-in</th>
                   <th className="px-6 py-3">Check-out</th>
@@ -213,7 +213,7 @@ export default function Attendance() {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {records.map((r, idx) => (
-                  <tr key={r._id || r.id || idx} className="odd:bg-transparent even:bg-slate-100/40 hover:bg-slate-100/40 transition-colors">
+                  <tr key={r._id || r.id || idx} className="odd:bg-transparent even:bg-surface/60 hover:bg-surface/60 transition-colors">
                     <td className="px-6 py-4 font-medium text-slate-900 whitespace-nowrap">
                       {fmtDate(r.checkInTime || r.date, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
                     </td>

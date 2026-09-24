@@ -259,7 +259,7 @@ export default function Payments() {
       ) : (
         <DataTable headers={['Receipt', 'Member', 'Membership / Plan', 'Amount', 'Method', 'Gateway', 'Status', 'Date', 'Actions']}>
           {payments.map((p) => (
-            <tr key={p._id} className="odd:bg-transparent even:bg-slate-100/40">
+            <tr key={p._id} className="odd:bg-transparent even:bg-surface/60">
               <td className="px-4 py-3 font-mono text-xs text-slate-600">{p.transactionId || p._id || '—'}</td>
               <td className="px-4 py-3 text-sm">
                 <div className="flex items-center gap-2">
@@ -324,7 +324,7 @@ export default function Payments() {
           <div className="relative">
             <label className="label">Select Member</label>
             {selectedMember ? (
-              <div className="flex items-center gap-2 px-3 py-2 border border-slate-300 rounded-lg bg-slate-50">
+              <div className="flex items-center gap-2 px-3 py-2 border border-slate-300 rounded-lg bg-surface">
                 <span className="flex-1 text-sm text-slate-900">{selectedMember.name} ({selectedMember.email})</span>
                 <button type="button" onClick={handleSubmittedMemberChange} className="text-slate-400 hover:text-slate-600 text-lg leading-none">&times;</button>
               </div>
@@ -349,11 +349,11 @@ export default function Payments() {
           <div>
             <label className="label">Membership (optional)</label>
             {!selectedMember ? (
-              <input disabled placeholder="Select a member first" className="input bg-slate-50 text-slate-400" />
+              <input disabled placeholder="Select a member first" className="input bg-surface text-slate-400" />
             ) : loadingMemberships ? (
-              <input disabled placeholder="Loading memberships..." className="input bg-slate-50 text-slate-400" />
+              <input disabled placeholder="Loading memberships..." className="input bg-surface text-slate-400" />
             ) : memberMemberships.length === 0 ? (
-              <div className="px-3 py-2 border border-slate-300 rounded-lg bg-slate-50 text-sm text-slate-500">No memberships found for this member</div>
+              <div className="px-3 py-2 border border-slate-300 rounded-lg bg-surface text-sm text-slate-500">No memberships found for this member</div>
             ) : (
               <select value={form.membershipId} onChange={(e) => setForm({ ...form, membershipId: e.target.value, planId: '' })} className="input">
                 <option value="">None</option>
@@ -366,7 +366,7 @@ export default function Payments() {
           <div>
             <label className="label">Plan (optional — creates new membership)</label>
             {!selectedMember ? (
-              <input disabled placeholder="Select a member first" className="input bg-slate-50 text-slate-400" />
+              <input disabled placeholder="Select a member first" className="input bg-surface text-slate-400" />
             ) : (
               <select value={form.planId} onChange={handlePlanChange} className="input">
                 <option value="">None</option>

@@ -135,7 +135,7 @@ export default function Payments() {
           </div>
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-slate-50">
+              <thead className="bg-surface">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Amount</th>
                   <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Plan</th>
@@ -146,7 +146,7 @@ export default function Payments() {
               </thead>
               <tbody className="divide-y divide-slate-200">
                 {payments.map((p) => (
-                  <tr key={p._id} className="odd:bg-transparent even:bg-slate-100/40">
+                  <tr key={p._id} className="odd:bg-transparent even:bg-surface/60">
                     <td className="px-6 py-4 text-sm font-semibold text-slate-900 tabular-nums">{toINR(p.amount)}</td>
                     <td className="px-6 py-4 text-sm text-slate-600">{p.membership?.plan?.name || '—'}</td>
                     <td className="px-6 py-4 text-sm capitalize text-slate-600">{p.method || '—'}</td>

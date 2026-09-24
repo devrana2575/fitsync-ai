@@ -42,25 +42,35 @@ const serializeMembership = async (membershipRaw, { withPayments = false } = {})
   const end = m.endDate ? new Date(m.endDate) : null;
   const now = new Date();
 
-  // Commercial terms (name/price/duration/payment schedule) come from the
-  // immutable planSnapshot captured at purchase time when present; legacy rows
-  // without a snapshot fall back to the live plan. Trainer entitlement stays
-  // on the LIVE plan: it is a service entitlement the gym may adjust, not a
-  // committed commercial term.
+  // Commercial terms (name/price/duration/payment schedule) AND the service
+  // entitlements (trainer included / allocation mode / specialization /
+  // workout plan) come from the immutable planSnapshot captured at purchase
+  // time when present. A plan edit afterwards must not rewrite what the member
+  // committed to, for either billing or trainer service. Legacy rows without a
+  // snapshot fall back to the live plan; their historical terms cannot be
+  // reconstructed, so they keep current-plan behaviour by design.
   // A real snapshot always carries the plan name (built by
   // utils/planSnapshot); a default/empty subdoc or legacy row without one
   // must fall back to the live plan.
   const snapshot = m.planSnapshot && m.planSnapshot.name ? m.planSnapshot : null;
   const sourcePlan = livePlan || {};
+  const has = (v) => v !== undefined && v !== null;
   const plan = snapshot
     ? {
       ...sourcePlan,
       name: snapshot.name || sourcePlan.name,
-      price: snapshot.price,
-      duration: snapshot.duration != null ? snapshot.duration : sourcePlan.duration,
+      price: has(snapshot.price) ? snapshot.price : sourcePlan.price,
+      duration: has(snapshot.duration) ? snapshot.duration : sourcePlan.duration,
       paymentMode: snapshot.paymentMode || sourcePlan.paymentMode,
-      installments: snapshot.installments || sourcePlan.installments,
-      installmentAmount: snapshot.installmentAmount != null ? snapshot.installmentAmount : sourcePlan.installmentAmount
+      installments: has(snapshot.installments) ? snapshot.installments : sourcePlan.installments,
+      installmentAmount: has(snapshot.installmentAmount) ? snapshot.installmentAmount : sourcePlan.installmentAmount,
+      finalInstallmentAmount: has(snapshot.finalInstallmentAmount) ? snapshot.finalInstallmentAmount : sourcePlan.finalInstallmentAmount,
+      installmentSchedule: Array.isArray(snapshot.installmentSchedule) ? snapshot.installmentSchedule : sourcePlan.installmentSchedule,
+      features: Array.isArray(snapshot.features) ? snapshot.features : sourcePlan.features,
+      trainerIncluded: has(snapshot.trainerIncluded) ? snapshot.trainerIncluded : sourcePlan.trainerIncluded,
+      trainerAllocationMode: snapshot.trainerAllocationMode || sourcePlan.trainerAllocationMode,
+      requiredSpecialization: snapshot.requiredSpecialization || sourcePlan.requiredSpecialization,
+      workoutPlanIncluded: has(snapshot.workoutPlanIncluded) ? snapshot.workoutPlanIncluded : sourcePlan.workoutPlanIncluded
     }
     : sourcePlan;
   const price = Number(plan.price) || 0;
@@ -113,11 +123,11 @@ const serializeMembership = async (membershipRaw, { withPayments = false } = {})
     pendingTotal,
     remaining: Math.max(price - paidTotal, 0),
     paymentStatus,
-    trainerEntitlement: livePlan ? {
-      trainerIncluded: Boolean(livePlan.trainerIncluded),
-      trainerAllocationMode: livePlan.trainerAllocationMode || 'NONE',
-      workoutPlanIncluded: Boolean(livePlan.workoutPlanIncluded),
-      requiredSpecialization: livePlan.requiredSpecialization || null
+    trainerEntitlement: plan ? {
+      trainerIncluded: Boolean(plan.trainerIncluded),
+      trainerAllocationMode: plan.trainerAllocationMode || 'NONE',
+      workoutPlanIncluded: Boolean(plan.workoutPlanIncluded),
+      requiredSpecialization: plan.requiredSpecialization || null
     } : null,
     trainer: premium.trainer,
     trainerAssignmentStatus: premium.assignmentStatus,

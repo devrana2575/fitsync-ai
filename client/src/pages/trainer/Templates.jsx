@@ -199,7 +199,7 @@ export default function Templates() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-slate-50 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                <tr className="bg-surface text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                   <th className="px-6 py-3">Name</th>
                   <th className="px-6 py-3">Goal</th>
                   <th className="px-6 py-3">Difficulty</th>
@@ -211,7 +211,7 @@ export default function Templates() {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {templates.map((tpl, i) => (
-                  <tr key={tpl._id} className={i % 2 === 0 ? 'bg-transparent' : 'bg-slate-100/40'}>
+                  <tr key={tpl._id} className={i % 2 === 0 ? 'bg-transparent' : 'bg-surface/60'}>
                     <td className="px-6 py-4">
                       <p className="text-sm font-semibold text-slate-900">{tpl.name}</p>
                       {tpl.description && <p className="mt-0.5 text-xs text-slate-500 line-clamp-1 max-w-xs">{tpl.description}</p>}
@@ -298,7 +298,7 @@ export default function Templates() {
               {form.exercises.map((ex, idx) => {
                 const selectedEx = exercises.find((e) => (e._id || e.id) === ex.exercise);
                 return (
-                  <div key={idx} className="grid grid-cols-2 md:grid-cols-7 gap-3 p-3 bg-slate-50/70 rounded-xl border border-slate-200">
+                  <div key={idx} className="grid grid-cols-2 md:grid-cols-7 gap-3 p-3 bg-surface/70 rounded-xl border border-slate-200">
                     <div className="col-span-2 md:col-span-2">
                       <label className={labelCls}>Exercise</label>
                       <div className="flex items-center gap-2">
@@ -386,7 +386,7 @@ export default function Templates() {
           <span className={`shrink-0 rounded-full p-1.5 ${localToast.type === 'error' ? 'bg-danger/10 text-danger' : 'bg-success/10 text-success'}`}>
             {localToast.type === 'error' ? <ExclamationTriangleIcon className="h-5 w-5" /> : <CheckCircleIcon className="h-5 w-5" />}
           </span>
-          <p className="text-sm font-medium text-slate-100">{localToast.msg}</p>
+          <p className="text-sm font-medium text-slate-500">{localToast.msg}</p>
         </div>
       )}
     </div>

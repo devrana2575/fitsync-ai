@@ -262,7 +262,7 @@ export default function Progress() {
                 <XAxis dataKey="date" tickLine={false} axisLine={{ stroke: "#292f35" }} tick={{ fontSize: 12, fill: "#6f7983" }} />
                 <YAxis tickLine={false} axisLine={{ stroke: "#292f35" }} tick={{ fontSize: 12, fill: "#6f7983" }} />
                 <Tooltip contentStyle={{ backgroundColor: '#181c20', border: '1px solid #292f35', borderRadius: '0.75rem', color: '#f3f5f4' }} labelStyle={{ color: '#9aa4ad' }} itemStyle={{ color: '#f3f5f4' }} />
-                <Line type="monotone" dataKey="weight" stroke="#B7F34A" strokeWidth={2} dot={{ fill: '#B7F34A' }} name="Weight (kg)" />
+                <Line type="monotone" dataKey="weight" stroke="#18A878" strokeWidth={2} dot={{ fill: '#18A878' }} name="Weight (kg)" />
               </LineChart>
             </ResponsiveContainer>
           ) : (
@@ -320,7 +320,7 @@ export default function Progress() {
               <YAxis tickLine={false} axisLine={{ stroke: "#292f35" }} tick={{ fontSize: 12, fill: "#6f7983" }} />
               <Tooltip contentStyle={{ backgroundColor: '#181c20', border: '1px solid #292f35', borderRadius: '0.75rem', color: '#f3f5f4' }} labelStyle={{ color: '#9aa4ad' }} itemStyle={{ color: '#f3f5f4' }} />
               <Legend wrapperStyle={{ color: '#9aa4ad' }} />
-              <Line type="monotone" dataKey="chest" stroke="#B7F34A" strokeWidth={2} dot={{ fill: '#B7F34A' }} name="Chest (cm)" />
+              <Line type="monotone" dataKey="chest" stroke="#18A878" strokeWidth={2} dot={{ fill: '#18A878' }} name="Chest (cm)" />
               <Line type="monotone" dataKey="waist" stroke="#F4B740" strokeWidth={2} dot={{ fill: '#F4B740' }} name="Waist (cm)" />
               <Line type="monotone" dataKey="hips" stroke="#10b981" strokeWidth={2} dot={{ fill: '#10b981' }} name="Hips (cm)" />
             </LineChart>
@@ -418,7 +418,7 @@ export default function Progress() {
               name="photo"
               accept="image/*"
               onChange={handlePhotoChange}
-              className="input file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-brand-500 file:text-ink-950"
+              className="input file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-brand-500 file:text-slate-400"
             />
           </div>
           <div className="flex justify-end">
@@ -437,7 +437,7 @@ export default function Progress() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-slate-50 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                <tr className="bg-surface text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                   <th className="px-6 py-3">Date</th>
                   <th className="px-6 py-3">Weight</th>
                   <th className="px-6 py-3">Height</th>
@@ -454,7 +454,7 @@ export default function Progress() {
                 {[...measurements].reverse().map((m, idx) => {
                   const bmi = m.bmi || (m.weight && m.height ? Math.round((m.weight / ((m.height / 100) ** 2)) * 10) / 10 : null);
                   return (
-                    <tr key={m._id || m.id || idx} className="odd:bg-transparent even:bg-slate-100/40 hover:bg-slate-100/40 transition-colors">
+                    <tr key={m._id || m.id || idx} className="odd:bg-transparent even:bg-surface/60 hover:bg-surface/60 transition-colors">
                       <td className="px-6 py-3 font-medium text-slate-900 whitespace-nowrap">{fmtDate(m.createdAt || m.date)}</td>
                       <td className="px-6 py-3 text-slate-600">{m.weight ? `${m.weight} kg` : '—'}</td>
                       <td className="px-6 py-3 text-slate-600">{m.height ? `${m.height} cm` : '—'}</td>

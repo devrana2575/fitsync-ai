@@ -171,7 +171,7 @@ export default function TrainerDashboard() {
                   <li key={memberId(m)}>
                     <button
                       onClick={() => navigate(`/trainer/members/${memberId(m)}`)}
-                      className="w-full flex items-center gap-3 px-5 py-3.5 text-left hover:bg-slate-100/40 transition-colors"
+                      className="w-full flex items-center gap-3 px-5 py-3.5 text-left hover:bg-surface/60 transition-colors"
                     >
                       <Avatar name={memberName(m)} src={m.user?.avatar} size="md" />
                       <span className="min-w-0 flex-1">
@@ -188,7 +188,7 @@ export default function TrainerDashboard() {
                           <span className="badge bg-warning/15 text-warning">Membership expiring</span>
                         )}
                       </span>
-                      <ArrowRightIcon className="h-4 w-4 text-slate-300 shrink-0" aria-hidden="true" />
+                      <ArrowRightIcon className="h-4 w-4 text-slate-400 shrink-0" aria-hidden="true" />
                     </button>
                   </li>
                 ))}
@@ -211,7 +211,7 @@ export default function TrainerDashboard() {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="bg-slate-50 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    <tr className="bg-surface text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                       <th className="px-5 py-3">Name</th>
                       <th className="px-5 py-3">Status</th>
                       <th className="px-5 py-3">Last Visit</th>
@@ -224,7 +224,7 @@ export default function TrainerDashboard() {
                         <tr
                           key={memberId(m)}
                           onClick={() => navigate(`/trainer/members/${memberId(m)}`)}
-                          className={`cursor-pointer hover:bg-slate-100/40 transition-colors ${i % 2 === 0 ? 'bg-transparent' : 'bg-slate-100/40'}`}
+                          className={`cursor-pointer hover:bg-surface/60 transition-colors ${i % 2 === 0 ? 'bg-transparent' : 'bg-surface/60'}`}
                         >
                           <td className="px-5 py-3">
                             <div className="flex items-center gap-3">
@@ -257,7 +257,7 @@ export default function TrainerDashboard() {
                 <button
                   key={action.label}
                   onClick={() => navigate(action.path)}
-                  className="flex w-full items-center gap-3 rounded-xl border border-slate-200 px-4 py-3 text-left hover:bg-slate-50 hover:border-slate-300 transition-colors"
+                  className="flex w-full items-center gap-3 rounded-xl border border-slate-200 px-4 py-3 text-left hover:bg-surface hover:border-slate-300 transition-colors"
                 >
                   <span className="shrink-0 p-2 rounded-lg bg-brand-500/15 text-brand-400">
                     <action.icon className="h-5 w-5" aria-hidden="true" />

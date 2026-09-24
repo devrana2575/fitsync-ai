@@ -212,7 +212,7 @@ export default function Members() {
         <>
           <DataTable headers={['Name', 'Email', 'Membership', 'Status', 'Trainer', 'Phone', 'Actions']}>
             {members.map((m, i) => (
-              <tr key={m._id} className={i % 2 === 0 ? 'bg-transparent' : 'bg-slate-100/40'}>
+              <tr key={m._id} className={i % 2 === 0 ? 'bg-transparent' : 'bg-surface/60'}>
                 <td className="px-6 py-4 font-medium text-slate-900">{m.name}</td>
                 <td className="px-6 py-4 text-slate-600">{m.email}</td>
                 <td className="px-6 py-4">
@@ -378,7 +378,7 @@ export default function Members() {
                   })}
                   className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
                     form.preferredWorkoutDays.includes(d)
-                      ? 'bg-brand-500 text-ink-950 border-brand-500'
+                      ? 'bg-brand-500 text-slate-400 border-brand-500'
                       : 'bg-surface text-slate-400 border-border hover:bg-surface-hover'
                   }`}
                 >
@@ -421,7 +421,7 @@ export default function Members() {
             </div>
           </div>
           <div className="flex justify-end gap-3 pt-2">
-            <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 font-medium">Cancel</button>
+            <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-surface font-medium">Cancel</button>
             <button type="submit" disabled={saving} className="btn btn-md btn-primary w-full disabled:opacity-50">
               {saving ? 'Saving...' : editing ? 'Update' : 'Create'}
             </button>

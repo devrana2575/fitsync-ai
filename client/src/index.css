@@ -37,17 +37,17 @@
   --color-ink-600: #2c343c;
   --color-ink-500: #3b444d;
 
-  /* Refined electric lime brand accent */
-  --color-brand-50: #f4ffe3;
-  --color-brand-100: #e8ffc9;
-  --color-brand-200: #d5fa9b;
-  --color-brand-300: #c4f76d;
-  --color-brand-400: #c8ff68;
-  --color-brand-500: #b7f34a;
-  --color-brand-600: #9fe031;
-  --color-brand-700: #7fbd20;
-  --color-brand-800: #5f9117;
-  --color-brand-900: #446711;
+  /* Refined emerald brand accent (professional, low-neon) */
+  --color-brand-50: #eafaf2;
+  --color-brand-100: #d2f3e2;
+  --color-brand-200: #a8e7c9;
+  --color-brand-300: #75d6ab;
+  --color-brand-400: #3fc18d;
+  --color-brand-500: #18a878;
+  --color-brand-600: #0f8764;
+  --color-brand-700: #116b52;
+  --color-brand-800: #125344;
+  --color-brand-900: #0f4438;
 
   /* Semantic status colors */
   --color-success: #35c979;

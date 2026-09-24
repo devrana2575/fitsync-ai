@@ -95,12 +95,17 @@ const allocateTrainerForMembership = (membershipId, options) =>
 
 const allocateTrainerForMembershipUnlocked = async (membershipId, { force = false } = {}) => {
   const Membership = require('../models/Membership');
+  const { getCommittedPlanTerms } = require('./paymentTerms');
   const membership = await Membership.findById(membershipId).populate('plan');
   if (!membership || membership.status !== 'ACTIVE' || !membership.plan) {
     return { status: 'skipped' };
   }
 
-  const plan = membership.plan;
+  // Trainer entitlement comes from the plan terms the member COMMITTED to (the
+  // frozen planSnapshot), never the live plan - an admin editing the plan after
+  // purchase cannot add or revoke a paid trainer. Legacy rows without a
+  // snapshot keep current-plan behaviour by design.
+  const plan = getCommittedPlanTerms(membership) || membership.plan;
   const memberId = membership.user;
 
   let profile = await MemberProfile.findOne({ user: memberId });

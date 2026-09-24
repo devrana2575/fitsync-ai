@@ -126,7 +126,7 @@ export default function Announcements() {
       ) : (
         <DataTable headers={['Title', 'Priority', 'Pinned', 'Posted by', 'Created', 'Actions']}>
           {announcements.map((a) => (
-            <tr key={a._id} className="odd:bg-transparent even:bg-slate-100/40">
+            <tr key={a._id} className="odd:bg-transparent even:bg-surface/60">
               <td className="px-4 py-3 text-sm font-medium text-slate-900">{a.title}</td>
               <td className="px-4 py-3 text-sm">
                 <span className={`badge capitalize ${priorityBadge(a.priority)}`}>{a.priority}</span>

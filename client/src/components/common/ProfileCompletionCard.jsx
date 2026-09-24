@@ -13,7 +13,7 @@ export default function ProfileCompletionCard({ completion, member = true }) {
       <div
         className="absolute inset-0 opacity-[0.04]"
         style={{
-          backgroundImage: 'linear-gradient(#a3e635 1px, transparent 1px), linear-gradient(90deg, #a3e635 1px, transparent 1px)',
+          backgroundImage: 'linear-gradient(#2a3037 1px, transparent 1px), linear-gradient(90deg, #2a3037 1px, transparent 1px)',
           backgroundSize: '32px 32px',
         }}
         aria-hidden="true"

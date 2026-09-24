@@ -140,7 +140,7 @@ export default function Trainers() {
       ) : (
         <DataTable headers={['Name', 'Email', 'Specializations', 'Experience', 'Members Assigned', 'Availability', 'Status', 'Actions']}>
           {trainers.map((t, i) => (
-            <tr key={t._id} className={i % 2 === 0 ? 'bg-transparent' : 'bg-slate-100/40'}>
+            <tr key={t._id} className={i % 2 === 0 ? 'bg-transparent' : 'bg-surface/60'}>
               <td className="px-6 py-4">
                 <div className="flex items-center gap-3">
                   <Avatar name={t.name} src={t.avatar} size="sm" />

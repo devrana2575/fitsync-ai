@@ -13,13 +13,13 @@
     <rect x="66" y="-42" width="10" height="84" rx="3"/>
     <rect x="88" y="-42" width="10" height="84" rx="3"/>
   </g>
-  <g stroke="#a3e635" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <g stroke="#18A878" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
     <line x1="338" y1="34" x2="370" y2="34"/>
     <rect x="330" y="26" width="9" height="16" rx="2"/>
     <rect x="369" y="26" width="9" height="16" rx="2"/>
   </g>
   <g fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <g stroke="#a3e635" stroke-width="7">
+    <g stroke="#18A878" stroke-width="7">
       <line x1="148" y1="66" x2="186" y2="66"/>
       <rect x="139" y="57" width="10" height="18" rx="3"/>
       <rect x="186" y="57" width="10" height="18" rx="3"/>
@@ -37,8 +37,8 @@
       <line x1="232" y1="66" x2="252" y2="66"/>
       <line x1="182" y1="138" x2="172" y2="108"/>
     </g>
-    <circle cx="200" cy="116" r="11" stroke="#a3e635" stroke-width="6"/>
-    <g stroke="#a3e635" stroke-width="7">
+    <circle cx="200" cy="116" r="11" stroke="#18A878" stroke-width="6"/>
+    <g stroke="#18A878" stroke-width="7">
       <line x1="210" y1="268" x2="185" y2="238"/>
       <line x1="210" y1="268" x2="200" y2="238"/>
     </g>

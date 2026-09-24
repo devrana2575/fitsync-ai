@@ -42,7 +42,9 @@ const getMembershipPaymentCount = async (membershipId, excludePaymentId) => {
 };
 
 // Fixed per-installment amount for an INSTALLMENT plan, or null when the plan
-// is a single-payment FULL plan.
+// is a single-payment FULL plan. `terms` is a plan-like object: either the
+// live MembershipPlan or a membership planSnapshot (which mirrors the plan
+// field names).
 const getInstallmentAmount = (plan) =>
   plan && plan.paymentMode === 'INSTALLMENT' && plan.installments > 1
     ? Number(plan.installmentAmount)
@@ -50,7 +52,8 @@ const getInstallmentAmount = (plan) =>
 
 // The authoritative per-installment schedule of an INSTALLMENT plan as
 // [{ seq, amount }], or [] when the plan has no schedule. Only trusted when
-// the schedule length matches the configured installment count.
+// the schedule length matches the configured installment count. Works on the
+// live plan OR a membership snapshot (same field names / shape).
 const getInstallmentSchedule = (plan) => {
   const n = Number(plan && plan.installments);
   if (!plan || plan.paymentMode !== 'INSTALLMENT' || !(n > 1)) return [];
@@ -67,7 +70,7 @@ const getInstallmentSchedule = (plan) => {
 // already COMPLETED (paidCount). Uses the stored schedule when present; falls
 // back to the legacy uniform fields: the finalInstallmentAmount applies only to
 // the last slot, otherwise installmentAmount. Returns null for non-INSTALLMENT
-// plans.
+// plans. `terms` may be the live plan or a membership snapshot.
 const getNextDueInstallment = (plan, paidCount) => {
   const n = Number(plan && plan.installments);
   if (!plan || plan.paymentMode !== 'INSTALLMENT' || !(n > 1)) return null;
@@ -82,20 +85,35 @@ const getNextDueInstallment = (plan, paidCount) => {
     : Number(plan.installmentAmount);
 };
 
+// Resolve the terms a membership is COMMITTED to: its frozen planSnapshot when
+// present (a real snapshot always carries the plan name), otherwise the live
+// plan. Legacy rows created before snapshots existed fall back to the live plan
+// - their historical terms cannot be reconstructed, so they keep current-plan
+// behaviour by design.
+const getCommittedPlanTerms = (membershipDoc) => {
+  const membership = membershipDoc && membershipDoc._doc ? membershipDoc._doc : membershipDoc;
+  if (!membership) return null;
+  const snapshot = membership.planSnapshot;
+  if (snapshot && snapshot.name) return snapshot;
+  return membership.plan || null;
+};
+
 // Validate a manual (counter/cash/UPI/bank-transfer) payment amount against the
-// plan's payment configuration.
+// terms the membership is COMMITTED to (snapshot first; live plan only for
+// legacy rows without a snapshot, or when the payment has no membership yet).
 //
-// FULL plans:      a COMPLETED payment must equal the plan price exactly. No
-//                  cumulative check - multiple full payments are legitimate
+// FULL plans:      a COMPLETED payment must equal the committed price exactly.
+//                  No cumulative check - multiple full payments are legitimate
 //                  (renewals / advance terms), matching prior behaviour.
 // INSTALLMENT plans: an INSTALLMENT plan is always paid OFF-LINE (gym counter /
 //                  cash / UPI) — online gateways charge the full price and are
 //                  never validated here. Each COMPLETED manual payment must
-//                  equal the NEXT DUE installment from the exact schedule (the
-//                  remainder sits in the FINAL installment, so the schedule
-//                  sums exactly to the plan price) and must not push the
-//                  cumulative paid total past the plan price (overpayment
-//                  rejected).
+//                  equal the NEXT DUE installment from the COMMITTED schedule
+//                  (the remainder sits in the FINAL installment, so the
+//                  schedule sums exactly to the committed price) and must not
+//                  push the cumulative paid total past the committed price
+//                  (overpayment rejected). An admin editing the live plan can
+//                  never alter a committed member's obligation.
 //
 // Returns null when valid, otherwise { error: <message> }.
 const validateManualPaymentAmount = async ({ amount, membershipId, planId, excludePaymentId }) => {
@@ -104,23 +122,23 @@ const validateManualPaymentAmount = async ({ amount, membershipId, planId, exclu
     return { error: 'Amount must be greater than zero' };
   }
 
-  let plan = null;
-  if (planId) {
-    plan = await require('../models/MembershipPlan').findById(planId);
-  } else if (membershipId) {
+  let terms = null;
+  if (membershipId) {
     const membership = await Membership.findById(membershipId).populate('plan');
-    plan = membership?.plan || null;
+    terms = getCommittedPlanTerms(membership);
+  } else if (planId) {
+    terms = await require('../models/MembershipPlan').findById(planId);
   }
-  if (!plan) return null; // member-directed amount without a linked plan - not enforced
+  if (!terms) return null; // no committed terms - not enforced
 
-  if (plan.paymentMode === 'INSTALLMENT' && plan.installments > 1) {
-    const n = Number(plan.installments);
-    const schedule = getInstallmentSchedule(plan);
+  if (terms.paymentMode === 'INSTALLMENT' && terms.installments > 1) {
+    const n = Number(terms.installments);
+    const schedule = getInstallmentSchedule(terms);
     const paidCount = await getMembershipPaymentCount(membershipId, excludePaymentId);
-    const due = getNextDueInstallment(plan, paidCount);
+    const due = getNextDueInstallment(terms, paidCount);
     if (value !== due) {
-      const base = schedule.length ? schedule[0].amount : Number(plan.installmentAmount);
-      const final = schedule.length ? schedule[schedule.length - 1].amount : Number(plan.finalInstallmentAmount);
+      const base = schedule.length ? schedule[0].amount : Number(terms.installmentAmount);
+      const final = schedule.length ? schedule[schedule.length - 1].amount : Number(terms.finalInstallmentAmount);
       const uniform = schedule.length > 0 && schedule.every((e) => e.amount === base);
       const error = uniform
         ? `This plan is paid in fixed installments of ₹${base} (${n} × ₹${base}). Partial amounts are not accepted.`
@@ -128,28 +146,31 @@ const validateManualPaymentAmount = async ({ amount, membershipId, planId, exclu
       return { error };
     }
     const paid = await getMembershipPaid(membershipId, excludePaymentId);
-    if (paid + value > Number(plan.price)) {
+    if (paid + value > Number(terms.price)) {
       return {
-        error: `Overpayment rejected: this plan's total is ₹${plan.price} and it is already covered up to ₹${paid}.`
+        error: `Overpayment rejected: this plan's total is ₹${terms.price} and it is already covered up to ₹${paid}.`
       };
     }
     return null;
   }
 
-  if (value !== Number(plan.price)) {
-    return { error: `Amount does not match the ${plan.name} plan price (₹${plan.price})` };
+  if (value !== Number(terms.price)) {
+    return { error: `Amount does not match the ${terms.name || 'plan'} plan price (₹${terms.price})` };
   }
   return null;
 };
 
-// True when the COMPLETED payments against a membership cover the full plan
-// price. Used to decide when an INSTALLMENT membership may become ACTIVE.
+// True when the COMPLETED payments against a membership cover the full COMMITTED
+// plan price (snapshot first; live plan only for legacy rows). Used to decide
+// when an INSTALLMENT membership may become ACTIVE.
 const isMembershipFullyPaid = async (membershipId) => {
   if (!membershipId) return false;
   const membership = await Membership.findById(membershipId).populate('plan');
-  if (!membership || !membership.plan) return false;
+  if (!membership) return false;
+  const terms = getCommittedPlanTerms(membership);
+  if (!terms) return false;
   const paid = await getMembershipPaid(membershipId);
-  return paid >= Number(membership.plan.price);
+  return paid >= Number(terms.price);
 };
 
 module.exports = {
@@ -159,6 +180,7 @@ module.exports = {
   getInstallmentAmount,
   getInstallmentSchedule,
   getNextDueInstallment,
+  getCommittedPlanTerms,
   validateManualPaymentAmount,
   isMembershipFullyPaid
 };

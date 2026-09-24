@@ -136,7 +136,7 @@ export default function Sidebar({ open = false, onClose }) {
       >
         <div className="px-5 py-5 border-b border-ink-800 flex items-center gap-3">
           <div className="h-9 w-9 rounded-lg bg-brand-500 flex items-center justify-center shrink-0">
-            <BoltIcon className="h-5 w-5 text-ink-950" aria-hidden="true" />
+            <BoltIcon className="h-5 w-5 text-slate-400" aria-hidden="true" />
           </div>
           <div className="flex-1 min-w-0">
             <h1 className="text-sm font-bold tracking-tight text-white leading-none truncate">

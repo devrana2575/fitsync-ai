@@ -114,7 +114,7 @@ export default function Attendance() {
             <label className="label">Select Member</label>
             <div className="relative">
               {selectedMember ? (
-                <div className="flex items-center gap-2 px-3 py-2 border border-slate-300 rounded-lg bg-slate-50">
+                <div className="flex items-center gap-2 px-3 py-2 border border-slate-300 rounded-lg bg-surface">
                   <span className="flex-1 text-sm text-slate-900">
                     {availableMembers.find((m) => String(m._id) === String(selectedMember))?.name || 'Member selected'}
                   </span>
@@ -164,7 +164,7 @@ export default function Attendance() {
       ) : (
         <DataTable headers={['Member', 'Check-in', 'Check-out', 'Duration', 'Method', 'Date']}>
           {records.map((r) => (
-            <tr key={r._id} className="odd:bg-transparent even:bg-slate-100/40">
+            <tr key={r._id} className="odd:bg-transparent even:bg-surface/60">
               <td className="px-4 py-3 text-sm">
                 <div className="flex items-center gap-2">
                   <Avatar name={r.user?.name || r.member?.name} size="sm" />

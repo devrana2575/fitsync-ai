@@ -1,6 +1,5 @@
 const Membership = require('../models/Membership');
 const { allocateTrainerForMembership } = require('./trainerAllocation');
-const { ensurePlanSnapshot } = require('./planSnapshot');
 const { logAudit } = require('./audit');
 
 // Authoritative membership-activation path. Every legitimate paid activation
@@ -55,17 +54,17 @@ const activateMembershipFromPayment = async (membershipId) => {
   if (membership.status === 'EXPIRED' || !membership.endDate || membership.endDate <= now) {
     const start = new Date();
     const end = new Date(start);
-    if (membership.plan && membership.plan.duration) {
-      end.setDate(end.getDate() + membership.plan.duration);
+    // Re-open window is computed from the COMMITTED duration (snapshot first).
+    // Legacy rows without a snapshot fall back to the live plan duration - the
+    // historical terms cannot be reconstructed, so they keep current-plan
+    // behaviour by design. Activation never invents a snapshot.
+    const committed = membership.planSnapshot && membership.planSnapshot.name ? membership.planSnapshot : membership.plan;
+    if (committed && committed.duration) {
+      end.setDate(end.getDate() + committed.duration);
     }
     membership.startDate = start;
     membership.endDate = end;
   }
-
-  // Commercial terms are frozen at (re-)activation. ensurePlanSnapshot keeps an
-  // existing snapshot untouched, so re-opening an EXPIRED membership preserves
-  // the terms it originally committed to (never today's live plan).
-  ensurePlanSnapshot(membership, membership.plan);
 
   membership.status = 'ACTIVE';
   membership.activatedAt = new Date();

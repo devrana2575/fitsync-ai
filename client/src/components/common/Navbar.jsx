@@ -20,7 +20,7 @@ import Avatar from './Avatar';
 const roleStyles = {
   admin: 'bg-brand-500/15 text-brand-400 ring-1 ring-inset ring-brand-500/25',
   trainer: 'bg-info/12 text-info ring-1 ring-inset ring-info/25',
-  member: 'bg-slate-200/70 text-slate-300 ring-1 ring-inset ring-slate-300/50',
+  member: 'bg-surface-elevated text-slate-400 ring-1 ring-inset ring-slate-300/50',
 };
 
 const typeIcons = {
@@ -236,7 +236,7 @@ export default function Navbar({ onMenuClick }) {
                             <div className="flex items-center justify-between gap-2">
                               <p
                                 className={`text-sm leading-snug ${
-                                  !n.isRead ? 'font-semibold text-slate-900' : 'text-slate-300'
+                                  !n.isRead ? 'font-semibold text-slate-900' : 'text-slate-400'
                                 }`}
                               >
                                 {n.title}
@@ -274,7 +274,7 @@ export default function Navbar({ onMenuClick }) {
           >
             <Avatar name={user?.name} src={user?.avatar} size="sm" />
             <div className="text-left hidden md:block">
-              <p className="text-sm font-medium text-slate-100 leading-tight">
+              <p className="text-sm font-medium text-slate-500 leading-tight">
                 {user?.name || 'User'}
               </p>
               <span
@@ -288,7 +288,7 @@ export default function Navbar({ onMenuClick }) {
           {showDropdown && (
             <div className="absolute right-0 mt-2 w-56 bg-surface-elevated rounded-xl shadow-pop border border-border py-1 z-50 anim-pop" role="menu">
               <div className="px-4 py-2.5 border-b border-border">
-                <p className="text-sm font-medium text-slate-100 truncate">{user?.name}</p>
+                <p className="text-sm font-medium text-slate-500 truncate">{user?.name}</p>
                 <p className="text-xs text-slate-500 truncate">{user?.email}</p>
               </div>
               <div className="px-4 py-2.5 border-b border-border flex items-center gap-2">

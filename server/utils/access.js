@@ -17,15 +17,33 @@ const MembershipPlan = require('../models/MembershipPlan');
 const isAdmin = (role) => role === 'admin';
 const isTrainer = (role) => role === 'trainer';
 
+// COMMITTED trainer-coverage mode of an ACTIVE membership: SHARED when the
+// member's frozen planSnapshot offers SHARED trainer support (a real snapshot
+// always carries the plan name), else - only for LEGACY rows without a snapshot
+// - whether the LIVE plan offers it (their historical terms cannot be
+// reconstructed). A trainer may coach every member on a SHARED plan, so this
+// decision must come from what the member actually committed to, never today's
+// plan edits.
+const committedSharedCoverage = (membershipDoc) => {
+  const m = membershipDoc && membershipDoc._doc ? membershipDoc._doc : membershipDoc;
+  if (!m) return false;
+  const snapshot = m.planSnapshot && m.planSnapshot.name ? m.planSnapshot : null;
+  if (snapshot) {
+    return Boolean(snapshot.trainerIncluded) && snapshot.trainerAllocationMode === 'SHARED';
+  }
+  const plan = m.plan || null;
+  return Boolean(plan && plan.trainerIncluded && plan.trainerAllocationMode === 'SHARED');
+};
+
 const canTrainerAccessMember = async (trainerId, memberId) => {
   const profile = await MemberProfile.findOne({ user: memberId }).select('assignedTrainer').lean();
   if (profile && profile.assignedTrainer && String(profile.assignedTrainer) === String(trainerId)) return true;
 
   const active = await Membership.findOne({ user: memberId, status: 'ACTIVE' })
-    .select('plan')
+    .select('plan planSnapshot')
     .populate('plan', 'trainerIncluded trainerAllocationMode')
     .lean();
-  return Boolean(active && active.plan && active.plan.trainerIncluded && active.plan.trainerAllocationMode === 'SHARED');
+  return committedSharedCoverage(active);
 };
 
 // Reduce an arbitrary list of member ids to those a trainer may access.
@@ -36,30 +54,49 @@ const filterAccessibleMemberIds = async (trainerId, ids) => {
   const [assigned, active] = await Promise.all([
     MemberProfile.find({ assignedTrainer: trainerId, user: { $in: ids } }).select('user').lean(),
     Membership.find({ user: { $in: ids }, status: 'ACTIVE' })
-      .select('user plan')
+      .select('plan planSnapshot')
       .populate('plan', 'trainerIncluded trainerAllocationMode')
       .lean()
   ]);
   const allowed = new Set(assigned.map((p) => String(p.user)));
   for (const m of active) {
-    if (m.plan && m.plan.trainerIncluded && m.plan.trainerAllocationMode === 'SHARED') allowed.add(String(m.user));
+    if (committedSharedCoverage(m)) allowed.add(String(m.user));
   }
   return list.filter((id) => allowed.has(id));
 };
 
 // Complete, de-duplicated set of member ids a trainer may access: members
-// assigned to them plus every member holding an ACTIVE SHARED-coverage plan.
-// Used for list-scoped endpoints (attendance rolls) where a membership filter
-// has to be turned into a member filter.
+// assigned to them plus every member holding an ACTIVE membership with COMMITTED
+// (snapshot) SHARED coverage. Rows without a snapshot (legacy) resolve SHARED
+// against the LIVE plan. Used for list-scoped endpoints (attendance rolls) where
+// a membership filter has to be turned into a member filter.
 const getTrainerAccessibleMemberIds = async (trainerId) => {
-  const [assignedIds, sharedPlanIds] = await Promise.all([
+  const [assignedIds, sharedPlanIds, sharedSnapshotUsers] = await Promise.all([
     MemberProfile.find({ assignedTrainer: trainerId }).distinct('user'),
-    MembershipPlan.find({ trainerIncluded: true, trainerAllocationMode: 'SHARED' }).distinct('_id')
+    // Legacy fallback: live plans that offer SHARED coverage.
+    MembershipPlan.find({ trainerIncluded: true, trainerAllocationMode: 'SHARED' }).distinct('_id'),
+    // Snapshot path: every active membership whose FROZEN snapshot carries
+    // SHARED trainer coverage (immutable regardless of later plan edits).
+    Membership.find({
+      status: 'ACTIVE',
+      'planSnapshot.trainerIncluded': true,
+      'planSnapshot.trainerAllocationMode': 'SHARED'
+    }).distinct('user')
   ]);
-  const sharedUserIds = sharedPlanIds.length > 0
-    ? await Membership.find({ status: 'ACTIVE', plan: { $in: sharedPlanIds } }).distinct('user')
+  const legacySharedUserIds = sharedPlanIds.length > 0
+    ? await Membership.find({
+        status: 'ACTIVE',
+        // only LEGACY rows (no snapshot) resolve coverage from the live plan;
+        // a row WITH a snapshot is decided solely by that snapshot
+        'planSnapshot.name': { $exists: false },
+        plan: { $in: sharedPlanIds }
+      }).distinct('user')
     : [];
-  return [...new Set([...assignedIds.map(String), ...sharedUserIds.map(String)])];
+  return [...new Set([
+    ...assignedIds.map(String),
+    ...legacySharedUserIds.map(String),
+    ...sharedSnapshotUsers.map(String)
+  ])];
 };
 
 const MEDICAL_FIELDS = [

@@ -23,6 +23,7 @@ const DietLog = require('../models/DietLog');
 const WorkoutTemplate = require('../models/WorkoutTemplate');
 const Announcement = require('../models/Announcement');
 const GymSetting = require('../models/GymSetting');
+const { buildPlanSnapshot } = require('./planSnapshot');
 
 const DAYS_AGO = (n) => new Date(Date.now() - n * 24 * 60 * 60 * 1000);
 const MONTHS_AGO = (n) => {
@@ -197,7 +198,15 @@ const seedDatabase = async () => {
 
       let membership = await Membership.findOne({ user: members[i]._id, plan: plan._id });
       if (!membership) {
-        membership = await Membership.create({ user: members[i]._id, plan: plan._id, startDate, endDate, status });
+        membership = await Membership.create({
+          user: members[i]._id,
+          plan: plan._id,
+          startDate,
+          endDate,
+          status,
+          // Seed reflects a real purchase: freeze the plan terms at creation.
+          planSnapshot: buildPlanSnapshot(plan)
+        });
         membershipCount++;
       } else {
         membership.status = status;

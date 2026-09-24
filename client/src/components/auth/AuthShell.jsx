@@ -10,20 +10,20 @@ const brandPoints = [
 
 export default function AuthShell({ title, subtitle, children, footer }) {
   return (
-    <div className="min-h-screen flex bg-slate-50">
+    <div className="min-h-screen flex bg-surface">
       {/* Brand panel */}
       <div className="hidden lg:flex w-[46%] bg-ink-950 flex-col justify-between p-12 relative overflow-hidden">
         <div
           className="absolute inset-0 opacity-[0.05]"
           style={{
-            backgroundImage: 'linear-gradient(#a3e635 1px, transparent 1px), linear-gradient(90deg, #a3e635 1px, transparent 1px)',
+            backgroundImage: 'linear-gradient(#2a3037 1px, transparent 1px), linear-gradient(90deg, #2a3037 1px, transparent 1px)',
             backgroundSize: '42px 42px',
           }}
           aria-hidden="true"
         />
         <div className="relative flex items-center gap-3">
           <div className="h-11 w-11 rounded-xl bg-brand-500 flex items-center justify-center shadow-lg shadow-brand-500/20">
-            <BoltIcon className="h-6 w-6 text-ink-950" aria-hidden="true" />
+            <BoltIcon className="h-6 w-6 text-slate-400" aria-hidden="true" />
           </div>
           <div>
             <h1 className="text-lg font-bold text-white tracking-tight leading-none">FitSync</h1>
@@ -53,7 +53,7 @@ export default function AuthShell({ title, subtitle, children, footer }) {
                 <span className="mt-0.5 h-7 w-7 shrink-0 rounded-lg bg-ink-800 flex items-center justify-center">
                   <Icon className="h-4 w-4 text-brand-400" aria-hidden="true" />
                 </span>
-                <p className="text-sm text-slate-300">{text}</p>
+                <p className="text-sm text-slate-400">{text}</p>
               </div>
             ))}
           </div>
