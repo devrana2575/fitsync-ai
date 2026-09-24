@@ -253,7 +253,7 @@ export default function Workouts() {
         <div className="card p-6">
           <h2 className="text-lg font-semibold text-slate-900 mb-4">Log Workout</h2>
           {logError && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{logError}</div>
+            <div className="mb-4 p-3 bg-danger/10 border border-danger/25 rounded-lg text-sm text-danger">{logError}</div>
           )}
           <form onSubmit={handleLogSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -263,7 +263,7 @@ export default function Workouts() {
                   name="exercise"
                   value={logForm.exercise}
                   onChange={handleLogChange}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
+                  className="w-full px-3 py-2 input"
                 >
                   <option value="">Select exercise</option>
                   {exercises.map((e) => (
@@ -280,7 +280,7 @@ export default function Workouts() {
                   onChange={handleLogChange}
                   min="0"
                   placeholder="0"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
+                  className="w-full px-3 py-2 input"
                 />
               </div>
               <div>
@@ -292,7 +292,7 @@ export default function Workouts() {
                   onChange={handleLogChange}
                   min="0"
                   placeholder="0"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
+                  className="w-full px-3 py-2 input"
                 />
               </div>
               <div>
@@ -304,7 +304,7 @@ export default function Workouts() {
                   onChange={handleLogChange}
                   min="0"
                   placeholder="0"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
+                  className="w-full px-3 py-2 input"
                 />
               </div>
               <div>
@@ -317,7 +317,7 @@ export default function Workouts() {
                   min="0"
                   step="0.5"
                   placeholder="0"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
+                  className="w-full px-3 py-2 input"
                 />
               </div>
               <div>
@@ -328,7 +328,7 @@ export default function Workouts() {
                   value={logForm.notes}
                   onChange={handleLogChange}
                   placeholder="Optional notes"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
+                  className="w-full px-3 py-2 input"
                 />
               </div>
             </div>

@@ -10,12 +10,14 @@ import ErrorState from '../../components/common/ErrorState';
 import Modal from '../../components/common/Modal';
 import DataTable from '../../components/common/DataTable';
 import { SkeletonRow } from '../../components/common/Skeleton';
+import { useToast } from '../../context/ToastContext';
 
 const initialForm = { name: '', email: '', password: '', specializations: '', experience: '', maxMembers: '' };
 
 export default function Trainers() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [trainers, setTrainers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -62,9 +64,9 @@ export default function Trainers() {
   const toggleAvailability = async (t) => {
     const available = t.profile?.isAvailable !== false;
     const reason = available
-      ? prompt(`Mark ${t.name} as unavailable (leave / absence)?\nEnter a reason:`)
+      ? await toast.prompt({ title: 'Mark unavailable', description: 'Enter a reason for the absence:', inputLabel: 'Reason', placeholder: 'e.g. On leave until next Friday', confirmLabel: 'Mark unavailable' })
       : null;
-    if (available && reason === null) return;
+    if (available && !reason) return;
     try {
       await api.put(`/trainers/${t._id}/availability`, {
         isAvailable: !available,
@@ -72,7 +74,7 @@ export default function Trainers() {
       });
       fetchTrainers();
     } catch (err) {
-      alert(err.message || 'Failed to update availability');
+      toast.error('Failed to update availability', err.message);
     }
   };
 
@@ -96,7 +98,7 @@ export default function Trainers() {
       setShowModal(false);
       fetchTrainers();
     } catch (err) {
-      alert(err.message || 'Operation failed');
+      toast.error('Operation failed', err.message);
     } finally {
       setSaving(false);
     }
@@ -104,14 +106,14 @@ export default function Trainers() {
 
   const toggleDeactivate = async (t) => {
     if (t.isActive !== false) {
-      const proceed = confirm(`Deactivate ${t.name}? They will not be able to log in until reactivated.`);
+      const proceed = await toast.confirm({ title: 'Deactivate trainer', description: 'They will not be able to log in until reactivated.', confirmLabel: 'Deactivate', danger: true });
       if (!proceed) return;
     }
     try {
       await api.put(`/users/${t._id}/${t.isActive !== false ? 'deactivate' : 'activate'}`);
       fetchTrainers();
     } catch (err) {
-      alert(err.message || 'Failed');
+      toast.error('Failed', err.message);
     }
   };
 
@@ -138,7 +140,7 @@ export default function Trainers() {
       ) : (
         <DataTable headers={['Name', 'Email', 'Specializations', 'Experience', 'Members Assigned', 'Availability', 'Status', 'Actions']}>
           {trainers.map((t, i) => (
-            <tr key={t._id} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
+            <tr key={t._id} className={i % 2 === 0 ? 'bg-transparent' : 'bg-slate-100/40'}>
               <td className="px-6 py-4">
                 <div className="flex items-center gap-3">
                   <Avatar name={t.name} src={t.avatar} size="sm" />
@@ -167,10 +169,10 @@ export default function Trainers() {
               <td className="px-6 py-4">
                 <div className="flex flex-col items-start gap-1">
                   <button onClick={() => openEdit(t)} className="btn btn-sm btn-outline">Edit</button>
-                  <button onClick={() => toggleAvailability(t)} className={`btn btn-sm btn-ghost ${t.profile?.isAvailable !== false ? 'text-amber-600 hover:text-amber-800 hover:bg-amber-50' : 'text-green-600 hover:text-green-800 hover:bg-green-50'}`}>
+                  <button onClick={() => toggleAvailability(t)} className={`btn btn-sm btn-ghost ${t.profile?.isAvailable !== false ? 'text-warning hover:text-warning hover:bg-warning/10' : 'text-success hover:text-success hover:bg-success/10'}`}>
                     {t.profile?.isAvailable !== false ? 'Mark Unavailable' : 'Back Available'}
                   </button>
-                  <button onClick={() => toggleDeactivate(t)} className={t.isActive !== false ? 'btn btn-sm btn-danger' : 'btn btn-sm btn-ghost text-green-600 hover:text-green-800 hover:bg-green-50'}>
+                  <button onClick={() => toggleDeactivate(t)} className={t.isActive !== false ? 'btn btn-sm btn-danger' : 'btn btn-sm btn-ghost text-success hover:text-success hover:bg-success/10'}>
                     {t.isActive !== false ? 'Deactivate' : 'Activate'}
                   </button>
                 </div>

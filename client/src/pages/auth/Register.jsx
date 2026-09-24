@@ -54,7 +54,7 @@ export default function Register() {
         </p>
       </div>
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 text-sm fade-in" role="alert">
+        <div className="bg-danger/10 border border-danger/25 text-danger px-4 py-3 rounded-lg mb-4 text-sm fade-in" role="alert">
           {error}
         </div>
       )}

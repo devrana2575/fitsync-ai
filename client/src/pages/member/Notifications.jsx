@@ -34,14 +34,14 @@ const typeIcons = {
 };
 
 const typeTones = {
-  membership_expiry: 'text-brand-600',
-  payment_due: 'text-amber-500',
-  low_attendance: 'text-sky-500',
-  high_risk: 'text-red-500',
-  progress_anomaly: 'text-amber-500',
+  membership_expiry: 'text-brand-400',
+  payment_due: 'text-warning',
+  low_attendance: 'text-info',
+  high_risk: 'text-danger',
+  progress_anomaly: 'text-warning',
   equipment_maintenance: 'text-slate-500',
-  general: 'text-sky-500',
-  workout_reminder: 'text-emerald-500',
+  general: 'text-info',
+  workout_reminder: 'text-success',
 };
 
 function timeAgo(dateStr) {
@@ -155,7 +155,7 @@ export default function Notifications() {
               type="checkbox"
               checked={unreadOnly}
               onChange={(e) => setUnreadOnly(e.target.checked)}
-              className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+              className="h-4 w-4 rounded border-slate-300 text-brand-400 focus:ring-brand-500"
             />
             Unread only
           </label>
@@ -216,7 +216,7 @@ export default function Notifications() {
             <button
               type="button"
               onClick={() => setToggle('emailNotifications')}
-              className={`relative inline-flex h-5 w-10 shrink-0 rounded-full transition-colors ${preferences.emailNotifications ? 'bg-brand-500' : 'bg-slate-300'}`}
+              className={`relative inline-flex h-5 w-10 shrink-0 rounded-full transition-colors ${preferences.emailNotifications ? 'bg-brand-500' : 'bg-slate-200/60'}`}
             >
               <span
                 className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${preferences.emailNotifications ? 'translate-x-4' : 'translate-x-0'}`}
@@ -232,7 +232,7 @@ export default function Notifications() {
             <button
               type="button"
               onClick={() => setToggle('smsNotifications')}
-              className={`relative inline-flex h-5 w-10 shrink-0 rounded-full transition-colors ${preferences.smsNotifications ? 'bg-brand-500' : 'bg-slate-300'}`}
+              className={`relative inline-flex h-5 w-10 shrink-0 rounded-full transition-colors ${preferences.smsNotifications ? 'bg-brand-500' : 'bg-slate-200/60'}`}
             >
               <span
                 className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${preferences.smsNotifications ? 'translate-x-4' : 'translate-x-0'}`}
@@ -250,7 +250,7 @@ export default function Notifications() {
                     key={t.value}
                     type="button"
                     onClick={() => toggleNotifyType(t.value)}
-                    className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${active ? 'border-brand-500 bg-brand-500 text-white' : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-50'}`}
+                    className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${active ? 'border-brand-500 bg-brand-500 text-ink-950' : 'border-border bg-surface text-slate-400 hover:bg-surface-hover'}`}
                   >
                     {t.label}
                   </button>
@@ -261,12 +261,12 @@ export default function Notifications() {
         </div>
 
         {prefSaved && (
-          <div className="mt-5 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-700">
+          <div className="mt-5 rounded-lg border border-success/25 bg-success/10 px-4 py-2 text-sm text-success">
             Preferences saved successfully
           </div>
         )}
         {prefError && (
-          <div className="mt-5 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
+          <div className="mt-5 rounded-lg border border-danger/25 bg-danger/10 px-4 py-2 text-sm text-danger">
             {prefError}
           </div>
         )}
@@ -283,7 +283,7 @@ export default function Notifications() {
               <button
                 key={n._id}
                 onClick={() => { if (unread) handleMarkRead(n._id); }}
-                className={`card w-full p-5 text-left transition-colors hover:bg-slate-50 ${unread ? 'border-l-4 border-l-brand-500' : ''}`}
+                className={`card w-full p-5 text-left transition-colors hover:bg-slate-100/40 ${unread ? 'border-l-4 border-l-brand-500' : ''}`}
               >
                 <div className="flex items-start gap-3">
                   <TypeIcon className={`h-5 w-5 mt-0.5 shrink-0 ${typeTones[n.type] || 'text-slate-400'}`} aria-hidden="true" />

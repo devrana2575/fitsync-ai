@@ -14,8 +14,10 @@ import StatCard from '../../components/common/StatCard';
 import Avatar from '../../components/common/Avatar';
 import { SkeletonRow } from '../../components/common/Skeleton';
 import { fmtDate, fmtTime, formatDuration } from '../../utils/format';
+import { useToast } from '../../context/ToastContext';
 
 export default function Attendance() {
+  const { toast } = useToast();
   const [records, setRecords] = useState([]);
   const [todayRecords, setTodayRecords] = useState([]);
   const [members, setMembers] = useState([]);
@@ -60,7 +62,7 @@ export default function Attendance() {
       setSelectedMember('');
       fetchAll();
     } catch (err) {
-      alert(err.message || 'Check-in failed');
+      toast.error('Check-in failed', err.message);
     } finally {
       setCheckInLoading(false);
     }
@@ -72,7 +74,7 @@ export default function Attendance() {
       await api.post(`/attendance/checkout/${id}`);
       fetchAll();
     } catch (err) {
-      alert(err.message || 'Check-out failed');
+      toast.error('Check-out failed', err.message);
     } finally {
       setCheckOutId('');
     }
@@ -127,7 +129,7 @@ export default function Attendance() {
                 />
               )}
               {memberSearch && !selectedMember && filteredMembers.length > 0 && (
-                <ul className="absolute z-10 mt-1 w-full bg-white border border-slate-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                <ul className="absolute z-10 mt-1 w-full bg-surface-elevated border border-border rounded-lg shadow-pop max-h-48 overflow-y-auto">
                   {filteredMembers.slice(0, 20).map((m) => (
                     <li key={m._id} onClick={() => handleMemberSelect(m)} className="px-3 py-2 text-sm hover:bg-brand-50 cursor-pointer">
                       {m.name} <span className="text-slate-500">({m.email})</span>
@@ -136,7 +138,7 @@ export default function Attendance() {
                 </ul>
               )}
               {memberSearch && !selectedMember && filteredMembers.length === 0 && (
-                <div className="absolute z-10 mt-1 w-full bg-white border border-slate-300 rounded-lg shadow-lg px-3 py-2 text-sm text-slate-500">No matching member found</div>
+                <div className="absolute z-10 mt-1 w-full bg-surface-elevated border border-border rounded-lg shadow-pop px-3 py-2 text-sm text-slate-500">No matching member found</div>
               )}
             </div>
           </div>
@@ -162,7 +164,7 @@ export default function Attendance() {
       ) : (
         <DataTable headers={['Member', 'Check-in', 'Check-out', 'Duration', 'Method', 'Date']}>
           {records.map((r) => (
-            <tr key={r._id} className="odd:bg-white even:bg-slate-50/50">
+            <tr key={r._id} className="odd:bg-transparent even:bg-slate-100/40">
               <td className="px-4 py-3 text-sm">
                 <div className="flex items-center gap-2">
                   <Avatar name={r.user?.name || r.member?.name} size="sm" />

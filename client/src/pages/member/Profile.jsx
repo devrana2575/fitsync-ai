@@ -7,6 +7,7 @@ import {
   PlusIcon,
 } from '@heroicons/react/24/outline';
 import api from '../../services/api';
+import { useToast } from '../../context/ToastContext';
 import Avatar from '../../components/common/Avatar';
 import StatusBadge from '../../components/common/StatusBadge';
 import Skeleton, { SkeletonCard } from '../../components/common/Skeleton';
@@ -57,6 +58,7 @@ const toForm = (user, profile) => ({
 });
 
 export default function Profile() {
+  const { toast } = useToast();
   const [me, setMe] = useState(null);
   const [completion, setCompletion] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -120,7 +122,7 @@ export default function Profile() {
     e.preventDefault();
     const phones = profile.phoneNumbers.map((p) => ({ number: p.number.trim(), label: p.label })).filter((p) => p.number);
     if (phones.length === 0) {
-      alert('At least one phone number is required');
+      toast.warning('Phone number required', 'At least one phone number is required');
       return;
     }
     setSaving(true);
@@ -153,9 +155,10 @@ export default function Profile() {
       setCompletion(res.data.completion || completion);
       setSavedAt(new Date());
       setSaveMsg('Profile updated successfully');
+      toast.success('Profile updated', 'Your changes have been saved.');
     } catch (err) {
       setSaveMsg(null);
-      alert(err.message || 'Failed to update profile');
+      toast.error('Update failed', err.message || 'Failed to update profile');
     } finally {
       setSaving(false);
     }
@@ -169,8 +172,9 @@ export default function Profile() {
       form.append('photo', file);
       const res = await api.post('/auth/me/avatar', form);
       setMe((prev) => ({ ...prev, avatar: res.data.user?.avatar }));
+      toast.success('Photo uploaded', 'Your photo has been updated.');
     } catch (err) {
-      alert(err.message || 'Failed to upload photo');
+      toast.error('Upload failed', err.message || 'Failed to upload photo');
     } finally {
       setPhotoBusy(false);
     }
@@ -181,8 +185,9 @@ export default function Profile() {
     try {
       await api.delete('/auth/me/avatar');
       setMe((prev) => ({ ...prev, avatar: '' }));
+      toast.success('Photo removed', 'Your photo has been removed.');
     } catch (err) {
-      alert(err.message || 'Failed to remove photo');
+      toast.error('Remove failed', err.message || 'Failed to remove photo');
     } finally {
       setPhotoBusy(false);
     }
@@ -314,14 +319,14 @@ export default function Profile() {
                         ))}
                       </select>
                       {profile.phoneNumbers.length > 1 && (
-                        <button type="button" onClick={() => removePhoneRow(i)} className="btn btn-sm btn-ghost text-red-600 hover:text-red-800" aria-label="Remove phone number">
+                        <button type="button" onClick={() => removePhoneRow(i)} className="btn btn-sm btn-ghost text-danger hover:text-danger" aria-label="Remove phone number">
                           <XMarkIcon className="h-5 w-5" aria-hidden="true" />
                         </button>
                       )}
                     </div>
                   ))}
                 </div>
-                <button type="button" onClick={addPhoneRow} className="btn btn-sm btn-outline text-brand-700 border-brand-200 hover:bg-brand-50 mt-1">
+                <button type="button" onClick={addPhoneRow} className="btn btn-sm btn-outline text-brand-300 border-brand-200 hover:bg-brand-50 mt-1">
                   <PlusIcon className="h-4 w-4" aria-hidden="true" />
                   Add another number
                 </button>
@@ -495,13 +500,13 @@ export default function Profile() {
                 <h2 className="section-title mb-4">Recommendations on file</h2>
                 {doctorRecommendation && (
                   <div className="mb-2">
-                    <p className="text-xs font-medium text-brand-600">Doctor&apos;s recommendation</p>
+                    <p className="text-xs font-medium text-brand-400">Doctor&apos;s recommendation</p>
                     <p className="text-sm text-slate-700">{doctorRecommendation}</p>
                   </div>
                 )}
                 {trainerRecommendation && (
                   <div>
-                    <p className="text-xs font-medium text-brand-600">Trainer&apos;s recommendation</p>
+                    <p className="text-xs font-medium text-brand-400">Trainer&apos;s recommendation</p>
                     <p className="text-sm text-slate-700">{trainerRecommendation}</p>
                   </div>
                 )}
@@ -510,7 +515,7 @@ export default function Profile() {
 
             <div className="card p-6 flex flex-wrap items-center justify-between gap-3">
               <div className="text-sm">
-                {saveMsg && <p className="text-green-600 font-medium">{saveMsg}</p>}
+                {saveMsg && <p className="text-success font-medium">{saveMsg}</p>}
                 {savedAt && (
                   <p className="text-xs text-slate-400 mt-0.5">
                     Saved {savedAt.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' })}
@@ -559,8 +564,8 @@ export default function Profile() {
               </div>
               <div className="flex items-center justify-between pt-2">
                 <div className="text-sm">
-                  {pwMsg && <p className="text-green-600 font-medium">{pwMsg}</p>}
-                  {pwErr && <p className="text-red-600 font-medium">{pwErr}</p>}
+                  {pwMsg && <p className="text-success font-medium">{pwMsg}</p>}
+                  {pwErr && <p className="text-danger font-medium">{pwErr}</p>}
                 </div>
                 <button type="submit" disabled={pwSaving} className="btn btn-md btn-outline">
                   {pwSaving ? 'Updating...' : 'Update Password'}
@@ -600,7 +605,7 @@ export default function Profile() {
                   type="button"
                   onClick={handlePhotoRemove}
                   disabled={photoBusy}
-                  className="btn btn-sm btn-ghost text-red-600 hover:text-red-800 w-full"
+                  className="btn btn-sm btn-ghost text-danger hover:text-danger w-full"
                 >
                   <TrashIcon className="h-4 w-4" aria-hidden="true" />
                   Remove photo

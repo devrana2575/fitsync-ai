@@ -10,6 +10,7 @@ import {
   ArrowRightIcon,
 } from '@heroicons/react/24/outline';
 import api from '../../services/api';
+import { useToast } from '../../context/ToastContext';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import EmptyState from '../../components/common/EmptyState';
 import ErrorState from '../../components/common/ErrorState';
@@ -33,6 +34,19 @@ const loadRazorpayCheckout = () =>
     document.body.appendChild(script);
   });
 
+const membershipsSort = (list) =>
+  [...(list || [])].sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+
+const pickCurrent = (list) => {
+  const sorted = membershipsSort(list);
+  return (
+    sorted.find((m) => String(m.status).toUpperCase() === 'ACTIVE') ||
+    sorted.find((m) => String(m.status).toUpperCase() === 'PENDING') ||
+    sorted[0] ||
+    null
+  );
+};
+
 export default function Membership() {
   const [memberships, setMemberships] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -47,6 +61,7 @@ export default function Membership() {
   const [qrLoading, setQrLoading] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState(null);
   const [myProfile, setMyProfile] = useState(null);
+  const { toast } = useToast();
 
   const fetchData = async () => {
     try {
@@ -119,24 +134,24 @@ export default function Membership() {
             razorpay_order_id: response.razorpay_order_id,
             razorpay_signature: response.razorpay_signature,
           });
-          alert(res.data.message || 'Payment successful! Your membership is now active.');
+          toast.success(res.data.message || 'Payment successful! Your membership is now active.');
           fetchData();
         } catch (err) {
-          alert(err.message);
+          toast.error('Payment verification failed', err.message);
           fetchData();
         } finally {
           setProcessing(false);
         }
       },
-      theme: { color: '#16a34a' },
+      theme: { color: '#9FE031' },
     };
     const rzp = new window.Razorpay(options);
     rzp.on('payment.failed', (failed) => {
       const code = failed?.error?.code || '';
       if (code === 'PAYMENT_CANCELLED') {
-        alert('Payment cancelled. No charge was made.');
+        toast.info('Payment cancelled', 'No charge was made.');
       } else {
-        alert('Payment was not completed at the gateway. No charge was made.');
+        toast.warning('Payment incomplete', 'Payment was not completed at the gateway. No charge was made.');
       }
       fetchData();
     });
@@ -148,14 +163,14 @@ export default function Membership() {
       try {
         await loadRazorpayCheckout();
       } catch (err) {
-        alert(err.message);
+        toast.error('Payment unavailable', err.message);
         return;
       }
       setProcessing(true);
       const res = await api.post('/checkout/razorpay/order', { planId: plan._id });
       openRazorpayCheckout(res.data);
     } catch (err) {
-      alert(err.message);
+      toast.error('Could not start payment', err.message);
     } finally {
       setProcessing(false);
     }
@@ -183,16 +198,15 @@ export default function Membership() {
           const qr = await api.get(`/checkout/upi/qr/${payment}`, { responseType: 'blob' });
           setQrUrl(URL.createObjectURL(qr.data));
         } catch (err) {
-          alert(err.message || 'Failed to load payment QR');
+          toast.error('Could not load payment QR', err.message || 'Please try again.');
         } finally {
           setQrLoading(false);
         }
-      } else if (mode === 'demo') {
-        setSelectedPlan({ ...plan, paymentId: payment });
-        setModalOpen(true);
+      } else {
+        toast.warning('Online payments aren\'t set up yet', 'Please contact the gym to complete your payment.');
       }
     } catch (err) {
-      alert(err.message);
+      toast.error('Could not start payment', err.message);
     } finally {
       setProcessing(false);
     }
@@ -209,26 +223,11 @@ export default function Membership() {
     try {
       setProcessing(true);
       await api.post(`/checkout/upi/confirm/${upiInfo.payment}`);
-      alert('Payment submitted for verification by the gym. Your membership will activate once the payment is confirmed.');
+      toast.success('Payment submitted', 'Your payment is being verified by the gym. Your membership will activate once confirmed.');
       closeModal();
       fetchData();
     } catch (err) {
-      alert(err.message);
-    } finally {
-      setProcessing(false);
-    }
-  };
-
-  const handleConfirmDemo = async () => {
-    try {
-      setProcessing(true);
-      await api.post(`/checkout/confirm/${selectedPlan.paymentId}`);
-      alert('Payment successful! Your membership is now active.');
-      setModalOpen(false);
-      setSelectedPlan(null);
-      fetchData();
-    } catch (err) {
-      alert(err.message);
+      toast.error('Submission failed', err.message);
     } finally {
       setProcessing(false);
     }
@@ -261,7 +260,7 @@ export default function Membership() {
     );
   }
 
-  const current = memberships[0] || null;
+  const current = pickCurrent(memberships);
   const currentPlan = current?.plan || {};
   const currentPlanPrice = Number(currentPlan.price) > 0 ? toINR(currentPlan.price) : null;
   const daysRemaining = current?.daysRemaining ?? null;
@@ -304,26 +303,24 @@ export default function Membership() {
     }
     if (String(status).toUpperCase() === 'PENDING') {
       return (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 sm:p-5">
-          <div className="flex items-start gap-3">
-            <ClockIcon className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" aria-hidden="true" />
-            <div>
-              <p className="text-sm font-semibold text-amber-800">Trainer assignment pending</p>
-              <p className="mt-0.5 text-xs text-amber-700">
-                Your plan entitles you to a trainer. Our team is matching you with the right fit — you'll see them here as soon as they're assigned.
-              </p>
-            </div>
+        <div className="banner banner-warning">
+          <ClockIcon className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
+          <div>
+            <p className="font-semibold">Trainer assignment pending</p>
+            <p className="mt-0.5 text-xs opacity-90">
+              Your plan entitles you to a trainer. Our team is matching you with the right fit — you'll see them here as soon as they're assigned.
+            </p>
           </div>
         </div>
       );
     }
     return (
       <div className="flex flex-col items-center py-6 text-center">
-        <div className="mb-3 rounded-full bg-slate-100 p-3">
+        <div className="mb-3 rounded-full bg-slate-200/60 p-3">
           <UserIcon className="h-6 w-6 text-slate-400" aria-hidden="true" />
         </div>
-        <p className="text-sm font-medium text-slate-700">No trainer assigned yet</p>
-        <p className="mt-1 text-xs text-slate-400">Pick a plan that includes coach support to get one.</p>
+        <p className="text-sm font-medium text-slate-300">No trainer assigned yet</p>
+        <p className="mt-1 text-xs text-slate-500">Pick a plan that includes coach support to get one.</p>
         <button onClick={scrollToPlans} className="btn btn-md btn-primary mt-4">
           Browse Plans <ArrowRightIcon className="h-4 w-4" aria-hidden="true" />
         </button>
@@ -440,7 +437,7 @@ export default function Membership() {
 
           <div className="card p-5">
             <div className="mb-4 flex items-center gap-2">
-              <AcademicCapIcon className="h-5 w-5 text-brand-600" aria-hidden="true" />
+              <AcademicCapIcon className="h-5 w-5 text-brand-400" aria-hidden="true" />
               <h2 className="card-title">Your Trainer</h2>
             </div>
             {renderTrainerSection()}
@@ -449,9 +446,9 @@ export default function Membership() {
       )}
 
       <div id="buy-membership" className="card overflow-hidden">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-5 py-4">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-5 py-4">
           <h2 className="card-title">Buy / Renew Membership</h2>
-          <span className="text-xs text-slate-400">Prices in INR, inclusive of applicable charges</span>
+          <span className="text-xs text-slate-500">Prices in INR, inclusive of applicable charges</span>
         </div>
         {plansLoading ? (
           <div className="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -462,16 +459,16 @@ export default function Membership() {
             {plans.map((plan) => {
               const isCurrent = currentPlanId && String(plan._id) === String(currentPlanId);
               return (
-                <div key={plan._id} className="flex flex-col rounded-xl border border-slate-200 bg-white p-5">
+                <div key={plan._id} className="card flex flex-col p-5">
                   <div className="flex items-start justify-between gap-2">
                     <h3 className="font-semibold text-slate-900">{plan.name}</h3>
                     {isCurrent && <span className="badge badge-success">Current plan</span>}
                   </div>
                   <p className="mt-1 text-2xl font-bold text-slate-900 tabular-nums">{toINR(plan.price)}</p>
-                  <p className="mt-0.5 text-xs font-medium uppercase tracking-wide text-slate-400">{plan.duration} DAYS</p>
+                  <p className="mt-0.5 text-xs font-medium uppercase tracking-wide text-slate-500">{plan.duration} DAYS</p>
 
                   {plan.paymentMode === 'INSTALLMENT' && Number(plan.installments) > 1 ? (
-                    <p className="mt-1 text-sm text-amber-700">
+                    <p className="mt-1 text-sm text-warning">
                       Pay in {plan.installments} installments of {toINR(plan.installmentAmount)}
                     </p>
                   ) : (
@@ -493,7 +490,7 @@ export default function Membership() {
                     ))}
                   </div>
 
-                  <p className="mt-3 flex-1 text-sm text-slate-600">{plan.description}</p>
+                  <p className="mt-3 flex-1 text-sm text-slate-500">{plan.description}</p>
 
                   {isCurrent ? (
                     <div className="mt-4 w-full">
@@ -510,7 +507,7 @@ export default function Membership() {
                       {isCounterUpMode ? 'Pay at Gym / Direct UPI' : 'Pay Online'}
                     </button>
                   )}
-                  <p className="mt-2 text-center text-xs text-slate-400">
+                  <p className="mt-2 text-center text-xs text-slate-500">
                     {plan.paymentMode === 'INSTALLMENT'
                       ? (isCounterUpMode ? 'At the gym, this plan is paid in fixed installments' : 'Online payment charges the full plan price in one go')
                       : (isCounterUpMode ? 'Pay directly to the gym UPI account' : 'Pay securely with the gateway')}
@@ -525,7 +522,7 @@ export default function Membership() {
       {current && (
         <div className="card p-5">
           <div className="mb-4 flex items-center gap-2">
-            <BanknotesIcon className="h-5 w-5 text-brand-600" aria-hidden="true" />
+            <BanknotesIcon className="h-5 w-5 text-brand-400" aria-hidden="true" />
             <h2 className="card-title">Payment Summary</h2>
           </div>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
@@ -550,13 +547,13 @@ export default function Membership() {
       )}
 
       <div className="card overflow-hidden">
-        <div className="border-b border-slate-100 px-5 py-4">
+        <div className="border-b border-border px-5 py-4">
           <h2 className="card-title">Payment History</h2>
         </div>
         {(current?.payments || []).length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-slate-50">
+              <thead className="bg-slate-100/50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Date</th>
                   <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Amount</th>
@@ -565,12 +562,12 @@ export default function Membership() {
                   <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200">
+              <tbody className="divide-y divide-border">
                 {(current.payments || []).map((p) => (
-                  <tr key={p._id} className="odd:bg-white even:bg-slate-50/60">
-                    <td className="px-6 py-4 text-sm text-slate-600">{fmtDate(p.date)}</td>
+                  <tr key={p._id} className="odd:bg-transparent even:bg-slate-100/40">
+                    <td className="px-6 py-4 text-sm text-slate-500">{fmtDate(p.date)}</td>
                     <td className="px-6 py-4 text-sm font-semibold text-slate-900 tabular-nums">{toINR(p.amount)}</td>
-                    <td className="px-6 py-4 text-sm text-slate-600 capitalize">{(p.method || '—').toUpperCase()}</td>
+                    <td className="px-6 py-4 text-sm text-slate-500 capitalize">{(p.method || '—').toUpperCase()}</td>
                     <td className="px-6 py-4 font-mono text-sm text-slate-500">{p.transactionId || '—'}</td>
                     <td className="px-6 py-4"><StatusBadge value={p.status} /></td>
                   </tr>
@@ -586,13 +583,13 @@ export default function Membership() {
       </div>
 
       <div className="card overflow-hidden">
-        <div className="border-b border-slate-100 px-5 py-4">
+        <div className="border-b border-border px-5 py-4">
           <h2 className="card-title">Membership History</h2>
         </div>
         {memberships.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-slate-50">
+              <thead className="bg-slate-100/50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Plan</th>
                   <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Start</th>
@@ -600,12 +597,12 @@ export default function Membership() {
                   <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200">
+              <tbody className="divide-y divide-border">
                 {memberships.map((m) => (
-                  <tr key={m._id} className="odd:bg-white even:bg-slate-50/60">
+                  <tr key={m._id} className="odd:bg-transparent even:bg-slate-100/40">
                     <td className="px-6 py-4 text-sm font-medium text-slate-900">{m.plan?.name || '—'}</td>
-                    <td className="px-6 py-4 text-sm text-slate-600">{fmtDate(m.startDate)}</td>
-                    <td className="px-6 py-4 text-sm text-slate-600">{fmtDate(m.endDate)}</td>
+                    <td className="px-6 py-4 text-sm text-slate-500">{fmtDate(m.startDate)}</td>
+                    <td className="px-6 py-4 text-sm text-slate-500">{fmtDate(m.endDate)}</td>
                     <td className="px-6 py-4"><StatusBadge value={m.status} /></td>
                   </tr>
                 ))}
@@ -625,7 +622,7 @@ export default function Membership() {
             <p className="text-sm text-slate-500 mb-4">
               Pay <span className="font-semibold text-slate-900">₹{Number(upiInfo.amount || selectedPlan?.price || 0).toLocaleString('en-IN')}</span> for {upiInfo.planName || selectedPlan?.name} using any UPI app (GPay, PhonePe, Paytm).
             </p>
-            <div className="bg-white border border-slate-200 rounded-xl p-3 mb-4">
+            <div className="bg-surface border border-border rounded-xl p-3 mb-4">
               {qrLoading ? (
                 <div className="h-56 w-56 flex items-center justify-center"><LoadingSpinner /></div>
               ) : qrUrl ? (
@@ -635,12 +632,12 @@ export default function Membership() {
               )}
             </div>
             <table className="text-sm w-full max-w-sm mb-4">
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-border">
                 <tr><td className="py-1.5 text-slate-500">Pay to</td><td className="py-1.5 text-right font-medium text-slate-900">{upiInfo.upiId}</td></tr>
                 <tr><td className="py-1.5 text-slate-500">Name</td><td className="py-1.5 text-right font-medium text-slate-900">{upiInfo.upiName || '—'}</td></tr>
                 <tr><td className="py-1.5 text-slate-500">Amount</td><td className="py-1.5 text-right font-medium text-slate-900">₹{Number(upiInfo.amount || 0).toLocaleString('en-IN')}</td></tr>
-                <tr><td className="py-1.5 text-slate-500">Reference</td><td className="py-1.5 text-right font-mono text-xs text-slate-700">{upiInfo.reference}</td></tr>
-                <tr><td className="py-1.5 text-slate-500">Note</td><td className="py-1.5 text-right text-slate-700">{upiInfo.note || '—'}</td></tr>
+                <tr><td className="py-1.5 text-slate-500">Reference</td><td className="py-1.5 text-right font-mono text-xs text-slate-400">{upiInfo.reference}</td></tr>
+                <tr><td className="py-1.5 text-slate-500">Note</td><td className="py-1.5 text-right text-slate-400">{upiInfo.note || '—'}</td></tr>
               </tbody>
             </table>
             <p className="text-xs text-slate-500 text-center mb-4">
@@ -650,44 +647,20 @@ export default function Membership() {
               <button
                 onClick={closeModal}
                 disabled={processing}
-                className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                className="btn btn-outline btn-md"
               >
                 Cancel
               </button>
               <button
                 onClick={handleConfirmUpi}
                 disabled={processing}
-                className="rounded-lg bg-green-600 hover:bg-green-700 disabled:opacity-50 px-4 py-2 text-sm text-white"
+                className="btn btn-success btn-md"
               >
                 {processing ? 'Processing…' : 'I have paid'}
               </button>
             </div>
           </div>
-        ) : (
-          selectedPlan && (
-          <div>
-            <p className="text-sm text-slate-600 mb-4">
-              Demo Mode – Your payment of ₹{Number(selectedPlan.price || 0).toLocaleString('en-IN')} for {selectedPlan.name} is ready. This simulates a successful payment gateway.
-            </p>
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={closeModal}
-                disabled={processing}
-                className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-              >
-                Close
-              </button>
-              <button
-                onClick={handleConfirmDemo}
-                disabled={processing}
-                className="rounded-lg bg-green-600 hover:bg-green-700 disabled:opacity-50 px-4 py-2 text-sm text-white"
-              >
-                {processing ? 'Processing…' : 'Simulate Payment'}
-              </button>
-            </div>
-          </div>
-          )
-        )}
+        ) : null}
       </Modal>
     </div>
   );

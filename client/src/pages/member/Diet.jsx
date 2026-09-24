@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { CheckIcon, ClipboardDocumentCheckIcon, FireIcon, CalendarDaysIcon } from '@heroicons/react/24/outline';
 import api from '../../services/api';
+import { useToast } from '../../context/ToastContext';
 import PageHeader from '../../components/common/PageHeader';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import ErrorState from '../../components/common/ErrorState';
@@ -19,6 +20,7 @@ const fmtDay = (iso) => {
 };
 
 export default function Diet() {
+  const { toast } = useToast();
   const [dietTypes, setDietTypes] = useState([]);
   const [log, setLog] = useState(null);
   const [stats, setStats] = useState(null);
@@ -60,7 +62,7 @@ export default function Diet() {
     try {
       await api.put('/diet/log', { date, dietType: type, completed: checked });
     } catch (err) {
-      alert(err.message || 'Failed to update diet checklist');
+      toast.error('Update failed', err.message || 'Failed to update diet checklist');
       fetchAll();
     } finally {
       setSaving(false);
@@ -116,7 +118,7 @@ export default function Diet() {
                       <label
                         key={d.value}
                         className={`flex items-center gap-3 px-4 py-3 rounded-xl border cursor-pointer transition-colors ${
-                          isChecked ? 'border-brand-300 bg-brand-50' : 'border-slate-200 bg-white hover:bg-slate-50'
+                          isChecked ? 'border-brand-500/40 bg-brand-500/10' : 'border-border bg-surface hover:bg-surface-hover'
                         }`}
                       >
                         <input
@@ -124,12 +126,12 @@ export default function Diet() {
                           checked={isChecked}
                           disabled={saving}
                           onChange={(e) => handleToggle(d.value, e.target.checked)}
-                          className="h-5 w-5 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+                          className="h-5 w-5 rounded border-slate-300 text-brand-400 focus:ring-brand-500"
                         />
                         <span className={`text-sm font-medium flex-1 ${isChecked ? 'text-brand-900' : 'text-slate-700'}`}>
                           {d.label}
                         </span>
-                        {isChecked && <CheckIcon className="h-5 w-5 text-brand-600 shrink-0" aria-hidden="true" />}
+                        {isChecked && <CheckIcon className="h-5 w-5 text-brand-400 shrink-0" aria-hidden="true" />}
                       </label>
                     );
                   })}
@@ -145,7 +147,7 @@ export default function Diet() {
             ) : (
               <div className="flex flex-wrap gap-3">
                 {stats.last7Days.map((day) => (
-                  <div key={new Date(day.date).toISOString()} className="rounded-xl border border-slate-200 px-4 py-3 text-center min-w-[96px] bg-white">
+                  <div key={new Date(day.date).toISOString()} className="rounded-xl border border-border px-4 py-3 text-center min-w-[96px] bg-surface-elevated">
                     <p className="text-xs text-slate-500">{fmtDay(day.date)}</p>
                     <p className="text-lg font-semibold text-slate-900 mt-1 tabular-nums">{day.count}</p>
                     <p className="text-[11px] text-slate-400">completed</p>

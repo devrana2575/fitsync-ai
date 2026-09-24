@@ -7,7 +7,7 @@ import EmptyState from '../../components/common/EmptyState';
 import PageHeader from '../../components/common/PageHeader';
 import { Skeleton } from '../../components/common/Skeleton';
 
-const COLORS = ['#84cc16', '#22c55e', '#f59e0b', '#ef4444', '#38bdf8', '#a78bfa'];
+const COLORS = ['#B7F34A', '#35C979', '#F4B740', '#EF5B63', '#5EA7FF', '#A78BFA'];
 
 export default function Analytics() {
   const [revenue, setRevenue] = useState([]);
@@ -109,12 +109,12 @@ export default function Analytics() {
         >
           <ResponsiveContainer width="100%" height={400}>
             <LineChart data={revenue}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-              <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} />
-              <Tooltip formatter={(v) => fmtCurrency(v)} />
-              <Legend />
-              <Line type="monotone" dataKey="revenue" stroke="#84cc16" strokeWidth={3} dot={{ r: 5, fill: '#84cc16' }} activeDot={{ r: 7 }} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#23282e" />
+              <XAxis dataKey="month" tickLine={false} axisLine={{ stroke: "#292f35" }} tick={{ fontSize: 12, fill: "#6f7983" }} />
+              <YAxis tickLine={false} axisLine={{ stroke: "#292f35" }} tick={{ fontSize: 12, fill: "#6f7983" }} tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} />
+              <Tooltip formatter={(v) => fmtCurrency(v)} contentStyle={{ backgroundColor: '#181c20', border: '1px solid #292f35', borderRadius: '0.75rem', color: '#f3f5f4' }} labelStyle={{ color: '#9aa4ad' }} itemStyle={{ color: '#f3f5f4' }} />
+              <Legend wrapperStyle={{ color: '#9aa4ad' }} />
+              <Line type="monotone" dataKey="revenue" stroke="#B7F34A" strokeWidth={3} dot={{ r: 5, fill: '#B7F34A' }} activeDot={{ r: 7 }} />
             </LineChart>
           </ResponsiveContainer>
         </ChartCard>
@@ -129,12 +129,12 @@ export default function Analytics() {
         >
           <ResponsiveContainer width="100%" height={400}>
             <BarChart data={attendance}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis dataKey="day" tick={{ fontSize: 12 }} />
-              <YAxis tick={{ fontSize: 12 }} />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="count" fill="#84cc16" radius={[6, 6, 0, 0]} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#23282e" />
+              <XAxis dataKey="day" tickLine={false} axisLine={{ stroke: "#292f35" }} tick={{ fontSize: 12, fill: "#6f7983" }} />
+              <YAxis tickLine={false} axisLine={{ stroke: "#292f35" }} tick={{ fontSize: 12, fill: "#6f7983" }} />
+              <Tooltip contentStyle={{ backgroundColor: '#181c20', border: '1px solid #292f35', borderRadius: '0.75rem', color: '#f3f5f4' }} labelStyle={{ color: '#9aa4ad' }} itemStyle={{ color: '#f3f5f4' }} />
+              <Legend wrapperStyle={{ color: '#9aa4ad' }} />
+              <Bar dataKey="count" fill="#B7F34A" radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>
@@ -149,12 +149,12 @@ export default function Analytics() {
         >
           <ResponsiveContainer width="100%" height={400}>
             <BarChart data={peakHours}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis dataKey="hour" tick={{ fontSize: 12 }} />
-              <YAxis tick={{ fontSize: 12 }} />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="count" fill="#22c55e" radius={[6, 6, 0, 0]} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#23282e" />
+              <XAxis dataKey="hour" tickLine={false} axisLine={{ stroke: "#292f35" }} tick={{ fontSize: 12, fill: "#6f7983" }} />
+              <YAxis tickLine={false} axisLine={{ stroke: "#292f35" }} tick={{ fontSize: 12, fill: "#6f7983" }} />
+              <Tooltip contentStyle={{ backgroundColor: '#181c20', border: '1px solid #292f35', borderRadius: '0.75rem', color: '#f3f5f4' }} labelStyle={{ color: '#9aa4ad' }} itemStyle={{ color: '#f3f5f4' }} />
+              <Legend wrapperStyle={{ color: '#9aa4ad' }} />
+              <Bar dataKey="count" fill="#5EA7FF" radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>
@@ -184,8 +184,8 @@ export default function Analytics() {
                   <Cell key={i} fill={COLORS[i % COLORS.length]} />
                 ))}
               </Pie>
-              <Tooltip formatter={(v) => v} />
-              <Legend />
+              <Tooltip formatter={(v) => v} contentStyle={{ backgroundColor: '#181c20', border: '1px solid #292f35', borderRadius: '0.75rem', color: '#f3f5f4' }} labelStyle={{ color: '#9aa4ad' }} itemStyle={{ color: '#f3f5f4' }} />
+              <Legend wrapperStyle={{ color: '#9aa4ad' }} />
             </PieChart>
           </ResponsiveContainer>
         </ChartCard>

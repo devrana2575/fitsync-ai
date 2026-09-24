@@ -5,6 +5,7 @@ import ErrorState from '../../components/common/ErrorState';
 import StatCard from '../../components/common/StatCard';
 import PageHeader from '../../components/common/PageHeader';
 import { Skeleton, SkeletonCard } from '../../components/common/Skeleton';
+import { useToast } from '../../context/ToastContext';
 
 const COMMON_TIMEZONES = [
   'Asia/Kolkata',
@@ -28,13 +29,14 @@ const COMMON_TIMEZONES = [
 const initialForm = { name: '', address: '', phone: '', email: '', currency: 'INR', timezone: 'Asia/Kolkata', operatingHours: '' };
 
 const paymentMeta = {
-  razorpay: { label: 'Razorpay (online payments)', cls: 'bg-blue-100 text-blue-700' },
-  stripe: { label: 'Stripe (card payments)', cls: 'bg-green-100 text-green-700' },
-  upi: { label: 'UPI (scan-to-pay)', cls: 'bg-sky-100 text-sky-700' },
-  unconfigured: { label: 'Not configured — online payments disabled', cls: 'bg-amber-100 text-amber-700' },
+  razorpay: { label: 'Razorpay (online payments)', cls: 'bg-info/15 text-info' },
+  stripe: { label: 'Stripe (card payments)', cls: 'bg-success/10 text-success' },
+  upi: { label: 'UPI (scan-to-pay)', cls: 'bg-info/15 text-info' },
+  unconfigured: { label: 'Not configured — online payments disabled', cls: 'bg-warning/10 text-warning' },
 };
 
 export default function Settings() {
+  const { toast } = useToast();
   const [form, setForm] = useState(initialForm);
   const [payment, setPayment] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -76,7 +78,7 @@ export default function Settings() {
       setSaved(true);
       fetchSettings();
     } catch (err) {
-      alert(err.message || 'Failed to save settings');
+      toast.error('Save failed', err.message);
     } finally {
       setSaving(false);
     }
@@ -119,10 +121,10 @@ export default function Settings() {
           </p>
           {payment && payment.method === 'razorpay' && (
             <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-              <span className={`inline-flex items-center rounded-full px-2 py-0.5 font-medium ${payment.live ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+              <span className={`inline-flex items-center rounded-full px-2 py-0.5 font-medium ${payment.live ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'}`}>
                 {payment.live ? 'Live keys' : 'Test keys'}
               </span>
-              <span className={`inline-flex items-center rounded-full px-2 py-0.5 font-medium ${payment.webhookConfigured ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+              <span className={`inline-flex items-center rounded-full px-2 py-0.5 font-medium ${payment.webhookConfigured ? 'bg-success/10 text-success' : 'bg-danger/10 text-danger'}`}>
                 {payment.webhookConfigured ? 'Webhook configured' : 'Webhook NOT configured'}
               </span>
               {payment.keyId && (
@@ -132,10 +134,10 @@ export default function Settings() {
           )}
           {payment && payment.method !== 'razorpay' && payment.webhookConfigured !== undefined && (
             <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-              <span className={`inline-flex items-center rounded-full px-2 py-0.5 font-medium ${payment.live ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+              <span className={`inline-flex items-center rounded-full px-2 py-0.5 font-medium ${payment.live ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'}`}>
                 {payment.live ? 'Live' : 'Not live'}
               </span>
-              <span className={`inline-flex items-center rounded-full px-2 py-0.5 font-medium ${payment.webhookConfigured ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+              <span className={`inline-flex items-center rounded-full px-2 py-0.5 font-medium ${payment.webhookConfigured ? 'bg-success/10 text-success' : 'bg-danger/10 text-danger'}`}>
                 {payment.webhookConfigured ? 'Webhook configured' : 'Webhook NOT configured'}
               </span>
             </div>
@@ -150,7 +152,7 @@ export default function Settings() {
       )}
 
       {payment && payment.method === 'unconfigured' && (
-        <div className="bg-amber-50 border border-amber-200 text-amber-800 rounded-xl px-4 py-3 text-sm">
+        <div className="bg-warning/10 border border-warning/25 text-warning rounded-xl px-4 py-3 text-sm">
           Online payments are not configured, so members cannot complete Razorpay/UPI/Stripe checkout online.
           Counter payments are still supported — record them from the Payments page. In production the
           server refuses to start without a real gateway.
@@ -200,7 +202,7 @@ export default function Settings() {
           </div>
 
           <div className="flex items-center justify-end gap-3 pt-2">
-            {saved && <span className="text-sm text-green-600 font-medium">Settings saved</span>}
+            {saved && <span className="text-sm text-success font-medium">Settings saved</span>}
             <button type="submit" disabled={saving} className="btn btn-md btn-primary">
               {saving ? 'Saving...' : 'Save Settings'}
             </button>

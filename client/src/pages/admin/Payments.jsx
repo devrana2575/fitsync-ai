@@ -12,11 +12,13 @@ import StatCard from '../../components/common/StatCard';
 import Avatar from '../../components/common/Avatar';
 import { SkeletonRow } from '../../components/common/Skeleton';
 import { toINR, fmtDate } from '../../utils/format';
+import { useToast } from '../../context/ToastContext';
 
 const initialForm = { userId: '', membershipId: '', planId: '', amount: '', method: 'cash', status: 'completed', notes: '' };
 
 export default function Payments() {
   const location = useLocation();
+  const { toast } = useToast();
   const [payments, setPayments] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -144,12 +146,13 @@ export default function Payments() {
   };
 
   const handleVerify = async (payment) => {
-    if (!window.confirm('Verify and complete this pending payment?\n\nThe member\'s membership will be activated.')) return;
+    const proceed = await toast.confirm({ title: 'Verify payment', description: "Verify and complete this pending payment? The member's membership will be activated.", confirmLabel: 'Verify & complete', danger: false });
+    if (!proceed) return;
     try {
       await api.post(`/payments/${payment._id}/verify`);
       fetchAll();
     } catch (err) {
-      alert(err.message || 'Failed to verify payment');
+      toast.error('Failed to verify payment', err.message);
     }
   };
 
@@ -165,7 +168,7 @@ export default function Payments() {
       setMemberSearch('');
       fetchAll();
     } catch (err) {
-      alert(err.message || 'Failed to add payment');
+      toast.error('Failed to add payment', err.message);
     } finally {
       setSaving(false);
     }
@@ -256,7 +259,7 @@ export default function Payments() {
       ) : (
         <DataTable headers={['Receipt', 'Member', 'Membership / Plan', 'Amount', 'Method', 'Gateway', 'Status', 'Date', 'Actions']}>
           {payments.map((p) => (
-            <tr key={p._id} className="odd:bg-white even:bg-slate-50/50">
+            <tr key={p._id} className="odd:bg-transparent even:bg-slate-100/40">
               <td className="px-4 py-3 font-mono text-xs text-slate-600">{p.transactionId || p._id || '—'}</td>
               <td className="px-4 py-3 text-sm">
                 <div className="flex items-center gap-2">
@@ -279,7 +282,7 @@ export default function Payments() {
               <td className="px-4 py-3 text-sm">
                 {p.gateway ? (
                   <div>
-                    <span className="inline-flex items-center gap-1 text-xs font-medium text-brand-700">
+                    <span className="inline-flex items-center gap-1 text-xs font-medium text-brand-300">
                       {p.gateway === 'razorpay' ? 'Razorpay' : p.gateway}
                     </span>
                     {p.gatewayOrderId && (
@@ -305,7 +308,7 @@ export default function Payments() {
                   <span className="text-xs text-slate-400">Gateway pending</span>
                 )}
                 {p.status === 'COMPLETED' && p.gateway && (
-                  <span className="inline-flex items-center gap-1 text-xs font-medium text-green-600">
+                  <span className="inline-flex items-center gap-1 text-xs font-medium text-success">
                     <CheckBadgeIcon className="h-4 w-4" aria-hidden="true" />
                     Gateway verified
                   </span>
@@ -334,7 +337,7 @@ export default function Payments() {
               />
             )}
             {memberSearch && !selectedMember && filteredMembers.length > 0 && (
-              <ul className="absolute z-10 mt-1 w-full bg-white border border-slate-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+              <ul className="absolute z-10 mt-1 w-full bg-surface-elevated border border-border rounded-lg shadow-pop max-h-48 overflow-y-auto">
                 {filteredMembers.slice(0, 20).map((m) => (
                   <li key={m._id} onClick={() => handleMemberSelect(m)} className="px-3 py-2 text-sm hover:bg-brand-50 cursor-pointer">
                     {m.name} <span className="text-slate-500">({m.email})</span>

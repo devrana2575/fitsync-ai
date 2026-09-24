@@ -9,6 +9,7 @@ import DataTable from '../../components/common/DataTable';
 import StatCard from '../../components/common/StatCard';
 import { SkeletonRow } from '../../components/common/Skeleton';
 import { fmtDate } from '../../utils/format';
+import { useToast } from '../../context/ToastContext';
 
 const initialForm = { title: '', message: '', priority: 'info', pinned: false, expiresAt: '' };
 
@@ -18,6 +19,7 @@ const priorityBadge = (p) => {
 };
 
 export default function Announcements() {
+  const { toast } = useToast();
   const [announcements, setAnnouncements] = useState([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -59,7 +61,7 @@ export default function Announcements() {
       setForm(initialForm);
       fetchAll();
     } catch (err) {
-      alert(err.message || 'Failed to save announcement');
+      toast.error('Save failed', err.message);
     } finally {
       setSaving(false);
     }
@@ -80,12 +82,13 @@ export default function Announcements() {
   };
 
   const handleDeactivate = async (a) => {
-    if (!window.confirm(`Deactivate "${a.title}"?`)) return;
+    const proceed = await toast.confirm({ title: 'Deactivate announcement', description: `Deactivate "${a.title}"?`, confirmLabel: 'Deactivate', danger: true });
+    if (!proceed) return;
     try {
       await api.delete(`/announcements/${a._id}`);
       fetchAll();
     } catch (err) {
-      alert(err.message || 'Failed to deactivate announcement');
+      toast.error('Failed to deactivate announcement', err.message);
     }
   };
 
@@ -123,7 +126,7 @@ export default function Announcements() {
       ) : (
         <DataTable headers={['Title', 'Priority', 'Pinned', 'Posted by', 'Created', 'Actions']}>
           {announcements.map((a) => (
-            <tr key={a._id} className="odd:bg-white even:bg-slate-50/50">
+            <tr key={a._id} className="odd:bg-transparent even:bg-slate-100/40">
               <td className="px-4 py-3 text-sm font-medium text-slate-900">{a.title}</td>
               <td className="px-4 py-3 text-sm">
                 <span className={`badge capitalize ${priorityBadge(a.priority)}`}>{a.priority}</span>
@@ -140,7 +143,7 @@ export default function Announcements() {
               <td className="px-4 py-3 text-sm">
                 <div className="flex gap-1">
                   <button onClick={() => openEdit(a)} className="btn btn-sm btn-outline">Edit</button>
-                  <button onClick={() => handleDeactivate(a)} className="btn btn-sm text-red-600 hover:bg-red-50">Deactivate</button>
+                  <button onClick={() => handleDeactivate(a)} className="btn btn-sm text-danger hover:bg-danger/10">Deactivate</button>
                 </div>
               </td>
             </tr>
@@ -171,7 +174,7 @@ export default function Announcements() {
             <input type="date" value={form.expiresAt} onChange={(e) => setForm({ ...form, expiresAt: e.target.value })} className="input" />
           </div>
           <div className="flex items-center gap-2">
-            <input id="pinned" type="checkbox" checked={form.pinned} onChange={(e) => setForm({ ...form, pinned: e.target.checked })} className="h-4 w-4 text-brand-600 border-slate-300 rounded focus:ring-brand-500" />
+            <input id="pinned" type="checkbox" checked={form.pinned} onChange={(e) => setForm({ ...form, pinned: e.target.checked })} className="h-4 w-4 text-brand-400 border-slate-300 rounded focus:ring-brand-500" />
             <label htmlFor="pinned" className="text-sm font-medium text-slate-700">Pinned</label>
           </div>
           <div className="flex justify-end gap-3 pt-2">

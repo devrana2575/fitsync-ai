@@ -3,10 +3,10 @@ export default function ProgressBar({ value = 0, tone = 'brand', className = '',
   const clamped = Math.max(0, Math.min(100, Number(value) || 0));
   const toneClasses = {
     brand: 'bg-brand-500',
-    success: 'bg-emerald-500',
-    warning: 'bg-amber-500',
-    danger: 'bg-red-500',
-    info: 'bg-sky-500',
+    success: 'bg-success',
+    warning: 'bg-warning',
+    danger: 'bg-danger',
+    info: 'bg-info',
     muted: 'bg-slate-300',
   };
   return (
@@ -14,7 +14,7 @@ export default function ProgressBar({ value = 0, tone = 'brand', className = '',
       {label && (
         <div className="flex items-center justify-between mb-1.5">
           <span className="text-xs font-medium text-slate-500">{label}</span>
-          <span className="text-xs font-semibold text-slate-700 tabular-nums">{Math.round(clamped)}%</span>
+          <span className="text-xs font-semibold text-slate-300 tabular-nums">{Math.round(clamped)}%</span>
         </div>
       )}
       <div
@@ -23,7 +23,7 @@ export default function ProgressBar({ value = 0, tone = 'brand', className = '',
         aria-valuemin={0}
         aria-valuemax={100}
         aria-label={label || 'Progress'}
-        className="h-2 w-full overflow-hidden rounded-full bg-slate-100"
+        className="h-2 w-full overflow-hidden rounded-full bg-slate-200/60"
       >
         <div
           className={`h-full rounded-full transition-all duration-500 ease-out ${toneClasses[tone] || toneClasses.brand}`}

@@ -11,7 +11,7 @@ import useTrainerDashboard from '../../hooks/useTrainerDashboard';
 
 const ATTENTION_META = {
   no_recent_attendance: { label: 'No visit in 7+ days', cls: 'badge-warning' },
-  membership_expiring: { label: 'Membership expiring', cls: 'bg-orange-100 text-orange-700' },
+  membership_expiring: { label: 'Membership expiring', cls: 'bg-warning/15 text-warning' },
 };
 
 const memberName = (m) => m.user?.name || 'Member';

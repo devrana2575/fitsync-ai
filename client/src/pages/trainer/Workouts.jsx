@@ -166,7 +166,7 @@ export default function Workouts() {
         <div className="card p-6">
           <h2 className="card-title mb-4">Create Workout Plan</h2>
           {formError && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{formError}</div>
+            <div className="mb-4 p-3 bg-danger/10 border border-danger/25 rounded-lg text-sm text-danger">{formError}</div>
           )}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -267,7 +267,7 @@ export default function Workouts() {
                 <button
                   type="button"
                   onClick={addExercise}
-                  className="btn btn-sm btn-outline text-brand-700 border-brand-200 hover:bg-brand-50"
+                  className="btn btn-sm btn-outline text-brand-300 border-brand-200 hover:bg-brand-50"
                 >
                   <PlusIcon className="h-4 w-4" aria-hidden="true" />
                   Add Exercise
@@ -307,7 +307,7 @@ export default function Workouts() {
                         <button
                           type="button"
                           onClick={() => removeExercise(idx)}
-                          className="btn btn-sm btn-ghost text-red-600 hover:text-red-800 hover:bg-red-50"
+                          className="btn btn-sm btn-ghost text-danger hover:text-danger hover:bg-danger/10"
                         >
                           Remove
                         </button>
@@ -365,7 +365,7 @@ export default function Workouts() {
                 {plans.map((plan, i) => {
                   const firstExercise = plan.exercises?.[0]?.exercise;
                   return (
-                    <tr key={plan._id || plan.id} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'}>
+                    <tr key={plan._id || plan.id} className={i % 2 === 0 ? 'bg-transparent' : 'bg-slate-100/40'}>
                       <td className="px-6 py-4">
                         <div className="min-w-0 max-w-xs">
                           <p className="text-sm font-semibold text-slate-900 break-words">{plan.name}</p>

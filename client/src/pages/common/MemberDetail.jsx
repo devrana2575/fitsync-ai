@@ -111,7 +111,7 @@ export default function MemberDetail() {
   const section = (title, Icon, children, emptyMsg) => (
     <div className="card flex flex-col overflow-hidden">
       <div className="flex items-center gap-2 border-b border-slate-100 px-5 py-3.5">
-        <Icon className="h-4 w-4 text-brand-600" aria-hidden="true" />
+        <Icon className="h-4 w-4 text-brand-400" aria-hidden="true" />
         <h2 className="section-title">{title}</h2>
       </div>
       <div className="flex-1 p-5">
@@ -380,8 +380,8 @@ export default function MemberDetail() {
                       {plan.exercises.slice(0, 6).map((ex, idx) => {
                         const exData = ex.exercise || ex;
                         return (
-                          <span key={idx} className="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-xs text-slate-600 ring-1 ring-slate-200">
-                            <img src={exerciseImage(exData)} alt={exData?.name || 'Exercise'} loading="lazy" className="h-4 w-4 rounded-full bg-white object-cover" />
+                          <span key={idx} className="inline-flex items-center gap-1.5 rounded-full bg-slate-200/60 px-2.5 py-1 text-xs text-slate-400 ring-1 ring-inset ring-slate-300/50">
+                            <img src={exerciseImage(exData)} alt={exData?.name || 'Exercise'} loading="lazy" className="h-4 w-4 rounded-full bg-surface object-cover" />
                             {exData?.name || 'Exercise'}
                           </span>
                         );

@@ -6,6 +6,7 @@ import {
   CheckCircleIcon,
 } from '@heroicons/react/24/outline';
 import api from '../../services/api';
+import { useToast } from '../../context/ToastContext';
 import PageHeader from '../../components/common/PageHeader';
 import StatCard from '../../components/common/StatCard';
 import EmptyState from '../../components/common/EmptyState';
@@ -15,6 +16,7 @@ import Skeleton, { SkeletonCard, SkeletonRow } from '../../components/common/Ske
 import { fmtDate, fmtTime } from '../../utils/format';
 
 export default function Attendance() {
+  const { toast } = useToast();
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
   const [checking, setChecking] = useState(false);
@@ -46,7 +48,7 @@ export default function Attendance() {
       await api.post('/attendance/qr-checkin');
       fetchAttendance();
     } catch (err) {
-      alert(err.message);
+      toast.error('Check-in failed', err.message);
     } finally {
       setChecking(false);
     }
@@ -58,7 +60,7 @@ export default function Attendance() {
       await api.post(`/attendance/checkout/${id}`);
       fetchAttendance();
     } catch (err) {
-      alert(err.message);
+      toast.error('Check-out failed', err.message);
     } finally {
       setCheckingOutId('');
     }
@@ -133,15 +135,15 @@ export default function Attendance() {
         icon={ClipboardDocumentListIcon}
       />
 
-      <div className={`card p-6 ${checkedIn ? 'border-emerald-200 bg-emerald-50/60' : ''}`}>
+      <div className={`card p-6 ${checkedIn ? 'border-success/25 bg-success/10' : ''}`}>
         <div className="flex flex-wrap items-center justify-between gap-4">
           {checkedIn ? (
             <div className="flex items-center gap-3">
-              <div className="rounded-full bg-emerald-100 p-2.5">
-                <CheckCircleIcon className="h-6 w-6 text-emerald-600" aria-hidden="true" />
+              <div className="rounded-full bg-success/15 p-2.5">
+                <CheckCircleIcon className="h-6 w-6 text-success" aria-hidden="true" />
               </div>
               <div>
-                <p className="text-sm font-semibold tracking-wide text-emerald-700">CHECKED IN</p>
+                <p className="text-sm font-semibold tracking-wide text-success">CHECKED IN</p>
                 <p className="text-sm text-slate-600">
                   {todayRecord?.checkInTime ? `Checked in at ${fmtTime(todayRecord.checkInTime)}` : 'Checked in today'}
                 </p>
@@ -150,7 +152,7 @@ export default function Attendance() {
           ) : (
             <div className="flex items-center gap-3">
               <div className="rounded-full bg-brand-100 p-2.5">
-                <MapPinIcon className="h-6 w-6 text-brand-600" aria-hidden="true" />
+                <MapPinIcon className="h-6 w-6 text-brand-400" aria-hidden="true" />
               </div>
               <div>
                 <p className="text-sm font-semibold text-slate-900">Not checked in yet</p>
@@ -211,7 +213,7 @@ export default function Attendance() {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {records.map((r, idx) => (
-                  <tr key={r._id || r.id || idx} className="odd:bg-white even:bg-slate-50/50 hover:bg-slate-50 transition-colors">
+                  <tr key={r._id || r.id || idx} className="odd:bg-transparent even:bg-slate-100/40 hover:bg-slate-100/40 transition-colors">
                     <td className="px-6 py-4 font-medium text-slate-900 whitespace-nowrap">
                       {fmtDate(r.checkInTime || r.date, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
                     </td>
@@ -252,8 +254,8 @@ export default function Attendance() {
                 </div>
                 <div className="grid grid-cols-7 gap-2">
                   {monthRecords.map((r, idx) => (
-                    <div key={idx} className="aspect-square bg-green-100 rounded-lg flex items-center justify-center" title={new Date(r.checkInTime || r.date).toLocaleDateString()}>
-                      <span className="text-xs font-medium text-green-700">
+                    <div key={idx} className="aspect-square bg-success/15 rounded-lg flex items-center justify-center" title={new Date(r.checkInTime || r.date).toLocaleDateString()}>
+                      <span className="text-xs font-medium text-success">
                         {new Date(r.checkInTime || r.date).getDate()}
                       </span>
                     </div>

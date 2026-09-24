@@ -17,6 +17,7 @@ import {
 } from '@heroicons/react/24/outline';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import StatCard from '../../components/common/StatCard';
 import ErrorState from '../../components/common/ErrorState';
 import PageHeader from '../../components/common/PageHeader';
@@ -30,6 +31,7 @@ import { fmtDate } from '../../utils/format';
 
 export default function MemberDashboard() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const navigate = useNavigate();
   const [dashboard, setDashboard] = useState(null);
   const [measurements, setMeasurements] = useState([]);
@@ -100,7 +102,7 @@ export default function MemberDashboard() {
       await api.post('/attendance/qr-checkin');
       fetchData(true);
     } catch (err) {
-      alert(err.message);
+      toast.error('Check-in failed', err.message);
     }
   };
 
@@ -261,7 +263,7 @@ export default function MemberDashboard() {
             <div className="lg:col-span-2 space-y-4">
               <div className="card p-5">
                 <div className="mb-4 flex items-center gap-2">
-                  <BoltIcon className="h-5 w-5 text-brand-600" aria-hidden="true" />
+                  <BoltIcon className="h-5 w-5 text-brand-400" aria-hidden="true" />
                   <h2 className="card-title">Today&apos;s Workout</h2>
                   <span className="badge badge-info ml-auto">{todayName()}</span>
                 </div>
@@ -288,7 +290,7 @@ export default function MemberDashboard() {
                               src={exerciseImage(exData)}
                               alt={exData?.name || 'Exercise'}
                               loading="lazy"
-                              className="h-10 w-10 shrink-0 rounded-lg bg-white object-cover"
+                              className="h-10 w-10 shrink-0 rounded-lg bg-surface object-cover"
                             />
                             <div className="min-w-0">
                               <p className="truncate text-sm font-medium text-slate-900">{exData?.name || 'Exercise'}</p>
@@ -304,7 +306,7 @@ export default function MemberDashboard() {
                 ) : (
                   <div className="flex flex-col items-center py-8 text-center">
                     <div className="mb-3 rounded-full bg-brand-100 p-3">
-                      <CheckCircleIcon className="h-6 w-6 text-brand-600" aria-hidden="true" />
+                      <CheckCircleIcon className="h-6 w-6 text-brand-400" aria-hidden="true" />
                     </div>
                     <p className="text-sm font-medium text-slate-700">Rest day — no workout scheduled.</p>
                     <p className="mt-1 text-xs text-slate-400">Check your plans or log a workout and keep the momentum going.</p>
@@ -317,7 +319,7 @@ export default function MemberDashboard() {
 
               <div className="card p-5">
                 <div className="mb-4 flex items-center gap-2">
-                  <BuildingOffice2Icon className="h-5 w-5 text-brand-600" aria-hidden="true" />
+                  <BuildingOffice2Icon className="h-5 w-5 text-brand-400" aria-hidden="true" />
                   <h2 className="card-title">Membership</h2>
                 </div>
                 {membership.planName ? (
@@ -368,7 +370,7 @@ export default function MemberDashboard() {
 
             <div className="card p-5 self-start">
               <div className="mb-4 flex items-center gap-2">
-                <AcademicCapIcon className="h-5 w-5 text-brand-600" aria-hidden="true" />
+                <AcademicCapIcon className="h-5 w-5 text-brand-400" aria-hidden="true" />
                 <h2 className="card-title">Your Trainer</h2>
               </div>
               {trainer && trainer.name ? (
@@ -406,7 +408,7 @@ export default function MemberDashboard() {
           <div className="card p-5">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2">
-                <ChartBarIcon className="h-5 w-5 text-brand-600" aria-hidden="true" />
+                <ChartBarIcon className="h-5 w-5 text-brand-400" aria-hidden="true" />
                 <h2 className="card-title">Weight Trend</h2>
               </div>
               {weightData.length > 0 && <span className="text-xs text-slate-400">{weightData.length} measurement{weightData.length === 1 ? '' : 's'}</span>}
@@ -416,11 +418,11 @@ export default function MemberDashboard() {
             ) : weightData.length > 0 ? (
               <ResponsiveContainer width="100%" height={250}>
                 <LineChart data={weightData} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                  <XAxis dataKey="date" tick={{ fontSize: 12 }} stroke="#94a3b8" />
-                  <YAxis tick={{ fontSize: 12 }} stroke="#94a3b8" />
-                  <Tooltip />
-                  <Line type="monotone" dataKey="weight" stroke="#84cc16" strokeWidth={2} dot={{ fill: '#84cc16' }} activeDot={{ r: 5 }} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#23282e" />
+                  <XAxis dataKey="date" tickLine={false} axisLine={{ stroke: "#292f35" }} tick={{ fontSize: 12, fill: "#6f7983" }} />
+                  <YAxis tickLine={false} axisLine={{ stroke: "#292f35" }} tick={{ fontSize: 12, fill: "#6f7983" }} />
+                  <Tooltip contentStyle={{ backgroundColor: '#181c20', border: '1px solid #292f35', borderRadius: '0.75rem', color: '#f3f5f4' }} labelStyle={{ color: '#9aa4ad' }} itemStyle={{ color: '#f3f5f4' }} />
+                  <Line type="monotone" dataKey="weight" stroke="#B7F34A" strokeWidth={2} dot={{ fill: '#B7F34A' }} activeDot={{ r: 5 }} />
                 </LineChart>
               </ResponsiveContainer>
             ) : (

@@ -6,6 +6,7 @@ import StatCard from '../../components/common/StatCard';
 import PageHeader from '../../components/common/PageHeader';
 import Modal from '../../components/common/Modal';
 import { SkeletonCard } from '../../components/common/Skeleton';
+import { useToast } from '../../context/ToastContext';
 
 const IGNORED_KEYS = new Set(['__v']);
 
@@ -102,7 +103,7 @@ function EditModal({ collectionLabel, id, fields, onClose, onSave, saving }) {
             </div>
           ))}
         </div>
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && <p className="text-sm text-danger">{error}</p>}
         <div className="flex justify-end gap-3 pt-2">
           <button type="button" onClick={onClose} className="btn btn-outline btn-md">Cancel</button>
           <button type="submit" disabled={saving} className="btn btn-md btn-primary">
@@ -148,7 +149,7 @@ function CollectionCard({ collection, expanded, onToggle, onEdit, onDelete }) {
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {rows.map((row, ri) => (
-                    <tr key={row._id || ri} className={ri % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}>
+                    <tr key={row._id || ri} className={ri % 2 === 0 ? 'bg-transparent' : 'bg-slate-100/40'}>
                       {columns.map((c, ci) => (
                         <td key={c.key} className={`${ci === 0 ? 'pl-5' : 'pl-4'} pr-4 py-2.5 text-slate-700 whitespace-nowrap ${ci === 0 ? 'font-medium text-slate-900' : ''}`}>
                           {formatValue(row[c.key], c.isId)}
@@ -159,7 +160,7 @@ function CollectionCard({ collection, expanded, onToggle, onEdit, onDelete }) {
                           <button onClick={() => onEdit(row)} className="btn btn-sm btn-outline">
                             <PencilSquareIcon className="h-4 w-4" /> Edit
                           </button>
-                          <button onClick={() => onDelete(row)} className="btn btn-sm text-red-600 hover:bg-red-50">
+                          <button onClick={() => onDelete(row)} className="btn btn-sm text-danger hover:bg-danger/10">
                             <TrashIcon className="h-4 w-4" /> Delete
                           </button>
                         </div>
@@ -177,6 +178,7 @@ function CollectionCard({ collection, expanded, onToggle, onEdit, onDelete }) {
 }
 
 export default function AllData() {
+  const { toast } = useToast();
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -235,7 +237,7 @@ export default function AllData() {
       await api.put(`/admin/all/${editing.collectionKey}/${editing.row._id}`, payload);
       setEditing(null);
     } catch (err) {
-      alert(err.message || 'Failed to update record');
+      toast.error('Update failed', err.message);
     } finally {
       setSaving(false);
       await fetchAll();
@@ -245,11 +247,12 @@ export default function AllData() {
   const handleDelete = async (collectionKey, row) => {
     const collection = data.find((c) => c.key === collectionKey);
     const label = collection?.label || collectionKey;
-    if (!window.confirm(`Delete this ${label} record?\nID: ${row._id}\n\nThis cannot be undone.`)) return;
+    const proceed = await toast.confirm({ title: `Delete ${label}`, description: `Delete this ${label} record?\nID: ${row._id}\n\nThis cannot be undone.`, confirmLabel: 'Delete', danger: true });
+    if (!proceed) return;
     try {
       await api.delete(`/admin/all/${collectionKey}/${row._id}`);
     } catch (err) {
-      alert(err.message || 'Failed to delete record');
+      toast.error('Delete failed', err.message);
     }
     await fetchAll();
   };

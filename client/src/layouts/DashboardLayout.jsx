@@ -7,7 +7,7 @@ export default function DashboardLayout() {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="flex min-h-screen bg-slate-50">
+    <div className="flex min-h-screen bg-base">
       <Sidebar open={open} onClose={() => setOpen(false)} />
       <div className="flex-1 lg:ml-72 flex flex-col min-w-0">
         <Navbar onMenuClick={() => setOpen(true)} />

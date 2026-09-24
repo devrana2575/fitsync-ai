@@ -8,6 +8,7 @@ import EmptyState from '../../components/common/EmptyState';
 import ErrorState from '../../components/common/ErrorState';
 import Modal from '../../components/common/Modal';
 import DataTable from '../../components/common/DataTable';
+import { useToast } from '../../context/ToastContext';
 
 const initialForm = {
   name: '', email: '', password: '', phone: '', gender: '',
@@ -49,6 +50,7 @@ const toForm = (m) => {
 export default function Members() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { toast } = useToast();
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -164,7 +166,7 @@ export default function Members() {
       setShowModal(false);
       fetchMembers();
     } catch (err) {
-      alert(err.message || 'Operation failed');
+      toast.error('Operation failed', err.message);
     } finally {
       setSaving(false);
     }
@@ -172,14 +174,14 @@ export default function Members() {
 
   const toggleDeactivate = async (m) => {
     if (m.isActive) {
-      const proceed = confirm(`Deactivate ${m.name}? They will not be able to log in until reactivated.`);
+      const proceed = await toast.confirm({ title: 'Deactivate member', description: 'They will not be able to log in until reactivated.', confirmLabel: 'Deactivate', danger: true });
       if (!proceed) return;
     }
     try {
       await api.put(`/users/${m._id}/${m.isActive ? 'deactivate' : 'activate'}`);
       fetchMembers();
     } catch (err) {
-      alert(err.message || 'Failed');
+      toast.error('Failed', err.message);
     }
   };
 
@@ -197,11 +199,11 @@ export default function Members() {
         placeholder="Search members..."
         value={search}
         onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-        className="w-full md:w-96 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+        className="w-full md:w-96 px-4 py-2 input"
       />
 
       {error ? (
-        <div className="bg-white rounded-xl border border-slate-200">
+        <div className="bg-surface-elevated border border-border rounded-xl">
           <ErrorState message={error} onRetry={() => fetchMembers()} />
         </div>
       ) : loading ? <LoadingSpinner size="lg" /> : members.length === 0 ? (
@@ -210,7 +212,7 @@ export default function Members() {
         <>
           <DataTable headers={['Name', 'Email', 'Membership', 'Status', 'Trainer', 'Phone', 'Actions']}>
             {members.map((m, i) => (
-              <tr key={m._id} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
+              <tr key={m._id} className={i % 2 === 0 ? 'bg-transparent' : 'bg-slate-100/40'}>
                 <td className="px-6 py-4 font-medium text-slate-900">{m.name}</td>
                 <td className="px-6 py-4 text-slate-600">{m.email}</td>
                 <td className="px-6 py-4">
@@ -227,9 +229,9 @@ export default function Members() {
                   <div className="flex flex-col gap-1">
                     {m.membership ? (
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium w-fit ${
-                        m.membership.status === 'ACTIVE' ? 'bg-green-100 text-green-700' :
-                        m.membership.status === 'EXPIRED' ? 'bg-amber-100 text-amber-700' :
-                        m.membership.status === 'CANCELLED' ? 'bg-red-100 text-red-700' :
+                        m.membership.status === 'ACTIVE' ? 'bg-success/10 text-success' :
+                        m.membership.status === 'EXPIRED' ? 'bg-warning/10 text-warning' :
+                        m.membership.status === 'CANCELLED' ? 'bg-danger/10 text-danger' :
                         'bg-slate-100 text-slate-600'
                       }`}>
                         {m.membership.status.charAt(0)}{m.membership.status.slice(1).toLowerCase()}
@@ -240,7 +242,7 @@ export default function Members() {
                       </span>
                     )}
                     {!m.isActive && (
-                      <span className="px-2 py-0.5 rounded-full text-xs font-medium w-fit bg-red-100 text-red-700">
+                      <span className="px-2 py-0.5 rounded-full text-xs font-medium w-fit bg-danger/10 text-danger">
                         Deactivated
                       </span>
                     )}
@@ -251,8 +253,8 @@ export default function Members() {
                 <td className="px-6 py-4">
                   <div className="flex gap-3">
                     <button onClick={() => navigate(`/admin/members/${m._id}`)} className="text-slate-600 hover:text-slate-900 font-medium text-sm">View</button>
-                    <button onClick={() => openEdit(m)} className="text-brand-700 hover:text-brand-800 font-medium text-sm">Edit</button>
-                    <button onClick={() => toggleDeactivate(m)} className={`font-medium text-sm ${m.isActive ? 'text-red-600 hover:text-red-800' : 'text-green-600 hover:text-green-800'}`}>
+                    <button onClick={() => openEdit(m)} className="text-brand-300 hover:text-brand-800 font-medium text-sm">Edit</button>
+                    <button onClick={() => toggleDeactivate(m)} className={`font-medium text-sm ${m.isActive ? 'text-danger hover:text-danger' : 'text-success hover:text-success'}`}>
                       {m.isActive ? 'Deactivate' : 'Activate'}
                     </button>
                   </div>
@@ -262,11 +264,11 @@ export default function Members() {
           </DataTable>
 
           <div className="flex items-center justify-center gap-4">
-            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="px-4 py-2 rounded-lg border border-slate-300 text-sm font-medium disabled:opacity-50 hover:bg-slate-50">
+            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="px-4 py-2 rounded-lg border border-border text-sm font-medium bg-surface text-slate-400 disabled:opacity-50 hover:bg-surface-hover">
               Previous
             </button>
             <span className="text-sm text-slate-600">Page {page} of {totalPages}</span>
-            <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="px-4 py-2 rounded-lg border border-slate-300 text-sm font-medium disabled:opacity-50 hover:bg-slate-50">
+            <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="px-4 py-2 rounded-lg border border-border text-sm font-medium bg-surface text-slate-400 disabled:opacity-50 hover:bg-surface-hover">
               Next
             </button>
           </div>
@@ -277,21 +279,21 @@ export default function Members() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Name</label>
-            <input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+            <input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full px-3 py-2 input" />
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
-            <input required type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+            <input required type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="w-full px-3 py-2 input" />
           </div>
           {!editing && (
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Password</label>
-              <input required={!editing} type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+              <input required={!editing} type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} className="w-full px-3 py-2 input" />
             </div>
           )}
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Primary Phone</label>
-            <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+            <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="w-full px-3 py-2 input" />
           </div>
           {form.phoneNumbers.length > 0 && (
             <div>
@@ -303,28 +305,28 @@ export default function Members() {
                       value={p.number}
                       onChange={(e) => setPhoneRow(i, { number: e.target.value })}
                       placeholder="Phone number"
-                      className="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                      className="flex-1 px-3 py-2 input"
                     />
                     <select
                       value={p.label}
                       onChange={(e) => setPhoneRow(i, { label: e.target.value })}
-                      className="px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                      className="px-3 py-2 input"
                     >
                       {['Primary', 'Secondary', 'Emergency', 'Work', 'Home', 'Other'].map((l) => (
                         <option key={l} value={l}>{l}</option>
                       ))}
                     </select>
-                    <button type="button" onClick={() => removePhoneRow(i)} className="text-red-500 hover:text-red-700 text-lg leading-none">&times;</button>
+                    <button type="button" onClick={() => removePhoneRow(i)} className="text-danger hover:text-danger text-lg leading-none">&times;</button>
                   </div>
                 ))}
               </div>
-              <button type="button" onClick={addPhoneRow} className="mt-1 text-sm text-brand-700 hover:text-brand-800 font-medium">+ Add another number</button>
+              <button type="button" onClick={addPhoneRow} className="mt-1 text-sm text-brand-300 hover:text-brand-800 font-medium">+ Add another number</button>
             </div>
           )}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Gender</label>
-              <select value={form.gender} onChange={(e) => setForm({ ...form, gender: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+              <select value={form.gender} onChange={(e) => setForm({ ...form, gender: e.target.value })} className="w-full px-3 py-2 input">
                 <option value="">Select</option>
                 <option value="male">Male</option>
                 <option value="female">Female</option>
@@ -333,30 +335,30 @@ export default function Members() {
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Date of Birth</label>
-              <input type="date" value={form.dateOfBirth} onChange={(e) => setForm({ ...form, dateOfBirth: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+              <input type="date" value={form.dateOfBirth} onChange={(e) => setForm({ ...form, dateOfBirth: e.target.value })} className="w-full px-3 py-2 input" />
             </div>
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Address</label>
-            <input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+            <input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} className="w-full px-3 py-2 input" />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Height (cm)</label>
-              <input type="number" min="40" max="300" value={form.heightCm} onChange={(e) => setForm({ ...form, heightCm: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+              <input type="number" min="40" max="300" value={form.heightCm} onChange={(e) => setForm({ ...form, heightCm: e.target.value })} className="w-full px-3 py-2 input" />
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Weight (kg)</label>
-              <input type="number" min="2" max="500" step="0.1" value={form.weightKg} onChange={(e) => setForm({ ...form, weightKg: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+              <input type="number" min="2" max="500" step="0.1" value={form.weightKg} onChange={(e) => setForm({ ...form, weightKg: e.target.value })} className="w-full px-3 py-2 input" />
             </div>
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Goals (comma-separated)</label>
-            <input value={form.goals} onChange={(e) => setForm({ ...form, goals: e.target.value })} placeholder="e.g. Fat loss, Strength" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+            <input value={form.goals} onChange={(e) => setForm({ ...form, goals: e.target.value })} placeholder="e.g. Fat loss, Strength" className="w-full px-3 py-2 input" />
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Activity Level</label>
-            <select value={form.activityLevel} onChange={(e) => setForm({ ...form, activityLevel: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+            <select value={form.activityLevel} onChange={(e) => setForm({ ...form, activityLevel: e.target.value })} className="w-full px-3 py-2 input">
               <option value="">Select</option>
               {ACTIVITY_LEVELS.map((l) => <option key={l} value={l}>{l.replace('_', ' ')}</option>)}
             </select>
@@ -377,7 +379,7 @@ export default function Members() {
                   className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
                     form.preferredWorkoutDays.includes(d)
                       ? 'bg-brand-500 text-ink-950 border-brand-500'
-                      : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'
+                      : 'bg-surface text-slate-400 border-border hover:bg-surface-hover'
                   }`}
                 >
                   {d.slice(0, 3)}
@@ -387,34 +389,34 @@ export default function Members() {
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Preferred Workout Duration (minutes)</label>
-            <input type="number" min="15" max="300" value={form.preferredWorkoutDuration} onChange={(e) => setForm({ ...form, preferredWorkoutDuration: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+            <input type="number" min="15" max="300" value={form.preferredWorkoutDuration} onChange={(e) => setForm({ ...form, preferredWorkoutDuration: e.target.value })} className="w-full px-3 py-2 input" />
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Current Injuries</label>
-            <input value={form.injuries} onChange={(e) => setForm({ ...form, injuries: e.target.value })} placeholder="e.g. Knee strain" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+            <input value={form.injuries} onChange={(e) => setForm({ ...form, injuries: e.target.value })} placeholder="e.g. Knee strain" className="w-full px-3 py-2 input" />
           </div>
-          <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2">
-            <p className="text-xs font-semibold text-red-700 mb-2">Health & Safety (informational)</p>
+          <div className="rounded-lg bg-danger/10 border border-danger/25 px-3 py-2">
+            <p className="text-xs font-semibold text-danger mb-2">Health & Safety (informational)</p>
             <div className="space-y-2">
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1">Medical Conditions</label>
-                <input value={form.medicalConditions} onChange={(e) => setForm({ ...form, medicalConditions: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+                <input value={form.medicalConditions} onChange={(e) => setForm({ ...form, medicalConditions: e.target.value })} className="w-full px-3 py-2 input" />
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1">Allergies (comma-separated)</label>
-                <input value={form.allergies} onChange={(e) => setForm({ ...form, allergies: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+                <input value={form.allergies} onChange={(e) => setForm({ ...form, allergies: e.target.value })} className="w-full px-3 py-2 input" />
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1">Medical Restrictions</label>
-                <input value={form.medicalRestrictions} onChange={(e) => setForm({ ...form, medicalRestrictions: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+                <input value={form.medicalRestrictions} onChange={(e) => setForm({ ...form, medicalRestrictions: e.target.value })} className="w-full px-3 py-2 input" />
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1">Medical Notes</label>
-                <textarea value={form.medicalNotes} onChange={(e) => setForm({ ...form, medicalNotes: e.target.value })} rows={2} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+                <textarea value={form.medicalNotes} onChange={(e) => setForm({ ...form, medicalNotes: e.target.value })} rows={2} className="w-full px-3 py-2 input" />
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1">Doctor Recommendation</label>
-                <textarea value={form.doctorRecommendation} onChange={(e) => setForm({ ...form, doctorRecommendation: e.target.value })} rows={2} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+                <textarea value={form.doctorRecommendation} onChange={(e) => setForm({ ...form, doctorRecommendation: e.target.value })} rows={2} className="w-full px-3 py-2 input" />
               </div>
             </div>
           </div>

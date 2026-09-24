@@ -12,6 +12,7 @@ import ProgressBar from '../../components/common/ProgressBar';
 import Avatar from '../../components/common/Avatar';
 import { SkeletonCard, SkeletonRow } from '../../components/common/Skeleton';
 import { toINR, fmtDate } from '../../utils/format';
+import { useToast } from '../../context/ToastContext';
 
 const initialPlan = {
   name: '', price: '', duration: '', features: '', description: '',
@@ -24,6 +25,7 @@ const ALLOCATION_MODES = ['NONE', 'SHARED', 'ASSIGNED', 'DEDICATED'];
 
 export default function Memberships() {
   const location = useLocation();
+  const { toast } = useToast();
   const [tab, setTab] = useState('plans');
   const [plans, setPlans] = useState([]);
   const [memberships, setMemberships] = useState([]);
@@ -105,7 +107,7 @@ export default function Memberships() {
       const res = await api.get(`/memberships/${m._id}`);
       setDetail(res.data);
     } catch (err) {
-      alert(err.message || 'Failed to load membership details');
+      toast.error('Failed to load membership details', err.message);
     } finally {
       setDetailLoading(false);
     }
@@ -136,7 +138,7 @@ export default function Memberships() {
       const activeRes = await api.get(`/memberships/active/${selectedMember._id}`);
       const activeMembership = activeRes.data.data || activeRes.data.membership;
       if (activeMembership) {
-        const proceed = confirm('This member already has an active membership \u2014 it will be replaced. Continue?');
+        const proceed = await toast.confirm({ title: 'Replace active membership', description: 'This member already has an active membership — it will be replaced. Continue?', danger: true });
         if (!proceed) return;
       }
     } catch {
@@ -155,7 +157,7 @@ export default function Memberships() {
       setAssignForm(initialAssignForm);
       fetchAll();
     } catch (err) {
-      alert(err.message || 'Failed to assign membership');
+      toast.error('Failed to assign membership', err.message);
     } finally {
       setAssignSaving(false);
     }
@@ -183,34 +185,38 @@ export default function Memberships() {
       setShowPlanModal(false);
       fetchAll();
     } catch (err) {
-      alert(err.message || 'Failed');
+      toast.error('Failed', err.message);
     } finally {
       setSaving(false);
     }
   };
 
   const renewMembership = async (m) => {
-    const proceed = confirm(
-      `Renew "${m.plan?.name || 'membership'}" for ${m.user?.name || 'this member'}?\n\n` +
-      'Renewing here grants ACTIVE status without an online payment. ' +
-      'Confirm the payment was collected at the counter (cash/UPI).'
-    );
+    const proceed = await toast.confirm({
+      title: 'Renew membership',
+      description:
+        `Renew "${m.plan?.name || 'membership'}" for ${m.user?.name || 'this member'}?\n\n` +
+        'Renewing here grants ACTIVE status without an online payment. ' +
+        'Confirm the payment was collected at the counter (cash/UPI).\n',
+      confirmLabel: 'Renew',
+    });
     if (!proceed) return;
     try {
       await api.put(`/memberships/${m._id}/renew`, { acknowledged: true });
       fetchAll();
     } catch (err) {
-      alert(err.message || 'Failed to renew');
+      toast.error('Failed to renew', err.message);
     }
   };
 
   const cancelMembership = async (m) => {
-    if (!confirm('Cancel this membership?')) return;
+    const proceed = await toast.confirm({ title: 'Cancel membership', description: 'Cancel this membership?', confirmLabel: 'Cancel', danger: true });
+    if (!proceed) return;
     try {
       await api.put(`/memberships/${m._id}/cancel`);
       fetchAll();
     } catch (err) {
-      alert(err.message || 'Failed to cancel');
+      toast.error('Failed to cancel', err.message);
     }
   };
 
@@ -238,10 +244,10 @@ export default function Memberships() {
       )}
 
       <div className="flex gap-1 border-b border-slate-200">
-        <button onClick={() => setTab('plans')} className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${tab === 'plans' ? 'border-brand-600 text-brand-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
+        <button onClick={() => setTab('plans')} className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${tab === 'plans' ? 'border-brand-600 text-brand-400' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
           Plans
         </button>
-        <button onClick={() => setTab('memberships')} className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${tab === 'memberships' ? 'border-brand-600 text-brand-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
+        <button onClick={() => setTab('memberships')} className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${tab === 'memberships' ? 'border-brand-600 text-brand-400' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
           Memberships
         </button>
       </div>
@@ -271,7 +277,7 @@ export default function Memberships() {
                       <h3 className="text-lg font-semibold text-slate-900">{p.name}</h3>
                       <button onClick={() => openEditPlan(p)} className="btn btn-sm btn-outline">Edit</button>
                     </div>
-                    <p className="text-2xl font-semibold tabular-nums text-brand-600 mb-1">{toINR(p.price)}</p>
+                    <p className="text-2xl font-semibold tabular-nums text-brand-400 mb-1">{toINR(p.price)}</p>
                     <p className="text-sm font-semibold uppercase tracking-wide text-slate-500 mb-2">{p.duration} DAYS</p>
                     <div className="flex flex-wrap gap-1.5 mb-3">
                       {p.paymentMode === 'INSTALLMENT' && (
@@ -317,7 +323,7 @@ export default function Memberships() {
             {memberships.length === 0 ? <EmptyState icon={ClipboardDocumentListIcon} message="No active memberships" /> : (
               <DataTable headers={['Member', 'Plan', 'Start Date', 'End Date', 'Status', 'Actions']}>
                 {memberships.map((m) => (
-                  <tr key={m._id} className="odd:bg-white even:bg-slate-50/50">
+                  <tr key={m._id} className="odd:bg-transparent even:bg-slate-100/40">
                     <td className="px-4 py-3 text-sm">
                       <div className="flex items-center gap-2">
                         <Avatar name={m.user?.name || m.member?.name} size="sm" />
@@ -335,8 +341,8 @@ export default function Memberships() {
                         <button onClick={() => viewMembership(m)} className="btn btn-sm btn-outline">View</button>
                         {m.status?.toLowerCase() === 'active' && (
                           <>
-                            <button onClick={() => renewMembership(m)} className="btn btn-sm text-green-600 hover:bg-green-50">Renew</button>
-                            <button onClick={() => cancelMembership(m)} className="btn btn-sm text-red-600 hover:bg-red-50">Cancel</button>
+                            <button onClick={() => renewMembership(m)} className="btn btn-sm text-success hover:bg-success/10">Renew</button>
+                            <button onClick={() => cancelMembership(m)} className="btn btn-sm text-danger hover:bg-danger/10">Cancel</button>
                           </>
                         )}
                       </div>
@@ -386,13 +392,13 @@ export default function Memberships() {
             </div>
           </div>
           {planForm.paymentMode === 'INSTALLMENT' && Number(planForm.installments) > 1 && (
-            <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+            <p className="text-xs text-warning bg-warning/10 border border-warning/25 rounded-lg px-3 py-2">
               Installment amount = ₹{(Number(planForm.price) / Number(planForm.installments)).toFixed(2)} per installment. The membership activates only after the full price is covered.
             </p>
           )}
 
           <div className="flex items-center gap-2">
-            <input id="plan-trainer" type="checkbox" checked={planForm.trainerIncluded} onChange={(e) => setPlanForm({ ...planForm, trainerIncluded: e.target.checked })} className="h-4 w-4 text-brand-600 border-slate-300 rounded focus:ring-brand-500" />
+            <input id="plan-trainer" type="checkbox" checked={planForm.trainerIncluded} onChange={(e) => setPlanForm({ ...planForm, trainerIncluded: e.target.checked })} className="h-4 w-4 text-brand-400 border-slate-300 rounded focus:ring-brand-500" />
             <label htmlFor="plan-trainer" className="text-sm font-medium text-slate-700">Includes personal trainer</label>
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -414,7 +420,7 @@ export default function Memberships() {
           </p>
 
           <div className="flex items-center gap-2">
-            <input id="plan-workouts" type="checkbox" checked={planForm.workoutPlanIncluded} onChange={(e) => setPlanForm({ ...planForm, workoutPlanIncluded: e.target.checked })} className="h-4 w-4 text-brand-600 border-slate-300 rounded focus:ring-brand-500" />
+            <input id="plan-workouts" type="checkbox" checked={planForm.workoutPlanIncluded} onChange={(e) => setPlanForm({ ...planForm, workoutPlanIncluded: e.target.checked })} className="h-4 w-4 text-brand-400 border-slate-300 rounded focus:ring-brand-500" />
             <label htmlFor="plan-workouts" className="text-sm font-medium text-slate-700">Includes workout plans</label>
           </div>
           <div className="flex justify-end gap-3 pt-2">
@@ -444,7 +450,7 @@ export default function Memberships() {
               />
             )}
             {memberSearch && !assignForm.selectedMember && filteredMembers.length > 0 && (
-              <ul className="absolute z-10 mt-1 w-full bg-white border border-slate-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+              <ul className="absolute z-10 mt-1 w-full bg-surface-elevated border border-border rounded-lg shadow-pop max-h-48 overflow-y-auto">
                 {filteredMembers.slice(0, 20).map((m) => (
                   <li key={m._id} onClick={() => handleAssignMemberSelect(m)} className="px-3 py-2 text-sm hover:bg-brand-50 cursor-pointer">
                     {m.name} <span className="text-slate-500">({m.email})</span>
@@ -470,10 +476,10 @@ export default function Memberships() {
             <input type="date" value={assignForm.startDate} onChange={(e) => setAssignForm({ ...assignForm, startDate: e.target.value })} className="input" />
           </div>
           <div className="flex items-center gap-2">
-            <input id="complimentary" type="checkbox" checked={assignForm.complimentary} onChange={(e) => setAssignForm({ ...assignForm, complimentary: e.target.checked })} className="h-4 w-4 text-brand-600 border-slate-300 rounded focus:ring-brand-500" />
+            <input id="complimentary" type="checkbox" checked={assignForm.complimentary} onChange={(e) => setAssignForm({ ...assignForm, complimentary: e.target.checked })} className="h-4 w-4 text-brand-400 border-slate-300 rounded focus:ring-brand-500" />
             <label htmlFor="complimentary" className="text-sm font-medium text-slate-700">Complementary / free grant (activate immediately)</label>
           </div>
-          <div className={`rounded-lg px-3 py-2 text-xs ${assignForm.complimentary ? 'bg-amber-50 text-amber-800 border border-amber-200' : 'bg-slate-50 text-slate-500 border border-slate-200'}`}>
+          <div className={`rounded-lg px-3 py-2 text-xs ${assignForm.complimentary ? 'bg-warning/10 text-warning border border-warning/25' : 'bg-slate-50 text-slate-500 border border-slate-200'}`}>
             {assignForm.complimentary
               ? 'A complimentary/offline grant activates the membership immediately — use only for free or counter-collected memberships.'
               : 'This membership is created as PENDING and does not grant access yet. Record the payment on the Payments page (Plan-based entry) to activate it.'}
@@ -515,7 +521,7 @@ export default function Memberships() {
             <div className="grid grid-cols-3 gap-3 text-sm">
               <div>
                 <p className="text-slate-500">Paid</p>
-                <p className="font-semibold text-green-700">{toINR(detail.paidTotal)}</p>
+                <p className="font-semibold text-success">{toINR(detail.paidTotal)}</p>
               </div>
               <div>
                 <p className="text-slate-500">Price</p>
@@ -523,7 +529,7 @@ export default function Memberships() {
               </div>
               <div>
                 <p className="text-slate-500">Remaining</p>
-                <p className={`font-semibold ${Number(detail.remaining) > 0 ? 'text-amber-700' : 'text-green-700'}`}>{toINR(detail.remaining)}</p>
+                <p className={`font-semibold ${Number(detail.remaining) > 0 ? 'text-warning' : 'text-success'}`}>{toINR(detail.remaining)}</p>
               </div>
             </div>
             {detail.membership?.plan?.paymentMode === 'INSTALLMENT' && Number(detail.membership?.plan?.price) > 0 && (

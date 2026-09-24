@@ -9,6 +9,7 @@ import PageHeader from '../../components/common/PageHeader';
 import { SkeletonRow } from '../../components/common/Skeleton';
 import useTrainerDashboard from '../../hooks/useTrainerDashboard';
 import exerciseImage from '../../assets/exerciseImage';
+import { useToast } from '../../context/ToastContext';
 
 const GOALS = ['strength', 'hypertrophy', 'endurance', 'weight_loss', 'general_fitness'];
 const DIFFICULTIES = ['beginner', 'intermediate', 'advanced'];
@@ -35,7 +36,8 @@ export default function Templates() {
   const [assignTemplate, setAssignTemplate] = useState(null);
   const [assignMember, setAssignMember] = useState('');
   const [assigning, setAssigning] = useState(false);
-  const [toast, setToast] = useState(null);
+  const [localToast, setLocalToast] = useState(null);
+  const { toast } = useToast();
   const { data: dashboard } = useTrainerDashboard();
   const members = dashboard?.members || [];
 
@@ -62,8 +64,8 @@ export default function Templates() {
   useEffect(() => { fetchData(); }, [goalFilter, diffFilter]);
 
   const showToast = (msg, type = 'success') => {
-    setToast({ msg, type });
-    setTimeout(() => setToast(null), 3500);
+    setLocalToast({ msg, type });
+    setTimeout(() => setLocalToast(null), 3500);
   };
 
   const handleFormChange = (e) => { setForm({ ...form, [e.target.name]: e.target.value }); };
@@ -131,7 +133,13 @@ export default function Templates() {
   };
 
   const handleDeactivate = async (tpl) => {
-    if (!window.confirm(`Deactivate template "${tpl.name}"?`)) return;
+    const ok = await toast.confirm({
+      title: 'Deactivate template',
+      description: 'Members using this template will no longer receive it for new assignments.',
+      confirmLabel: 'Deactivate',
+      danger: true,
+    });
+    if (!ok) return;
     try {
       await api.delete(`/templates/${tpl._id}`);
       showToast('Template deactivated');
@@ -203,7 +211,7 @@ export default function Templates() {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {templates.map((tpl, i) => (
-                  <tr key={tpl._id} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'}>
+                  <tr key={tpl._id} className={i % 2 === 0 ? 'bg-transparent' : 'bg-slate-100/40'}>
                     <td className="px-6 py-4">
                       <p className="text-sm font-semibold text-slate-900">{tpl.name}</p>
                       {tpl.description && <p className="mt-0.5 text-xs text-slate-500 line-clamp-1 max-w-xs">{tpl.description}</p>}
@@ -248,8 +256,8 @@ export default function Templates() {
 
       <Modal isOpen={showCreate} onClose={() => setShowCreate(false)} title="Create Workout Template" maxWidth="max-w-3xl">
         <form onSubmit={handleCreate} className="space-y-4">
-          {toast && toast.type === 'error' && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{toast.msg}</div>
+          {localToast && localToast.type === 'error' && (
+            <div className="p-3 bg-danger/10 border border-danger/25 rounded-lg text-sm text-danger">{localToast.msg}</div>
           )}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -281,7 +289,7 @@ export default function Templates() {
           <div>
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-semibold text-slate-700">Exercises *</h3>
-              <button type="button" onClick={addExercise} className="btn btn-sm btn-outline text-brand-700 border-brand-200 hover:bg-brand-50">
+              <button type="button" onClick={addExercise} className="btn btn-sm btn-outline text-brand-300 border-brand-200 hover:bg-brand-50">
                 <PlusIcon className="h-4 w-4" aria-hidden="true" />
                 Add Exercise
               </button>
@@ -328,7 +336,7 @@ export default function Templates() {
                         <button
                           type="button"
                           onClick={() => removeExercise(idx)}
-                          className="btn btn-sm btn-ghost text-red-600 hover:text-red-800 hover:bg-red-50"
+                          className="btn btn-sm btn-ghost text-danger hover:text-danger hover:bg-danger/10"
                         >
                           Remove
                         </button>
@@ -373,12 +381,12 @@ export default function Templates() {
         </form>
       </Modal>
 
-      {toast && (
-        <div className="anim-pop fixed bottom-6 right-6 z-50 flex max-w-sm items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-2xl">
-          <span className={`shrink-0 rounded-full p-1.5 ${toast.type === 'error' ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-600'}`}>
-            {toast.type === 'error' ? <ExclamationTriangleIcon className="h-5 w-5" /> : <CheckCircleIcon className="h-5 w-5" />}
+      {localToast && (
+        <div className="anim-pop fixed bottom-6 right-6 z-50 flex max-w-sm items-center gap-3 rounded-xl border-border bg-surface-elevated px-4 py-3 shadow-pop">
+          <span className={`shrink-0 rounded-full p-1.5 ${localToast.type === 'error' ? 'bg-danger/10 text-danger' : 'bg-success/10 text-success'}`}>
+            {localToast.type === 'error' ? <ExclamationTriangleIcon className="h-5 w-5" /> : <CheckCircleIcon className="h-5 w-5" />}
           </span>
-          <p className="text-sm font-medium text-slate-800">{toast.msg}</p>
+          <p className="text-sm font-medium text-slate-100">{localToast.msg}</p>
         </div>
       )}
     </div>

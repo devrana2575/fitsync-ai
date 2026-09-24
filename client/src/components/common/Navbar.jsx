@@ -10,17 +10,17 @@ import {
   SparklesIcon,
   ClipboardDocumentCheckIcon,
   Bars3Icon,
-  XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../../context/AuthContext';
 import { useSocket } from '../../context/SocketContext';
+import { useToast } from '../../context/ToastContext';
 import api from '../../services/api';
 import Avatar from './Avatar';
 
 const roleStyles = {
-  admin: 'bg-ink-900 text-brand-400 ring-1 ring-ink-700',
-  trainer: 'bg-ink-100 text-ink-800 ring-1 ring-ink-200',
-  member: 'bg-brand-500 text-ink-950',
+  admin: 'bg-brand-500/15 text-brand-400 ring-1 ring-inset ring-brand-500/25',
+  trainer: 'bg-info/12 text-info ring-1 ring-inset ring-info/25',
+  member: 'bg-slate-200/70 text-slate-300 ring-1 ring-inset ring-slate-300/50',
 };
 
 const typeIcons = {
@@ -33,12 +33,12 @@ const typeIcons = {
 };
 
 const typeTones = {
-  info: 'text-sky-500',
-  warning: 'text-amber-500',
-  success: 'text-emerald-500',
-  error: 'text-red-500',
-  membership: 'text-brand-600',
-  attendance: 'text-slate-500',
+  info: 'text-info',
+  warning: 'text-warning',
+  success: 'text-success',
+  error: 'text-danger',
+  membership: 'text-brand-400',
+  attendance: 'text-slate-400',
 };
 
 function timeAgo(dateStr) {
@@ -56,16 +56,14 @@ function timeAgo(dateStr) {
 export default function Navbar({ onMenuClick }) {
   const { user, logout } = useAuth();
   const socket = useSocket();
+  const { toast } = useToast();
   const [showDropdown, setShowDropdown] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifications, setNotifications] = useState([]);
   const [notifLoading, setNotifLoading] = useState(false);
   const [notifError, setNotifError] = useState(false);
-  const [toasts, setToasts] = useState([]);
-  const [confirmingLogout, setConfirmingLogout] = useState(false);
   const notifRef = useRef(null);
-  const toastId = useRef(0);
 
   const fetchUnreadCount = useCallback(async () => {
     try {
@@ -103,15 +101,11 @@ export default function Navbar({ onMenuClick }) {
       setUnreadCount((prev) => prev + 1);
       setNotifications((prev) => (n ? [n, ...prev].slice(0, 20) : prev));
       if (!n) return;
-      const id = ++toastId.current;
-      setToasts((prev) => [...prev.slice(-2), { id, ...n }]);
-      setTimeout(() => {
-        setToasts((prev) => prev.filter((t) => t.id !== id));
-      }, 6000);
+      toast.info(n.title, n.message);
     };
     socket.registerOnNotification(handler);
     return () => socket.registerOnNotification(null);
-  }, [socket]);
+  }, [socket, toast]);
 
   useEffect(() => {
     const handleVisibility = () => {
@@ -162,36 +156,24 @@ export default function Navbar({ onMenuClick }) {
   };
 
   return (
-    <header className="h-16 bg-white/90 backdrop-blur border-b border-slate-200 flex items-center justify-between px-4 sm:px-6 sticky top-0 z-20">
-      {toasts.length > 0 && (
-        <div className="fixed top-16 right-4 z-[60] space-y-2 w-80 max-w-[calc(100vw-2rem)]">
-          {toasts.map((t) => {
-            const TIcon = typeIcons[t.type] || BellIcon;
-            const tone = typeTones[t.type] || 'text-brand-600';
-            return (
-              <div key={t.id} className="bg-white rounded-xl shadow-lg shadow-slate-200/70 border border-slate-200 px-4 py-3 flex items-start gap-3 fade-in">
-                <TIcon className={`h-5 w-5 mt-0.5 shrink-0 ${tone}`} aria-hidden="true" />
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-slate-900 leading-snug">{t.title}</p>
-                  <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{t.message}</p>
-                </div>
-                <button onClick={() => setToasts((prev) => prev.filter((x) => x.id !== t.id))} className="text-slate-300 hover:text-slate-500" aria-label="Dismiss">
-                  <XMarkIcon className="h-4 w-4" aria-hidden="true" />
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      )}
+    <header className="h-16 bg-base/85 backdrop-blur border-b border-border flex items-center justify-between px-4 sm:px-6 sticky top-0 z-20">
       <button
         onClick={onMenuClick}
-        className="lg:hidden p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
+        className="lg:hidden p-2 text-slate-400 hover:text-white hover:bg-surface-hover rounded-lg transition-colors"
         aria-label="Open menu"
       >
         <Bars3Icon className="h-5 w-5" aria-hidden="true" />
       </button>
-      <div />
-      <div className="flex items-center gap-3">
+
+      <div className="hidden lg:block text-sm text-slate-500">
+        {user?.role ? (
+          <span className={`inline-block rounded-md px-2 py-0.5 text-[11px] font-medium capitalize ${roleStyles[user.role] || 'bg-surface text-slate-400'}`}>
+            {user.role} console
+          </span>
+        ) : null}
+      </div>
+
+      <div className="flex items-center gap-2 sm:gap-3">
         {/* Bell */}
         <div className="relative" ref={notifRef}>
           <button
@@ -199,12 +181,12 @@ export default function Navbar({ onMenuClick }) {
               setShowNotifications((prev) => !prev);
               setShowDropdown(false);
             }}
-            className="relative p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
-            aria-label="Notifications"
+            className="relative p-2 text-slate-400 hover:text-white hover:bg-surface-hover rounded-lg transition-colors"
+            aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ''}`}
           >
             <BellIcon className="h-5 w-5" aria-hidden="true" />
             {unreadCount > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 min-w-[1.125rem] h-[1.125rem] bg-red-500 text-white text-[10px] font-semibold rounded-full flex items-center justify-center leading-none px-1 ring-2 ring-white">
+              <span className="absolute -top-0.5 -right-0.5 min-w-[1.125rem] h-[1.125rem] bg-danger text-white text-[10px] font-semibold rounded-full flex items-center justify-center leading-none px-1 ring-2 ring-base">
                 {unreadCount > 99 ? '99+' : unreadCount}
               </span>
             )}
@@ -212,29 +194,26 @@ export default function Navbar({ onMenuClick }) {
           {showNotifications && (
             <>
               <div className="fixed inset-0 z-40" onClick={() => setShowNotifications(false)} />
-              <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-lg shadow-slate-200/60 border border-slate-200 z-50 max-h-[28rem] flex flex-col fade-in">
-                <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
+              <div className="absolute right-0 mt-2 w-80 max-w-[calc(100vw-2rem)] bg-surface-elevated rounded-xl shadow-pop border border-border z-50 max-h-[28rem] flex flex-col anim-pop">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-border">
                   <h3 className="text-sm font-semibold text-slate-900">Notifications</h3>
                   {unreadCount > 0 && (
-                    <button
-                      onClick={handleMarkAllRead}
-                      className="text-xs text-brand-700 hover:text-brand-800 font-medium"
-                    >
+                    <button onClick={handleMarkAllRead} className="text-xs text-brand-400 hover:text-brand-300 font-medium">
                       Mark all read
                     </button>
                   )}
                 </div>
-                <div className="overflow-y-auto flex-1 divide-y divide-slate-100">
+                <div className="overflow-y-auto flex-1 divide-y divide-border">
                   {notifLoading && notifications.length === 0 && (
-                    <p className="px-4 py-6 text-sm text-slate-400 text-center">Loading...</p>
+                    <p className="px-4 py-6 text-sm text-slate-500 text-center">Loading...</p>
                   )}
                   {notifError && !notifLoading && (
-                    <p className="px-4 py-6 text-sm text-red-400 text-center">
+                    <p className="px-4 py-6 text-sm text-danger text-center">
                       Couldn&apos;t load notifications
                     </p>
                   )}
                   {!notifLoading && !notifError && notifications.length === 0 && (
-                    <p className="px-4 py-6 text-sm text-slate-400 text-center">No notifications</p>
+                    <p className="px-4 py-6 text-sm text-slate-500 text-center">No notifications</p>
                   )}
                   {notifications.map((n) => {
                     const TypeIcon = typeIcons[n.type] || BellIcon;
@@ -244,8 +223,8 @@ export default function Navbar({ onMenuClick }) {
                         onClick={() => {
                           if (!n.isRead) handleMarkRead(n._id);
                         }}
-                        className={`w-full text-left px-4 py-3 hover:bg-slate-50 transition-colors ${
-                          !n.isRead ? 'bg-brand-50/50' : ''
+                        className={`w-full text-left px-4 py-3 hover:bg-surface-hover transition-colors ${
+                          !n.isRead ? 'bg-brand-500/8' : ''
                         }`}
                       >
                         <div className="flex items-start gap-2.5">
@@ -257,7 +236,7 @@ export default function Navbar({ onMenuClick }) {
                             <div className="flex items-center justify-between gap-2">
                               <p
                                 className={`text-sm leading-snug ${
-                                  !n.isRead ? 'font-semibold text-slate-900' : 'text-slate-700'
+                                  !n.isRead ? 'font-semibold text-slate-900' : 'text-slate-300'
                                 }`}
                               >
                                 {n.title}
@@ -267,7 +246,7 @@ export default function Navbar({ onMenuClick }) {
                               )}
                             </div>
                             <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{n.message}</p>
-                            <p className="text-[10px] text-slate-400 mt-1">{timeAgo(n.createdAt)}</p>
+                            <p className="text-[10px] text-slate-500 mt-1">{timeAgo(n.createdAt)}</p>
                           </div>
                         </div>
                       </button>
@@ -279,6 +258,9 @@ export default function Navbar({ onMenuClick }) {
           )}
         </div>
 
+        {/* Profile separator */}
+        <span className="hidden sm:block h-6 w-px bg-border" aria-hidden="true" />
+
         {/* User dropdown */}
         <div className="relative">
           <button
@@ -286,61 +268,51 @@ export default function Navbar({ onMenuClick }) {
               setShowDropdown(!showDropdown);
               setShowNotifications(false);
             }}
-            className="flex items-center gap-2.5 px-2.5 py-1.5 hover:bg-slate-100 rounded-lg transition-colors"
+            className="flex items-center gap-2.5 px-2 py-1.5 hover:bg-surface-hover rounded-lg transition-colors"
+            aria-expanded={showDropdown}
+            aria-haspopup="menu"
           >
             <Avatar name={user?.name} src={user?.avatar} size="sm" />
             <div className="text-left hidden md:block">
-              <p className="text-sm font-medium text-slate-900 leading-tight">
+              <p className="text-sm font-medium text-slate-100 leading-tight">
                 {user?.name || 'User'}
               </p>
               <span
-                className={`inline-block mt-0.5 text-[11px] px-1.5 py-0.5 rounded-md font-medium capitalize ${roleStyles[user?.role] || 'bg-slate-100 text-slate-600'}`}
+                className={`inline-block mt-0.5 text-[11px] px-1.5 py-0.5 rounded-md font-medium capitalize ${roleStyles[user?.role] || 'bg-surface text-slate-400'}`}
               >
                 {user?.role || 'user'}
               </span>
             </div>
-            <ChevronDownIcon className="h-4 w-4 text-slate-400" aria-hidden="true" />
+            <ChevronDownIcon className="h-4 w-4 text-slate-500" aria-hidden="true" />
           </button>
           {showDropdown && (
-            <>
-              <div className="fixed inset-0 z-40" onClick={() => setShowDropdown(false)} />
-              <div className="absolute right-0 mt-2 w-52 bg-white rounded-xl shadow-lg shadow-slate-200/60 border border-slate-200 py-1 z-50 fade-in">
-                {confirmingLogout ? (
-                  <div className="px-4 py-3">
-                    <p className="text-sm font-medium text-slate-900">Log out?</p>
-                    <p className="text-xs text-slate-500 mt-1">You'll be signed out of your account.</p>
-                    <div className="flex items-center justify-end gap-2 mt-3">
-                      <button
-                        onClick={() => setConfirmingLogout(false)}
-                        className="px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg border border-slate-200"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        onClick={logout}
-                        className="px-3 py-1.5 text-xs font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg"
-                      >
-                        Logout
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    <div className="px-4 py-2.5 border-b border-slate-100">
-                      <p className="text-sm font-medium text-slate-900 truncate">{user?.name}</p>
-                      <p className="text-xs text-slate-500 truncate">{user?.email}</p>
-                    </div>
-                    <button
-                      onClick={() => setConfirmingLogout(true)}
-                      className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
-                    >
-                      <ArrowRightOnRectangleIcon className="h-4 w-4" aria-hidden="true" />
-                      Logout
-                    </button>
-                  </>
-                )}
+            <div className="absolute right-0 mt-2 w-56 bg-surface-elevated rounded-xl shadow-pop border border-border py-1 z-50 anim-pop" role="menu">
+              <div className="px-4 py-2.5 border-b border-border">
+                <p className="text-sm font-medium text-slate-100 truncate">{user?.name}</p>
+                <p className="text-xs text-slate-500 truncate">{user?.email}</p>
               </div>
-            </>
+              <div className="px-4 py-2.5 border-b border-border flex items-center gap-2">
+                <span className={`rounded-md px-2 py-0.5 text-[11px] font-medium capitalize ${roleStyles[user?.role] || 'bg-surface text-slate-400'}`}>
+                  {user?.role || 'user'}
+                </span>
+              </div>
+              <button
+                onClick={async () => {
+                  const ok = await toast.confirm({
+                    title: 'Log out?',
+                    description: "You'll be signed out of your account.",
+                    confirmLabel: 'Logout',
+                    danger: true,
+                  });
+                  if (ok) logout();
+                }}
+                className="w-full text-left px-4 py-2.5 text-sm text-danger hover:bg-danger/10 flex items-center gap-2"
+                role="menuitem"
+              >
+                <ArrowRightOnRectangleIcon className="h-4 w-4" aria-hidden="true" />
+                Logout
+              </button>
+            </div>
           )}
         </div>
       </div>

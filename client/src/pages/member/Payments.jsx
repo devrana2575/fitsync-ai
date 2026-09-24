@@ -98,13 +98,13 @@ export default function Payments() {
       />
 
       {banner === 'success' && (
-        <div className="flex items-center gap-2 rounded-lg bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700 ring-1 ring-emerald-200">
+        <div className="flex items-center gap-2 rounded-lg bg-success/10 px-4 py-3 text-sm font-medium text-success ring-1 ring-success/25">
           <CheckCircleIcon className="h-5 w-5 shrink-0" aria-hidden="true" />
           Payment received and verified. Your membership is active.
         </div>
       )}
       {banner === 'pending' && (
-        <div className="flex items-center gap-2 rounded-lg bg-amber-50 px-4 py-3 text-sm font-medium text-amber-700 ring-1 ring-amber-200">
+        <div className="flex items-center gap-2 rounded-lg bg-warning/10 px-4 py-3 text-sm font-medium text-warning ring-1 ring-amber-200">
           <ClockIcon className="h-5 w-5 shrink-0" aria-hidden="true" />
           We received your payment request. Your membership activates once the payment is confirmed and verified.
         </div>
@@ -129,7 +129,7 @@ export default function Payments() {
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-5 py-4">
             <h2 className="card-title">Payment records</h2>
             <span className="inline-flex items-center gap-1 text-xs text-slate-400">
-              <ShieldCheckIcon className="h-4 w-4 text-brand-600" aria-hidden="true" />
+              <ShieldCheckIcon className="h-4 w-4 text-brand-400" aria-hidden="true" />
               Verified against gateway records
             </span>
           </div>
@@ -146,7 +146,7 @@ export default function Payments() {
               </thead>
               <tbody className="divide-y divide-slate-200">
                 {payments.map((p) => (
-                  <tr key={p._id} className="odd:bg-white even:bg-slate-50/60">
+                  <tr key={p._id} className="odd:bg-transparent even:bg-slate-100/40">
                     <td className="px-6 py-4 text-sm font-semibold text-slate-900 tabular-nums">{toINR(p.amount)}</td>
                     <td className="px-6 py-4 text-sm text-slate-600">{p.membership?.plan?.name || '—'}</td>
                     <td className="px-6 py-4 text-sm capitalize text-slate-600">{p.method || '—'}</td>

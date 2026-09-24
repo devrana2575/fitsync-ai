@@ -9,6 +9,7 @@ import StatCard from '../../components/common/StatCard';
 import { SkeletonRow } from '../../components/common/Skeleton';
 import { fmtDate, fmtTime } from '../../utils/format';
 import useTrainerDashboard from '../../hooks/useTrainerDashboard';
+import { useToast } from '../../context/ToastContext';
 
 export default function Attendance() {
   const [records, setRecords] = useState([]);
@@ -20,6 +21,7 @@ export default function Attendance() {
   const [checkInLoading, setCheckInLoading] = useState(false);
   const [checkOutId, setCheckOutId] = useState('');
   const { data: dashboard } = useTrainerDashboard();
+  const { toast } = useToast();
 
   const fetchResults = async () => {
     setLoading(true);
@@ -56,7 +58,7 @@ export default function Attendance() {
       setSelectedMember('');
       fetchResults();
     } catch (err) {
-      alert(err.message || 'Check-in failed');
+      toast.error('Check-in failed', err.message);
     } finally {
       setCheckInLoading(false);
     }
@@ -68,7 +70,7 @@ export default function Attendance() {
       await api.post(`/attendance/checkout/${id}`);
       fetchResults();
     } catch (err) {
-      alert(err.message || 'Check-out failed');
+      toast.error('Check-out failed', err.message);
     } finally {
       setCheckOutId('');
     }
@@ -183,7 +185,7 @@ export default function Attendance() {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {records.map((r, i) => (
-                  <tr key={r._id} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'}>
+                  <tr key={r._id} className={i % 2 === 0 ? 'bg-transparent' : 'bg-slate-100/40'}>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <Avatar name={r.user?.name || r.member?.name} size="sm" />

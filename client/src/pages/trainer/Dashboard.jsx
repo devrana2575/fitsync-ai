@@ -126,7 +126,7 @@ export default function TrainerDashboard() {
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <div className="card p-5">
           <div className="flex items-center gap-4">
-            <span className="shrink-0 p-3 rounded-lg ring-1 bg-brand-100 text-brand-700 ring-brand-200">
+            <span className="shrink-0 p-3 rounded-lg ring-1 bg-brand-100 text-brand-300 ring-brand-200">
               <UserGroupIcon className="h-5 w-5" aria-hidden="true" />
             </span>
             <div className="min-w-0 flex-1">
@@ -171,7 +171,7 @@ export default function TrainerDashboard() {
                   <li key={memberId(m)}>
                     <button
                       onClick={() => navigate(`/trainer/members/${memberId(m)}`)}
-                      className="w-full flex items-center gap-3 px-5 py-3.5 text-left hover:bg-slate-50 transition-colors"
+                      className="w-full flex items-center gap-3 px-5 py-3.5 text-left hover:bg-slate-100/40 transition-colors"
                     >
                       <Avatar name={memberName(m)} src={m.user?.avatar} size="md" />
                       <span className="min-w-0 flex-1">
@@ -185,7 +185,7 @@ export default function TrainerDashboard() {
                           <span className="badge badge-warning">No visit in 7+ days</span>
                         )}
                         {m.attention.includes('membership_expiring') && (
-                          <span className="badge bg-orange-100 text-orange-700">Membership expiring</span>
+                          <span className="badge bg-warning/15 text-warning">Membership expiring</span>
                         )}
                       </span>
                       <ArrowRightIcon className="h-4 w-4 text-slate-300 shrink-0" aria-hidden="true" />
@@ -224,7 +224,7 @@ export default function TrainerDashboard() {
                         <tr
                           key={memberId(m)}
                           onClick={() => navigate(`/trainer/members/${memberId(m)}`)}
-                          className={`cursor-pointer hover:bg-slate-50 transition-colors ${i % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'}`}
+                          className={`cursor-pointer hover:bg-slate-100/40 transition-colors ${i % 2 === 0 ? 'bg-transparent' : 'bg-slate-100/40'}`}
                         >
                           <td className="px-5 py-3">
                             <div className="flex items-center gap-3">
@@ -259,7 +259,7 @@ export default function TrainerDashboard() {
                   onClick={() => navigate(action.path)}
                   className="flex w-full items-center gap-3 rounded-xl border border-slate-200 px-4 py-3 text-left hover:bg-slate-50 hover:border-slate-300 transition-colors"
                 >
-                  <span className="shrink-0 p-2 rounded-lg bg-brand-100 text-brand-700">
+                  <span className="shrink-0 p-2 rounded-lg bg-brand-100 text-brand-300">
                     <action.icon className="h-5 w-5" aria-hidden="true" />
                   </span>
                   <span className="flex-1 min-w-0">

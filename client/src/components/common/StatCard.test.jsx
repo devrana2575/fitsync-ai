@@ -23,8 +23,8 @@ describe('StatCard', () => {
   it('applies card color classes', () => {
     render(<StatCard label="Green" value="3" color="green" />)
     const badge = screen.getByText('Green').closest('.card').querySelector('.rounded-lg')
-    expect(badge.className).toContain('bg-emerald-50')
-    expect(badge.className).toContain('text-emerald-600')
-    expect(badge.className).toContain('ring-emerald-100')
+    expect(badge.className).toContain('bg-success/12')
+    expect(badge.className).toContain('text-success')
+    expect(badge.className).toContain('ring-success/25')
   })
 })

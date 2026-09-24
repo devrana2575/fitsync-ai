@@ -9,6 +9,7 @@ import {
   PlusIcon,
 } from '@heroicons/react/24/outline';
 import api from '../../services/api';
+import { useToast } from '../../context/ToastContext';
 import PageHeader from '../../components/common/PageHeader';
 import EmptyState from '../../components/common/EmptyState';
 import ErrorState from '../../components/common/ErrorState';
@@ -17,6 +18,7 @@ import Skeleton, { SkeletonCard, SkeletonRow } from '../../components/common/Ske
 import { fmtDate } from '../../utils/format';
 
 export default function Progress() {
+  const { toast } = useToast();
   const [measurements, setMeasurements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -93,7 +95,7 @@ export default function Progress() {
       await api.post('/photos', fd);
       setPhotoForm({ caption: '', angle: 'other', file: null });
       setShowPhotoForm(false);
-      alert('Photo uploaded successfully');
+      toast.success('Photo uploaded', 'Your photo has been updated.');
       fetchPhotos();
     } catch (err) {
       setPhotoError(err.message);
@@ -103,13 +105,19 @@ export default function Progress() {
   };
 
   const handleDeletePhoto = async (photo) => {
-    if (!window.confirm('Delete this progress photo?')) return;
+    const proceed = await toast.confirm({
+      title: 'Delete this progress photo?',
+      description: 'This action cannot be undone.',
+      confirmLabel: 'Delete',
+      danger: true,
+    });
+    if (!proceed) return;
     try {
       await api.delete(`/photos/${photo._id}`);
-      alert('Photo deleted');
+      toast.success('Photo deleted');
       fetchPhotos();
     } catch (err) {
-      alert(err.message);
+      toast.error('Delete failed', err.message);
     }
   };
 
@@ -198,7 +206,7 @@ export default function Progress() {
         <div className="card p-6">
           <h2 className="section-title mb-4">Record Body Measurement</h2>
           {formError && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{formError}</div>
+            <div className="mb-4 p-3 bg-danger/10 border border-danger/25 rounded-lg text-sm text-danger">{formError}</div>
           )}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -250,11 +258,11 @@ export default function Progress() {
           {enough('weight') ? (
             <ResponsiveContainer width="100%" height={250}>
               <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                <XAxis dataKey="date" tick={{ fontSize: 12 }} stroke="#94a3b8" />
-                <YAxis tick={{ fontSize: 12 }} stroke="#94a3b8" />
-                <Tooltip />
-                <Line type="monotone" dataKey="weight" stroke="#84cc16" strokeWidth={2} dot={{ fill: '#84cc16' }} name="Weight (kg)" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#23282e" />
+                <XAxis dataKey="date" tickLine={false} axisLine={{ stroke: "#292f35" }} tick={{ fontSize: 12, fill: "#6f7983" }} />
+                <YAxis tickLine={false} axisLine={{ stroke: "#292f35" }} tick={{ fontSize: 12, fill: "#6f7983" }} />
+                <Tooltip contentStyle={{ backgroundColor: '#181c20', border: '1px solid #292f35', borderRadius: '0.75rem', color: '#f3f5f4' }} labelStyle={{ color: '#9aa4ad' }} itemStyle={{ color: '#f3f5f4' }} />
+                <Line type="monotone" dataKey="weight" stroke="#B7F34A" strokeWidth={2} dot={{ fill: '#B7F34A' }} name="Weight (kg)" />
               </LineChart>
             </ResponsiveContainer>
           ) : (
@@ -278,10 +286,10 @@ export default function Progress() {
           {enough('bmi') ? (
             <ResponsiveContainer width="100%" height={250}>
               <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                <XAxis dataKey="date" tick={{ fontSize: 12 }} stroke="#94a3b8" />
-                <YAxis tick={{ fontSize: 12 }} stroke="#94a3b8" />
-                <Tooltip />
+                <CartesianGrid strokeDasharray="3 3" stroke="#23282e" />
+                <XAxis dataKey="date" tickLine={false} axisLine={{ stroke: "#292f35" }} tick={{ fontSize: 12, fill: "#6f7983" }} />
+                <YAxis tickLine={false} axisLine={{ stroke: "#292f35" }} tick={{ fontSize: 12, fill: "#6f7983" }} />
+                <Tooltip contentStyle={{ backgroundColor: '#181c20', border: '1px solid #292f35', borderRadius: '0.75rem', color: '#f3f5f4' }} labelStyle={{ color: '#9aa4ad' }} itemStyle={{ color: '#f3f5f4' }} />
                 <Line type="monotone" dataKey="bmi" stroke="#10b981" strokeWidth={2} dot={{ fill: '#10b981' }} name="BMI" />
               </LineChart>
             </ResponsiveContainer>
@@ -307,13 +315,13 @@ export default function Progress() {
         {enough('chest') || enough('waist') || enough('hips') ? (
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis dataKey="date" tick={{ fontSize: 12 }} stroke="#94a3b8" />
-              <YAxis tick={{ fontSize: 12 }} stroke="#94a3b8" />
-              <Tooltip />
-              <Legend />
-              <Line type="monotone" dataKey="chest" stroke="#84cc16" strokeWidth={2} dot={{ fill: '#84cc16' }} name="Chest (cm)" />
-              <Line type="monotone" dataKey="waist" stroke="#f59e0b" strokeWidth={2} dot={{ fill: '#f59e0b' }} name="Waist (cm)" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#23282e" />
+              <XAxis dataKey="date" tickLine={false} axisLine={{ stroke: "#292f35" }} tick={{ fontSize: 12, fill: "#6f7983" }} />
+              <YAxis tickLine={false} axisLine={{ stroke: "#292f35" }} tick={{ fontSize: 12, fill: "#6f7983" }} />
+              <Tooltip contentStyle={{ backgroundColor: '#181c20', border: '1px solid #292f35', borderRadius: '0.75rem', color: '#f3f5f4' }} labelStyle={{ color: '#9aa4ad' }} itemStyle={{ color: '#f3f5f4' }} />
+              <Legend wrapperStyle={{ color: '#9aa4ad' }} />
+              <Line type="monotone" dataKey="chest" stroke="#B7F34A" strokeWidth={2} dot={{ fill: '#B7F34A' }} name="Chest (cm)" />
+              <Line type="monotone" dataKey="waist" stroke="#F4B740" strokeWidth={2} dot={{ fill: '#F4B740' }} name="Waist (cm)" />
               <Line type="monotone" dataKey="hips" stroke="#10b981" strokeWidth={2} dot={{ fill: '#10b981' }} name="Hips (cm)" />
             </LineChart>
           </ResponsiveContainer>
@@ -375,7 +383,7 @@ export default function Progress() {
       <Modal isOpen={showPhotoForm} onClose={() => setShowPhotoForm(false)} title="Upload Progress Photo">
         <form onSubmit={handlePhotoSubmit} className="space-y-4">
           {photoError && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{photoError}</div>
+            <div className="p-3 bg-danger/10 border border-danger/25 rounded-lg text-sm text-danger">{photoError}</div>
           )}
           <div>
             <label className="label">Caption</label>
@@ -410,7 +418,7 @@ export default function Progress() {
               name="photo"
               accept="image/*"
               onChange={handlePhotoChange}
-              className="input file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-brand-50 file:text-brand-600"
+              className="input file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-brand-50 file:text-brand-400"
             />
           </div>
           <div className="flex justify-end">
@@ -446,7 +454,7 @@ export default function Progress() {
                 {[...measurements].reverse().map((m, idx) => {
                   const bmi = m.bmi || (m.weight && m.height ? Math.round((m.weight / ((m.height / 100) ** 2)) * 10) / 10 : null);
                   return (
-                    <tr key={m._id || m.id || idx} className="odd:bg-white even:bg-slate-50/50 hover:bg-slate-50 transition-colors">
+                    <tr key={m._id || m.id || idx} className="odd:bg-transparent even:bg-slate-100/40 hover:bg-slate-100/40 transition-colors">
                       <td className="px-6 py-3 font-medium text-slate-900 whitespace-nowrap">{fmtDate(m.createdAt || m.date)}</td>
                       <td className="px-6 py-3 text-slate-600">{m.weight ? `${m.weight} kg` : '—'}</td>
                       <td className="px-6 py-3 text-slate-600">{m.height ? `${m.height} cm` : '—'}</td>

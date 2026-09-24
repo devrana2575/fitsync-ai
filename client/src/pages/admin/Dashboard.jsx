@@ -22,7 +22,7 @@ import ErrorState from '../../components/common/ErrorState';
 import Skeleton, { SkeletonCard } from '../../components/common/Skeleton';
 import { toINR, fmtDateShort, daysUntil } from '../../utils/format';
 
-const PIE_COLORS = ['#84cc16', '#22c55e', '#f59e0b', '#ef4444', '#38bdf8', '#a78bfa'];
+const PIE_COLORS = ['#B7F34A', '#35C979', '#F4B740', '#EF5B63', '#5EA7FF', '#A78BFA'];
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -263,12 +263,12 @@ export default function Dashboard() {
         <ChartCard title="Revenue Trend" loading={loading} error={errors.revenue && 'Failed to load revenue data'} onRetry={handleRefresh} hasData={revenue.length > 0}>
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={revenue}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-              <YAxis tick={{ fontSize: 12 }} />
-              <Tooltip formatter={(v) => toINR(v)} />
-              <Legend />
-              <Line type="monotone" dataKey="revenue" stroke="#84cc16" strokeWidth={2} dot={{ r: 4 }} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#23282e" />
+              <XAxis dataKey="month" tickLine={false} axisLine={{ stroke: "#292f35" }} tick={{ fontSize: 12, fill: "#6f7983" }} />
+              <YAxis tickLine={false} axisLine={{ stroke: "#292f35" }} tick={{ fontSize: 12, fill: "#6f7983" }} />
+              <Tooltip formatter={(v) => toINR(v)} contentStyle={{ backgroundColor: '#181c20', border: '1px solid #292f35', borderRadius: '0.75rem', color: '#f3f5f4' }} labelStyle={{ color: '#9aa4ad' }} itemStyle={{ color: '#f3f5f4' }} />
+              <Legend wrapperStyle={{ color: '#9aa4ad' }} />
+              <Line type="monotone" dataKey="revenue" stroke="#B7F34A" strokeWidth={2} dot={{ r: 4 }} />
             </LineChart>
           </ResponsiveContainer>
         </ChartCard>
@@ -276,12 +276,12 @@ export default function Dashboard() {
         <ChartCard title="Attendance Trend" loading={loading} error={errors.attendance && 'Failed to load attendance data'} onRetry={handleRefresh} hasData={attendance.length > 0}>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={attendance}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis dataKey="day" tick={{ fontSize: 12 }} />
-              <YAxis tick={{ fontSize: 12 }} />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="count" fill="#84cc16" radius={[4, 4, 0, 0]} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#23282e" />
+              <XAxis dataKey="day" tickLine={false} axisLine={{ stroke: "#292f35" }} tick={{ fontSize: 12, fill: "#6f7983" }} />
+              <YAxis tickLine={false} axisLine={{ stroke: "#292f35" }} tick={{ fontSize: 12, fill: "#6f7983" }} />
+              <Tooltip contentStyle={{ backgroundColor: '#181c20', border: '1px solid #292f35', borderRadius: '0.75rem', color: '#f3f5f4' }} labelStyle={{ color: '#9aa4ad' }} itemStyle={{ color: '#f3f5f4' }} />
+              <Legend wrapperStyle={{ color: '#9aa4ad' }} />
+              <Bar dataKey="count" fill="#B7F34A" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>
@@ -302,8 +302,8 @@ export default function Dashboard() {
                   <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
                 ))}
               </Pie>
-              <Tooltip formatter={(v) => fmt(v)} />
-              <Legend />
+              <Tooltip formatter={(v) => fmt(v)} contentStyle={{ backgroundColor: '#181c20', border: '1px solid #292f35', borderRadius: '0.75rem', color: '#f3f5f4' }} labelStyle={{ color: '#9aa4ad' }} itemStyle={{ color: '#f3f5f4' }} />
+              <Legend wrapperStyle={{ color: '#9aa4ad' }} />
             </PieChart>
           </ResponsiveContainer>
         </ChartCard>
@@ -311,12 +311,12 @@ export default function Dashboard() {
         <ChartCard title="Peak Hours" loading={loading} error={errors.peakHours && 'Failed to load peak hours data'} onRetry={handleRefresh} hasData={peakHours.length > 0}>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={peakHours}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis dataKey="hour" tick={{ fontSize: 12 }} />
-              <YAxis tick={{ fontSize: 12 }} />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="count" fill="#22c55e" radius={[4, 4, 0, 0]} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#23282e" />
+              <XAxis dataKey="hour" tickLine={false} axisLine={{ stroke: "#292f35" }} tick={{ fontSize: 12, fill: "#6f7983" }} />
+              <YAxis tickLine={false} axisLine={{ stroke: "#292f35" }} tick={{ fontSize: 12, fill: "#6f7983" }} />
+              <Tooltip contentStyle={{ backgroundColor: '#181c20', border: '1px solid #292f35', borderRadius: '0.75rem', color: '#f3f5f4' }} labelStyle={{ color: '#9aa4ad' }} itemStyle={{ color: '#f3f5f4' }} />
+              <Legend wrapperStyle={{ color: '#9aa4ad' }} />
+              <Bar dataKey="count" fill="#5EA7FF" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>

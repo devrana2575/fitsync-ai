@@ -8,6 +8,7 @@ import ErrorState from '../../components/common/ErrorState';
 import PageHeader from '../../components/common/PageHeader';
 import ProfileCompletionCard from '../../components/common/ProfileCompletionCard';
 import { fmtDate } from '../../utils/format';
+import { useToast } from '../../context/ToastContext';
 
 const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const GENDER_LABELS = { male: 'Male', female: 'Female', other: 'Other' };
@@ -39,9 +40,10 @@ const toForm = (user, profile) => ({
 
 const inputCls = 'input';
 const labelCls = 'label';
-const iconBtnCls = 'btn btn-sm btn-ghost text-red-600 hover:text-red-800 hover:bg-red-50';
+const iconBtnCls = 'btn btn-sm btn-ghost text-danger hover:text-danger hover:bg-danger/10';
 
 export default function TrainerProfile() {
+  const { toast } = useToast();
   const [me, setMe] = useState(null);
   const [completion, setCompletion] = useState(null);
   const [available, setAvailable] = useState(true);
@@ -154,9 +156,10 @@ export default function TrainerProfile() {
       setMe((prev) => ({ ...prev, name: res.data.user?.name || prev.name }));
       setCompletion(res.data.completion || completion);
       setSaveMsg('Profile updated successfully');
+      toast.success('Profile updated successfully');
     } catch (err) {
       setSaveMsg(null);
-      alert(err.message || 'Failed to update profile');
+      toast.error('Profile update failed', err.message);
     } finally {
       setSaving(false);
     }
@@ -170,8 +173,9 @@ export default function TrainerProfile() {
       form.append('photo', file);
       const res = await api.post('/auth/me/avatar', form);
       setMe((prev) => ({ ...prev, avatar: res.data.user?.avatar }));
+      toast.success('Photo uploaded successfully');
     } catch (err) {
-      alert(err.message || 'Failed to upload photo');
+      toast.error('Upload failed', err.message);
     } finally {
       setPhotoBusy(false);
     }
@@ -182,8 +186,9 @@ export default function TrainerProfile() {
     try {
       await api.delete('/auth/me/avatar');
       setMe((prev) => ({ ...prev, avatar: '' }));
+      toast.success('Photo removed successfully');
     } catch (err) {
-      alert(err.message || 'Failed to remove photo');
+      toast.error('Remove failed', err.message);
     } finally {
       setPhotoBusy(false);
     }
@@ -314,7 +319,7 @@ export default function TrainerProfile() {
                       </button>
                     </div>
                   ))}
-                  <button type="button" onClick={addLanguage} className="btn btn-sm btn-outline text-brand-700 border-brand-200 hover:bg-brand-50">
+                  <button type="button" onClick={addLanguage} className="btn btn-sm btn-outline text-brand-300 border-brand-200 hover:bg-brand-50">
                     <PlusIcon className="h-4 w-4" aria-hidden="true" />
                     Add language
                   </button>
@@ -338,7 +343,7 @@ export default function TrainerProfile() {
                     </button>
                   </div>
                 ))}
-                <button type="button" onClick={addSpecialization} className="btn btn-sm btn-outline text-brand-700 border-brand-200 hover:bg-brand-50">
+                <button type="button" onClick={addSpecialization} className="btn btn-sm btn-outline text-brand-300 border-brand-200 hover:bg-brand-50">
                   <PlusIcon className="h-4 w-4" aria-hidden="true" />
                   Add specialization
                 </button>
@@ -375,7 +380,7 @@ export default function TrainerProfile() {
                     </button>
                   </div>
                 ))}
-                <button type="button" onClick={addCertification} className="btn btn-sm btn-outline text-brand-700 border-brand-200 hover:bg-brand-50">
+                <button type="button" onClick={addCertification} className="btn btn-sm btn-outline text-brand-300 border-brand-200 hover:bg-brand-50">
                   <PlusIcon className="h-4 w-4" aria-hidden="true" />
                   Add certification
                 </button>
@@ -477,7 +482,7 @@ export default function TrainerProfile() {
 
           <div className="card p-6 flex flex-wrap items-center justify-between gap-3">
             <div className="text-sm">
-              {saveMsg && <p className="text-green-600 font-medium">{saveMsg}</p>}
+              {saveMsg && <p className="text-success font-medium">{saveMsg}</p>}
             </div>
             <button type="submit" disabled={saving} className="btn btn-md btn-primary">
               {saving ? 'Saving...' : 'Save Changes'}
@@ -515,7 +520,7 @@ export default function TrainerProfile() {
                   type="button"
                   onClick={handlePhotoRemove}
                   disabled={photoBusy}
-                  className="btn btn-sm btn-ghost text-red-600 hover:text-red-800 w-full"
+                  className="btn btn-sm btn-ghost text-danger hover:text-danger w-full"
                 >
                   <TrashIcon className="h-4 w-4" aria-hidden="true" />
                   Remove photo

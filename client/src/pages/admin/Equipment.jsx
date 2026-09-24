@@ -9,6 +9,7 @@ import DataTable from '../../components/common/DataTable';
 import StatCard from '../../components/common/StatCard';
 import { SkeletonRow } from '../../components/common/Skeleton';
 import { fmtDate, fmtDateShort } from '../../utils/format';
+import { useToast } from '../../context/ToastContext';
 
 const initialForm = { name: '', category: '', condition: 'good', lastMaintenance: '', nextMaintenance: '', status: 'available', description: '' };
 
@@ -23,6 +24,7 @@ const statusBadge = (s) => {
 };
 
 export default function Equipment() {
+  const { toast } = useToast();
   const [equipment, setEquipment] = useState([]);
   const [maintenance, setMaintenance] = useState([]);
   const [stats, setStats] = useState(null);
@@ -75,7 +77,7 @@ export default function Equipment() {
       setForm(initialForm);
       fetchAll();
     } catch (err) {
-      alert(err.message || 'Failed to save equipment');
+      toast.error('Save failed', err.message);
     } finally {
       setSaving(false);
     }
@@ -98,12 +100,13 @@ export default function Equipment() {
   };
 
   const handleDelete = async (eq) => {
-    if (!window.confirm(`Delete "${eq.name}"?`)) return;
+    const proceed = await toast.confirm({ title: 'Delete equipment', description: `Delete "${eq.name}"?`, confirmLabel: 'Delete', danger: true });
+    if (!proceed) return;
     try {
       await api.delete(`/equipment/${eq._id}`);
       fetchAll();
     } catch (err) {
-      alert(err.message || 'Failed to delete equipment');
+      toast.error('Delete failed', err.message);
     }
   };
 
@@ -124,7 +127,7 @@ export default function Equipment() {
       setIssueText('');
       fetchAll();
     } catch (err) {
-      alert(err.message || 'Failed to report issue');
+      toast.error('Failed to report issue', err.message);
     } finally {
       setIssueSaving(false);
     }
@@ -156,14 +159,14 @@ export default function Equipment() {
       )}
 
       {maintenance.length > 0 && (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-5">
-          <h2 className="text-base font-semibold text-amber-800 mb-3 flex items-center gap-2">
+        <div className="bg-warning/10 border border-warning/25 rounded-xl p-5">
+          <h2 className="text-base font-semibold text-warning mb-3 flex items-center gap-2">
             <ExclamationTriangleIcon className="h-5 w-5" aria-hidden="true" />
             Maintenance Alerts
           </h2>
           <div className="space-y-2">
             {maintenance.map((a, i) => (
-              <div key={a._id || i} className="flex items-center justify-between gap-3 bg-white rounded-lg px-4 py-3 border border-amber-100">
+              <div key={a._id || i} className="flex items-center justify-between gap-3 bg-warning/10 rounded-lg px-4 py-3 border border-warning/25">
                 <div className="min-w-0">
                   <span className="font-medium text-slate-900">{a.name || a.equipment?.name}</span>
                   <span className="text-sm text-slate-500 ml-2">— {a.message || `Scheduled: ${fmtDate(a.nextMaintenance || a.scheduledDate)}`}</span>
@@ -198,11 +201,11 @@ export default function Equipment() {
       ) : (
         <DataTable headers={['Name', 'Category', 'Condition', 'Last Maintenance', 'Next Maintenance', 'Status', 'Actions']}>
           {filteredEquipment.map((eq) => (
-            <tr key={eq._id} className="odd:bg-white even:bg-slate-50/50">
+            <tr key={eq._id} className="odd:bg-transparent even:bg-slate-100/40">
               <td className="px-4 py-3 text-sm">
                 <p className="font-medium text-slate-900">{eq.name}</p>
                 {eq.status === 'issue_reported' && (
-                  <p className="text-xs font-normal text-orange-600 mt-0.5">Issue: {eq.reportedIssue || 'reported'}{eq.reportedAt ? ` · ${fmtDateShort(eq.reportedAt)}` : ''}</p>
+                  <p className="text-xs font-normal text-warning mt-0.5">Issue: {eq.reportedIssue || 'reported'}{eq.reportedAt ? ` · ${fmtDateShort(eq.reportedAt)}` : ''}</p>
                 )}
               </td>
               <td className="px-4 py-3 text-sm text-slate-600 capitalize">{eq.category || '—'}</td>
@@ -216,9 +219,9 @@ export default function Equipment() {
               </td>
               <td className="px-4 py-3 text-sm">
                 <div className="flex gap-1">
-                  <button onClick={() => openIssueReport(eq)} className="btn btn-sm text-amber-600 hover:bg-amber-50">Report Issue</button>
+                  <button onClick={() => openIssueReport(eq)} className="btn btn-sm text-warning hover:bg-warning/10">Report Issue</button>
                   <button onClick={() => openEdit(eq)} className="btn btn-sm btn-outline">Edit</button>
-                  <button onClick={() => handleDelete(eq)} className="btn btn-sm text-red-600 hover:bg-red-50">Delete</button>
+                  <button onClick={() => handleDelete(eq)} className="btn btn-sm text-danger hover:bg-danger/10">Delete</button>
                 </div>
               </td>
             </tr>

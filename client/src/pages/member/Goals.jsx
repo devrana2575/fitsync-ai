@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { TrophyIcon, PlusIcon } from '@heroicons/react/24/outline';
 import api from '../../services/api';
+import { useToast } from '../../context/ToastContext';
 import PageHeader from '../../components/common/PageHeader';
 import EmptyState from '../../components/common/EmptyState';
 import StatusBadge from '../../components/common/StatusBadge';
@@ -18,6 +19,7 @@ const GOAL_TYPES = [
 ];
 
 export default function Goals() {
+  const { toast } = useToast();
   const [goals, setGoals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -98,7 +100,7 @@ export default function Goals() {
       setEditValue('');
       fetchGoals();
     } catch (err) {
-      alert(err.message);
+      toast.error('Update failed', err.message);
     }
   };
 
@@ -153,7 +155,7 @@ export default function Goals() {
           subtitle={`${goals.length} goal${goals.length !== 1 ? 's' : ''} set`}
           icon={TrophyIcon}
         />
-        <div className="p-6 text-center text-red-600">{error}</div>
+        <div className="p-6 text-center text-danger">{error}</div>
       </div>
     );
   }
@@ -178,7 +180,7 @@ export default function Goals() {
         <div className="card p-6">
           <h2 className="card-title mb-5">Create New Goal</h2>
           {formError && (
-            <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{formError}</div>
+            <div className="mb-4 rounded-lg border border-danger/25 bg-danger/10 p-3 text-sm text-danger">{formError}</div>
           )}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
