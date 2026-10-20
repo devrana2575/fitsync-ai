@@ -43,7 +43,7 @@ test('gym timezone defaults to Asia/Kolkata', () => {
 
 test('buildCronExpressions converts gym-local triggers to UTC for Asia/Kolkata', () => {
   const jobs = buildCronExpressions('Asia/Kolkata');
-  assert.equal(jobs.length, 3);
+  assert.equal(jobs.length, 4);
 
   assert.deepEqual(
     { expression: jobs[0].expression, timezone: jobs[0].timezone, target: jobs[0].target },
@@ -60,12 +60,17 @@ test('buildCronExpressions converts gym-local triggers to UTC for Asia/Kolkata',
     { expression: '45 18 * * *', timezone: 'Etc/UTC', target: 'expireMemberships_daily' },
     '00:15 IST next-day == 18:45 UTC previous day'
   );
+  assert.deepEqual(
+    { expression: jobs[3].expression, timezone: jobs[3].timezone, target: jobs[3].target },
+    { expression: '00 19 * * *', timezone: 'Etc/UTC', target: 'reconcileSickLeaves_daily' },
+    '00:30 IST next-day == 19:00 UTC previous day (sick-leave reconcile)'
+  );
 });
 
 test('a different gym timezone remaps the UTC expressions and is restored', () => {
   setGymTimezone('America/New_York');
   const jobs = buildCronExpressions('America/New_York');
-  assert.equal(jobs.length, 3);
+  assert.equal(jobs.length, 4);
 
   const daily = wallToUtc('America/New_York', 8, 0);
   assert.equal(jobs[0].expression, `${String(daily.minute).padStart(2, '0')} ${String(daily.hour).padStart(2, '0')} * * *`);
@@ -75,6 +80,9 @@ test('a different gym timezone remaps the UTC expressions and is restored', () =
 
   const expiry = wallToUtc('America/New_York', 0, 15);
   assert.equal(jobs[2].expression, `${String(expiry.minute).padStart(2, '0')} ${String(expiry.hour).padStart(2, '0')} * * *`);
+
+  const sickLeave = wallToUtc('America/New_York', 0, 30);
+  assert.equal(jobs[3].expression, `${String(sickLeave.minute).padStart(2, '0')} ${String(sickLeave.hour).padStart(2, '0')} * * *`);
 
   for (const job of jobs) {
     assert.equal(job.timezone, 'Etc/UTC');
@@ -97,7 +105,7 @@ test('startCronJobs registers Etc/UTC schedules and rescheduleCronJobs is safe t
   try {
     setGymTimezone('Asia/Kolkata');
     startCronJobs();
-    assert.equal(registered.length, 3);
+    assert.equal(registered.length, 4);
     const expected = buildCronExpressions('Asia/Kolkata');
     expected.forEach((job, i) => {
       assert.equal(registered[i].expression, job.expression);
@@ -105,10 +113,10 @@ test('startCronJobs registers Etc/UTC schedules and rescheduleCronJobs is safe t
     });
 
     rescheduleCronJobs();
-    assert.equal(registered.length, 6, 'reschedule re-registers every job');
+    assert.equal(registered.length, 8, 'reschedule re-registers every job');
 
     stopCronJobs();
-    assert.equal(registered.length, 6, 'stop does not re-register');
+    assert.equal(registered.length, 8, 'stop does not re-register');
   } finally {
     cron.schedule = originalSchedule;
     stopCronJobs();

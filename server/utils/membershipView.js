@@ -100,10 +100,25 @@ const serializeMembership = async (membershipRaw, { withPayments = false } = {})
   }
 
   const ownerUserId = m.user && m.user._id ? m.user._id : m.user;
-  const ownerProfile = ownerUserId
+  // Membership-level assignment is the source of truth when the row carries
+  // one; legacy rows (never initialized) fall back to the profile mirror.
+  const assignment = m.trainerAssignment || {};
+  const isInitialized = Boolean(assignment.assignmentInitialized);
+  const ownerProfile = ownerUserId && !isInitialized
     ? await MemberProfile.findOne({ user: ownerUserId }).select('assignedTrainer trainerAssignmentStatus assignedAt pendingTrainerReason').lean()
     : null;
-  const premium = await buildTrainerBlock({ userId: ownerUserId, profile: ownerProfile });
+  const assignmentTrainerId = isInitialized ? (assignment.currentTrainer || null) : null;
+  const premium = await buildTrainerBlock({
+    userId: ownerUserId,
+    assignedTrainerId: assignmentTrainerId,
+    profile: ownerProfile
+  });
+  const assignmentStatus = isInitialized ? assignment.status : premium.assignmentStatus;
+  const originalTrainerId = isInitialized ? (assignment.originalTrainer || null) : null;
+  let originalTrainer = null;
+  if (assignment.temporaryReplacement && originalTrainerId) {
+    originalTrainer = await User.findById(originalTrainerId).select('name email avatar').lean();
+  }
 
   return {
     ...m,
@@ -130,8 +145,13 @@ const serializeMembership = async (membershipRaw, { withPayments = false } = {})
       requiredSpecialization: plan.requiredSpecialization || null
     } : null,
     trainer: premium.trainer,
-    trainerAssignmentStatus: premium.assignmentStatus,
-    trainerAssignedAt: premium.assignedAt
+    trainerAssignmentStatus: assignmentStatus,
+    trainerAssignedAt: isInitialized ? (assignment.assignedAt || null) : premium.assignedAt,
+    // Temporary-cover context for the member UI. Carries NO medical detail -
+    // only that a substitute coach is covering this membership right now.
+    temporaryReplacement: isInitialized ? Boolean(assignment.temporaryReplacement) : false,
+    originalTrainer,
+    trainerAssignmentHistory: isInitialized && Array.isArray(assignment.history) ? assignment.history : []
   };
 };
 

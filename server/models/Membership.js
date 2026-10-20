@@ -114,9 +114,106 @@ const membershipSchema = new mongoose.Schema({
     snapshotAt: {
       type: Date
     }
+  },
+  // ---- Membership-level trainer assignment (source of truth) ---------------
+  // A user may hold several ACTIVE memberships at once, each with its own
+  // independent trainer. MemberProfile.assignedTrainer stays as a COMPATIBILITY
+  // mirror (single scalar used by legacy roster/read paths) but never as the
+  // authority for membership-specific assignment.
+  //
+  // assignmentInitialized=false means this row predates membership-level
+  // assignment (legacy data) - readers fall back to the profile-level value
+  // rather than inventing a trainer for every membership.
+  trainerAssignment: {
+    assignmentInitialized: {
+      type: Boolean,
+      default: false
+    },
+    // Trainer the member bought the service from. Never overwritten by a
+    // temporary sick-leave cover.
+    originalTrainer: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null
+    },
+    // Who is coaching right now (equals originalTrainer in the normal case).
+    currentTrainer: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null
+    },
+    status: {
+      type: String,
+      enum: ['NONE', 'PENDING', 'ASSIGNED'],
+      default: 'NONE'
+    },
+    pendingReason: {
+      type: String,
+      trim: true,
+      default: ''
+    },
+    temporaryReplacement: {
+      type: Boolean,
+      default: false
+    },
+    // Approved TrainerSickLeave that installed the temporary cover.
+    sickLeave: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'TrainerSickLeave',
+      default: null
+    },
+    assignedAt: {
+      type: Date,
+      default: null
+    },
+    updatedAt: {
+      type: Date,
+      default: null
+    },
+    // Append-only transition log. Never rewritten by general data-edit
+    // endpoints; restoration appends, never deletes.
+    history: {
+      type: [{
+        previousTrainer: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'User',
+          default: null
+        },
+        newTrainer: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'User',
+          default: null
+        },
+        reason: {
+          type: String,
+          enum: ['INITIAL', 'SICK_LEAVE', 'RETURN_FROM_LEAVE', 'ADMIN_CHANGE'],
+          required: true
+        },
+        sickLeave: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'TrainerSickLeave',
+          default: null
+        },
+        actor: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'User',
+          default: null
+        },
+        note: {
+          type: String,
+          trim: true,
+          default: ''
+        },
+        at: {
+          type: Date,
+          default: Date.now
+        }
+      }],
+      default: []
+    }
   }
 }, {
-  timestamps: true
+  timestamps: true,
 });
 
 // Creation-time capture backstop. Every membership creation path (manual
@@ -150,12 +247,12 @@ membershipSchema.index({ status: 1 });
 membershipSchema.index({ user: 1, status: 1 });
 membershipSchema.index({ endDate: 1 });
 membershipSchema.index({ status: 1, endDate: 1 });
-// At most ONE ACTIVE membership per user. The partial filter restricts the
-// unique constraint to ACTIVE rows only, so historical PENDING/EXPIRED/
-// CANCELLED/SUSPENDED records for the same user stay legal and the DB itself
-// rejects a second concurrent ACTIVE activation (E11000 retried upstream).
-// The explicit name keeps it distinct from the plain { user: 1 } index (whose
-// auto-generated name would otherwise collide with this one).
-membershipSchema.index({ user: 1 }, { unique: true, partialFilterExpression: { status: 'ACTIVE' }, name: 'user_1_active' });
+// Multiple ACTIVE memberships per user are a supported business rule: each
+// membership carries its own plan, payment lifecycle and trainer assignment.
+// (The previous { user: 1 } unique partial index filtered to status ACTIVE -
+// index name `user_1_active` - was removed; run scripts/migrate-membership-
+// independence.js against an existing database to drop it there too.)
+membershipSchema.index({ 'trainerAssignment.currentTrainer': 1 });
+membershipSchema.index({ 'trainerAssignment.sickLeave': 1 });
 
 module.exports = mongoose.model('Membership', membershipSchema);

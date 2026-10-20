@@ -56,4 +56,31 @@ api.interceptors.response.use(
   }
 );
 
+// Trainer sick-leave workflow (leave requests, private medical certificates,
+// admin review and temporary replacement coverage).
+export const sickLeaves = {
+  mine: () => api.get('/sick-leaves/mine'),
+  create: (form) => api.post('/sick-leaves', form, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  uploadCertificate: (id, form) =>
+    api.post(`/sick-leaves/${id}/certificate`, form, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  cancel: (id) => api.post(`/sick-leaves/${id}/cancel`),
+  list: (params) => api.get('/sick-leaves', { params }),
+  approve: (id, note) => api.post(`/sick-leaves/${id}/approve`, { note }),
+  reject: (id, note) => api.post(`/sick-leaves/${id}/reject`, { note }),
+  get: (id) => api.get(`/sick-leaves/${id}`),
+  // Authenticated + audited byte stream (the file itself never lives on a
+  // public /uploads path). Fetch as a blob and preview via an object URL.
+  certificateBlob: (id) => api.get(`/sick-leaves/${id}/certificate`, { responseType: 'blob' }),
+};
+
+// Fetch a leave's certificate and open it in a new tab via an object URL.
+export const openSickLeaveCertificate = async (id) => {
+  const res = await sickLeaves.certificateBlob(id);
+  const url = URL.createObjectURL(res.data);
+  const win = window.open(url, '_blank', 'noopener,noreferrer');
+  if (!win) throw new Error('Popup blocked — allow popups to view the certificate');
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+  return win;
+};
+
 export default api;

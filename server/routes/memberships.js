@@ -8,7 +8,6 @@ const Notification = require('../models/Notification');
 const { auth, authorize } = require('../middleware/auth');
 const { parsePagination } = require('../utils/helpers');
 const { allocateTrainerForMembership } = require('../utils/trainerAllocation');
-const { cancelOtherActiveMemberships } = require('../utils/membershipActivation');
 const { ensurePlanSnapshot, buildPlanSnapshot } = require('../utils/planSnapshot');
 const { serializeMembership } = require('../utils/membershipView');
 const { canTrainerAccessMember } = require('../utils/access');
@@ -76,8 +75,16 @@ router.get('/active/:userId', auth, authorize('admin', 'trainer'), async (req, r
       const allowed = await canTrainerAccessMember(req.user._id, req.params.userId);
       if (!allowed) return res.status(403).json({ message: 'Access denied' });
     }
-    const membership = await Membership.findOne({ user: req.params.userId, status: 'ACTIVE' }).populate('plan', 'name price duration').lean();
-    res.json({ membership: membership ? await serializeMembership(membership) : null });
+    // All ACTIVE memberships for the member (a member may hold several).
+    // `membership` is kept as the most recent one for backward compatibility;
+    // clients must use `memberships` to address a specific membership id.
+    const memberships = await Membership.find({ user: req.params.userId, status: 'ACTIVE' })
+      .populate('plan', 'name price duration')
+      .sort({ endDate: -1 })
+      .lean();
+    const serialized = [];
+    for (const m of memberships) serialized.push(await serializeMembership(m));
+    res.json({ membership: serialized[0] || null, memberships: serialized });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }
@@ -103,14 +110,6 @@ router.post('/', auth, authorize('admin'), async (req, res) => {
     const end = new Date(start);
     end.setDate(end.getDate() + plan.duration);
 
-    if (isComplimentary) {
-      // Supersede any existing ACTIVE membership before the new grant lands.
-      // The DB partial unique index backs this up: if another request races us
-      // into ACTIVE, Membership.create below rejects with E11000 and we
-      // reconcile competitors and retry exactly once.
-      await cancelOtherActiveMemberships(userId);
-    }
-
     const membershipData = {
       user: userId,
       plan: planId,
@@ -124,14 +123,9 @@ router.post('/', auth, authorize('admin'), async (req, res) => {
       ...(isComplimentary ? { activatedAt: new Date() } : {})
     };
 
-    let membership;
-    try {
-      membership = await Membership.create(membershipData);
-    } catch (error) {
-      if (!error || error.code !== 11000) throw error;
-      await cancelOtherActiveMemberships(userId);
-      membership = await Membership.create(membershipData);
-    }
+    // A complimentary grant is an independent membership: it never supersedes
+    // another ACTIVE membership the same member already holds.
+    const membership = await Membership.create(membershipData);
 
     if (isComplimentary) await applyEntitlement(membership._id);
 
@@ -179,16 +173,7 @@ router.put('/:id/renew', auth, authorize('admin'), async (req, res) => {
     // Counter renewals commit to the terms the membership was created under.
     ensurePlanSnapshot(membership, membership.plan);
 
-    await cancelOtherActiveMemberships(membership.user, membership._id);
-    try {
-      await membership.save();
-    } catch (error) {
-      // A concurrent activation may have won the ACTIVE slot first. Supersede
-      // it and retry the ACTIVE transition exactly once.
-      if (!error || error.code !== 11000) throw error;
-      await cancelOtherActiveMemberships(membership.user, membership._id);
-      await membership.save();
-    }
+    await membership.save();
 
     await applyEntitlement(membership._id);
 
@@ -259,18 +244,7 @@ router.put('/:id/reactivate', auth, authorize('admin'), async (req, res) => {
     membership.suspendedAt = null;
     ensurePlanSnapshot(membership, membership.plan);
 
-    if (membership.status === 'ACTIVE') {
-      // Re-entering the ACTIVE slot must come at the cost of any other ACTIVE
-      // membership for the same user (one-ACTIVE invariant).
-      await cancelOtherActiveMemberships(membership.user, membership._id);
-    }
-    try {
-      await membership.save();
-    } catch (error) {
-      if (!error || error.code !== 11000) throw error;
-      await cancelOtherActiveMemberships(membership.user, membership._id);
-      await membership.save();
-    }
+    await membership.save();
     await logAudit({
       actor: req.user._id,
       user: membership.user,

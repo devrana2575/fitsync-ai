@@ -12,20 +12,12 @@ const { parsePagination } = require('../utils/helpers');
 // allocation layer instead of trusting the plan payload.
 const canManagePlanForMember = async (role, memberId, trainerId) => {
   if (role === 'admin') return true;
-  if (role !== 'trainer' || !memberId) return false;
-  const profile = await MemberProfile.findOne({ user: memberId }).lean();
-  if (!profile) return false;
-  if (profile.assignedTrainer && String(profile.assignedTrainer) === String(trainerId)) return true;
-  // SHARED entitlement: the membership's plan opts into any-roster-trainer plans.
-  const Membership = require('../models/Membership');
-  const active = await Membership.findOne({ user: memberId, status: 'ACTIVE' })
-    .populate('plan', 'trainerAllocationMode trainerIncluded')
-    .lean();
-  return Boolean(
-    active?.plan &&
-    active.plan.trainerIncluded &&
-    active.plan.trainerAllocationMode === 'SHARED'
-  );
+  if (role !== 'trainer' || !memberId || !trainerId) return false;
+  // Shared rule from utils/access.js: assigned on ANY active membership
+  // (membership-level or legacy profile-level) or SHARED coverage on ANY of
+  // the member's active memberships.
+  const { canTrainerAccessMember } = require('../utils/access');
+  return canTrainerAccessMember(trainerId, memberId);
 };
 
 router.get('/', auth, authorize('admin', 'trainer'), async (req, res) => {

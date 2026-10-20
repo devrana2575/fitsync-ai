@@ -45,3 +45,8 @@ coverage/
 
 # Misc
 *.local
+
+# Runtime-uploaded files (avatars, progress photos, medical certificates) —
+# never committed. Created on demand by the server.
+server/uploads/
+server/private/

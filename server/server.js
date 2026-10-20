@@ -6,7 +6,7 @@ const dotenv = require('dotenv');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const connectDB = require('./config/db');
-const { startCronJobs, expireMemberships } = require('./utils/cron');
+const { startCronJobs, expireMemberships, reconcileSickLeaves } = require('./utils/cron');
 const { initSocket } = require('./utils/socket');
 const { setGymTimezone, getGymDateKey } = require('./utils/gymTime');
 const { bootstrapAdmin } = require('./utils/bootstrapAdmin');
@@ -87,7 +87,11 @@ const createApp = () => {
   app.use('/api/announcements', require('./routes/announcements'));
   app.use('/api/recommendations', require('./routes/recommendations'));
   app.use('/api/admin', require('./routes/admin'));
+  app.use('/api/sick-leaves', require('./routes/trainerSickLeaves'));
   app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+  // NOTE: medical certificates live under server/private and are intentionally
+  // NOT mounted here - they are served only through the authenticated,
+  // audited /api/sick-leaves/:id/certificate route.
 
   // Production: the API also serves the built SPA so one port runs the whole
   // app. SPA fallback keeps client-side routing working (React Router paths
@@ -174,6 +178,9 @@ const startServer = async (options = {}) => {
   });
   initSocket(httpServer);
   expireMemberships().catch((err) => console.error('[Startup] Expiry sweep failed:', err.message));
+  // Startup reconcile: installs covers for leaves that began while the server
+  // was down and restores originals for leaves that ended meanwhile.
+  reconcileSickLeaves().catch((err) => console.error('[Startup] Sick-leave reconcile failed:', err.message));
 
   // Graceful shutdown: stop accepting connections, stop scheduled jobs, and
   // close the DB so in-flight writes complete cleanly.

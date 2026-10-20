@@ -39,11 +39,19 @@ const canTrainerAccessMember = async (trainerId, memberId) => {
   const profile = await MemberProfile.findOne({ user: memberId }).select('assignedTrainer').lean();
   if (profile && profile.assignedTrainer && String(profile.assignedTrainer) === String(trainerId)) return true;
 
-  const active = await Membership.findOne({ user: memberId, status: 'ACTIVE' })
-    .select('plan planSnapshot')
+  // Membership-level truth: the trainer coaches ANY active membership of this
+  // member (covers several concurrent memberships and temporary covers).
+  const active = await Membership.find({ user: memberId, status: 'ACTIVE' })
+    .select('plan planSnapshot trainerAssignment')
     .populate('plan', 'trainerIncluded trainerAllocationMode')
     .lean();
-  return committedSharedCoverage(active);
+  for (const m of active) {
+    const a = m.trainerAssignment;
+    if (a && a.assignmentInitialized && a.status === 'ASSIGNED'
+      && a.currentTrainer && String(a.currentTrainer) === String(trainerId)) return true;
+    if (committedSharedCoverage(m)) return true;
+  }
+  return false;
 };
 
 // Reduce an arbitrary list of member ids to those a trainer may access.
@@ -51,14 +59,22 @@ const canTrainerAccessMember = async (trainerId, memberId) => {
 const filterAccessibleMemberIds = async (trainerId, ids) => {
   const list = (ids || []).filter(Boolean).map(String);
   if (list.length === 0) return [];
-  const [assigned, active] = await Promise.all([
+  const [assigned, active, membershipAssigned] = await Promise.all([
     MemberProfile.find({ assignedTrainer: trainerId, user: { $in: ids } }).select('user').lean(),
     Membership.find({ user: { $in: ids }, status: 'ACTIVE' })
-      .select('plan planSnapshot')
+      .select('plan planSnapshot trainerAssignment')
       .populate('plan', 'trainerIncluded trainerAllocationMode')
-      .lean()
+      .lean(),
+    Membership.find({
+      user: { $in: ids },
+      status: 'ACTIVE',
+      'trainerAssignment.assignmentInitialized': true,
+      'trainerAssignment.status': 'ASSIGNED',
+      'trainerAssignment.currentTrainer': trainerId
+    }).select('user').lean()
   ]);
   const allowed = new Set(assigned.map((p) => String(p.user)));
+  for (const m of membershipAssigned) allowed.add(String(m.user));
   for (const m of active) {
     if (committedSharedCoverage(m)) allowed.add(String(m.user));
   }
@@ -71,7 +87,7 @@ const filterAccessibleMemberIds = async (trainerId, ids) => {
 // against the LIVE plan. Used for list-scoped endpoints (attendance rolls) where
 // a membership filter has to be turned into a member filter.
 const getTrainerAccessibleMemberIds = async (trainerId) => {
-  const [assignedIds, sharedPlanIds, sharedSnapshotUsers] = await Promise.all([
+  const [assignedIds, sharedPlanIds, sharedSnapshotUsers, membershipAssignedIds] = await Promise.all([
     MemberProfile.find({ assignedTrainer: trainerId }).distinct('user'),
     // Legacy fallback: live plans that offer SHARED coverage.
     MembershipPlan.find({ trainerIncluded: true, trainerAllocationMode: 'SHARED' }).distinct('_id'),
@@ -81,6 +97,13 @@ const getTrainerAccessibleMemberIds = async (trainerId) => {
       status: 'ACTIVE',
       'planSnapshot.trainerIncluded': true,
       'planSnapshot.trainerAllocationMode': 'SHARED'
+    }).distinct('user'),
+    // Membership-level assignments (multi-membership + temporary covers).
+    Membership.find({
+      status: 'ACTIVE',
+      'trainerAssignment.assignmentInitialized': true,
+      'trainerAssignment.status': 'ASSIGNED',
+      'trainerAssignment.currentTrainer': trainerId
     }).distinct('user')
   ]);
   const legacySharedUserIds = sharedPlanIds.length > 0
@@ -94,6 +117,7 @@ const getTrainerAccessibleMemberIds = async (trainerId) => {
     : [];
   return [...new Set([
     ...assignedIds.map(String),
+    ...membershipAssignedIds.map(String),
     ...legacySharedUserIds.map(String),
     ...sharedSnapshotUsers.map(String)
   ])];

@@ -318,8 +318,32 @@ router.post('/:id/assign-trainer', auth, authorize('admin'), async (req, res) =>
     if (!profile) return res.status(404).json({ message: 'Member profile not found' });
 
     const clearing = trainerId === null || trainerId === undefined || String(trainerId).trim() === '';
+
+    // ACTIVE memberships whose committed plan includes trainer service - these
+    // carry the membership-level assignment (the source of truth). Legacy rows
+    // without an initialized assignment are initialized by this admin action.
+    const entitledMemberships = await Membership.find({ user: member._id, status: 'ACTIVE' })
+      .populate('plan')
+      .lean();
+    const { getCommittedPlanTerms } = require('../utils/paymentTerms');
+    const { recordMembershipAssignment, syncProfileMirror, trainerWorkload } = require('../utils/trainerAllocation');
+    const trainerEntitled = entitledMemberships.filter((m) => {
+      const terms = getCommittedPlanTerms(m);
+      return Boolean(terms && terms.trainerIncluded);
+    });
+
     if (clearing) {
       const previousId = profile.assignedTrainer || null;
+      for (const doc of trainerEntitled) {
+        const membership = await Membership.findById(doc._id);
+        if (!membership) continue;
+        await recordMembershipAssignment(membership, {
+          status: 'NONE',
+          reason: 'ADMIN_CHANGE',
+          actor: req.user._id,
+          note: 'trainer assignment cleared by admin'
+        });
+      }
       profile.assignedTrainer = undefined;
       profile.trainerAssignmentStatus = 'NONE';
       profile.pendingTrainerReason = undefined;
@@ -345,29 +369,37 @@ router.post('/:id/assign-trainer', auth, authorize('admin'), async (req, res) =>
 
     // Capacity check - an admin override may not exceed the trainer's stated
     // member limit (an existing assignment to the same trainer is an update).
-    if (profile.assignedTrainer && String(profile.assignedTrainer) === String(trainer._id)) {
-      profile.trainerAssignmentStatus = 'ASSIGNED';
-      profile.pendingTrainerReason = undefined;
-      profile.assignedAt = new Date();
-      await profile.save();
-      await logAudit({
-        actor: req.user._id,
-        user: member._id,
-        action: 'assigned',
-        entity: 'MemberProfile',
-        entityId: profile._id,
-        after: { assignedTrainer: trainer._id, status: 'ASSIGNED' },
-        reason: 'admin confirmed/updated assignment'
-      });
-      return res.json({ profile });
-    }
-    const trainerProfile = await TrainerProfile.findOne({ user: trainer._id });
-    const max = trainerProfile && trainerProfile.maxMembers > 0 ? trainerProfile.maxMembers : Infinity;
-    const currentLoad = await MemberProfile.countDocuments({ assignedTrainer: trainer._id });
-    if (currentLoad >= max) {
-      return res.status(400).json({ message: `${trainer.name} is already at their member limit (${max})` });
+    const isSameTrainer = profile.assignedTrainer && String(profile.assignedTrainer) === String(trainer._id);
+    if (!isSameTrainer) {
+      const trainerProfile = await TrainerProfile.findOne({ user: trainer._id });
+      const max = trainerProfile && trainerProfile.maxMembers > 0 ? trainerProfile.maxMembers : Infinity;
+      const counts = await trainerWorkload([trainer._id]);
+      const currentLoad = counts.get(String(trainer._id)) || 0;
+      if (currentLoad >= max) {
+        return res.status(400).json({ message: `${trainer.name} is already at their member limit (${max})` });
+      }
     }
 
+    // Membership-level write first (per membership, independent of siblings),
+    // then the single profile compatibility mirror.
+    for (const doc of trainerEntitled) {
+      const membership = await Membership.findById(doc._id);
+      if (!membership) continue;
+      const existing = membership.trainerAssignment && membership.trainerAssignment.assignmentInitialized
+        ? membership.trainerAssignment : null;
+      if (existing && existing.status === 'ASSIGNED'
+        && String(existing.currentTrainer) === String(trainer._id)
+        && !existing.temporaryReplacement) continue; // idempotent - no duplicate history
+      await recordMembershipAssignment(membership, {
+        currentTrainer: trainer._id,
+        originalTrainer: trainer._id,
+        status: 'ASSIGNED',
+        reason: 'ADMIN_CHANGE',
+        actor: req.user._id,
+        note: 'admin manual assignment'
+      });
+    }
+    await syncProfileMirror(member._id);
     profile.assignedTrainer = trainer._id;
     profile.trainerAssignmentStatus = 'ASSIGNED';
     profile.pendingTrainerReason = undefined;

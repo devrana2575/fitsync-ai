@@ -61,6 +61,7 @@ export default function Membership() {
   const [qrLoading, setQrLoading] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState(null);
   const [myProfile, setMyProfile] = useState(null);
+  const [selectedMembershipId, setSelectedMembershipId] = useState(null);
   const { toast } = useToast();
 
   const fetchData = async () => {
@@ -260,7 +261,14 @@ export default function Membership() {
     );
   }
 
-  const current = pickCurrent(memberships);
+  // A member may hold SEVERAL ACTIVE memberships at once; each is independent
+  // (own plan, payments and trainer). The member can flip between them below;
+  // without an explicit pick the soonest-expiring ACTIVE one is primary.
+  const activeMemberships = memberships.filter((m) => String(m.status).toUpperCase() === 'ACTIVE');
+  const picked = selectedMembershipId
+    ? memberships.find((m) => String(m._id) === String(selectedMembershipId))
+    : null;
+  const current = picked || pickCurrent(memberships);
   const currentPlan = current?.plan || {};
   const currentPlanPrice = Number(currentPlan.price) > 0 ? toINR(currentPlan.price) : null;
   const daysRemaining = current?.daysRemaining ?? null;
@@ -288,6 +296,11 @@ export default function Membership() {
             <Avatar name={trainer.name} src={trainer.avatar} size="lg" />
             <div className="min-w-0">
               <p className="text-base font-semibold text-slate-900">{trainer.name}</p>
+              {current?.temporaryReplacement && (
+                <p className="mt-0.5 text-xs font-medium text-warning">
+                  Temporary cover{current.originalTrainer?.name ? ` for ${current.originalTrainer.name}` : ''} — they are on leave right now
+                </p>
+              )}
               {Array.isArray(trainer.profile?.specializations) && trainer.profile.specializations.length > 0 && (
                 <p className="truncate text-xs text-slate-500">{trainer.profile.specializations.join(', ')}</p>
               )}
@@ -295,6 +308,7 @@ export default function Membership() {
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-1.5">
+            {current?.temporaryReplacement && <span className="badge badge-warning">Cover trainer</span>}
             {trainer.profile?.isAvailable === false ? <span className="badge badge-muted">Away</span> : <span className="badge badge-success">Available</span>}
             {trainer.profile?.experience ? <span className="badge badge-brand">{trainer.profile.experience} yr experience</span> : null}
           </div>
@@ -338,6 +352,23 @@ export default function Membership() {
         icon={CreditCardIcon}
       />
 
+      {activeMemberships.length > 1 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+            Your {activeMemberships.length} active memberships
+          </span>
+          {activeMemberships.map((m) => (
+            <button
+              key={m._id}
+              onClick={() => setSelectedMembershipId(m._id)}
+              className={`btn btn-md ${String(current?._id) === String(m._id) ? 'btn-primary' : 'btn-outline'}`}
+            >
+              {m.plan?.name || 'Membership'}
+            </button>
+          ))}
+        </div>
+      )}
+
       {!current ? (
         <div className="card">
           <EmptyState
@@ -365,7 +396,7 @@ export default function Membership() {
             <div className="relative">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div className="min-w-0">
-                  <p className="section-title text-slate-400">Current Membership</p>
+                  <p className="section-title text-slate-400">{activeMemberships.length > 1 ? 'Selected Membership' : 'Current Membership'}</p>
                   <h2 className="mt-1 text-2xl font-bold text-white sm:text-3xl">{currentPlan.name || 'Membership'}</h2>
                   <p className="mt-1 font-mono text-xs text-slate-400">{current.membershipId || '—'}</p>
                   <div className="mt-2.5 flex flex-wrap items-center gap-2">

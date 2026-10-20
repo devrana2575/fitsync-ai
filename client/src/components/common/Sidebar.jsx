@@ -18,6 +18,7 @@ import {
   Cog6ToothIcon,
   BellIcon,
   ScaleIcon,
+  HeartIcon,
 } from '@heroicons/react/24/outline';
 import { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
@@ -41,6 +42,7 @@ const adminMenu = [
     items: [
       { to: '/admin/equipment', icon: WrenchScrewdriverIcon, label: 'Equipment' },
       { to: '/admin/announcements', icon: MegaphoneIcon, label: 'Announcements' },
+      { to: '/admin/sick-leaves', icon: HeartIcon, label: 'Trainer Sick Leaves' },
     ],
   },
   {
@@ -67,6 +69,12 @@ const trainerMenu = [
     items: [
       { to: '/trainer/workouts', icon: BoltIcon, label: 'Workout Plans' },
       { to: '/trainer/templates', icon: ClipboardDocumentListIcon, label: 'Templates' },
+    ],
+  },
+  {
+    label: 'Availability',
+    items: [
+      { to: '/trainer/sick-leave', icon: HeartIcon, label: 'Sick Leave' },
     ],
   },
   { label: 'Account', items: [{ to: '/trainer/profile', icon: IdentificationIcon, label: 'Profile' }] },

@@ -9,41 +9,13 @@ const { logAudit } = require('./audit');
 // Behaviour:
 // - no-op when the membership is already ACTIVE (renewals are date-rolled
 //   separately) or CANCELLED
-// - cancels any other ACTIVE membership for the same user
+// - activates ONLY the targeted membership; a member may hold several ACTIVE
+//   memberships at once and activation never touches sibling rows
 // - re-opens an EXPIRED / stale membership with a fresh window computed from
-//   the plan duration
-// - after activation, applies the plan's trainer entitlement via the
-//   deterministic allocation service. Allocation can never block activation:
-//   no eligible trainer results in a PENDING assignment, not a failed flow.
-//
-// The one-ACTIVE-per-user invariant is enforced twice: logically here (we
-// supersede competitors) and physically by the DB partial unique index on
-// { user: 1 } filtered to status ACTIVE. Concurrent activations that both pass
-// the read side can still collide on the ACTIVE transition; the loser of that
-// race observes E11000 and reconciles competitor state before a single retry.
-
-// Cancel every OTHER ACTIVE membership for the same user so a newly activated
-// membership is never in competition for the one-ACTIVE-per-user invariant.
-// Excluding the membership being activated keeps renewals of an already-ACTIVE
-// record from cancelling themselves. Returns the superseded documents.
-const cancelOtherActiveMemberships = async (userId, excludeMembershipId) => {
-  if (!userId) return [];
-  const superseded = await Membership.find(
-    { user: userId, status: 'ACTIVE', _id: { $ne: excludeMembershipId } }
-  ).select('_id user status');
-  for (const other of superseded) {
-    other.status = 'CANCELLED';
-    await other.save();
-    await logAudit({
-      action: 'cancelled',
-      entity: 'Membership',
-      entityId: other._id,
-      user: other.user,
-      reason: 'superseded by a new active membership'
-    });
-  }
-  return superseded;
-};
+//   the COMMITTED plan duration (snapshot first, live plan for legacy rows)
+// - after activation, applies the plan's trainer entitlement to THIS
+//   membership via the deterministic allocation service. Allocation can never
+//   block activation: no eligible trainer results in a PENDING assignment.
 
 const activateMembershipFromPayment = async (membershipId) => {
   if (!membershipId) return;
@@ -68,18 +40,8 @@ const activateMembershipFromPayment = async (membershipId) => {
 
   membership.status = 'ACTIVE';
   membership.activatedAt = new Date();
+  await membership.save();
 
-  await cancelOtherActiveMemberships(membership.user, membership._id);
-  try {
-    await membership.save();
-  } catch (error) {
-    // E11000: two activations for the same user raced past the read side and
-    // both tried to land ACTIVE. Reconcile the competitor's state and retry the
-    // ACTIVE transition exactly once; a second failure propagates.
-    if (!error || error.code !== 11000) throw error;
-    await cancelOtherActiveMemberships(membership.user, membership._id);
-    await membership.save();
-  }
   await logAudit({
     action: 'activated',
     entity: 'Membership',
@@ -99,7 +61,8 @@ const activateMembershipFromPayment = async (membershipId) => {
 };
 
 // Revoke access when a payment is refunded. Idempotent - safe to call from
-// the admin refund flow and the gateway refund webhook alike.
+// the admin refund flow and the gateway refund webhook alike. Cancels ONLY the
+// membership linked to that payment, never a sibling membership.
 const cancelLinkedMembership = async (membershipId) => {
   if (!membershipId) return;
   const membership = await Membership.findByIdAndUpdate(
@@ -118,4 +81,4 @@ const cancelLinkedMembership = async (membershipId) => {
   }
 };
 
-module.exports = { activateMembershipFromPayment, cancelLinkedMembership, cancelOtherActiveMemberships };
+module.exports = { activateMembershipFromPayment, cancelLinkedMembership };

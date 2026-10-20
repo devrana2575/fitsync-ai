@@ -14,6 +14,37 @@ const {
   getGymWeekdayName,
   getGymDateKey
 } = require('../utils/gymTime');
+const MemberProfile = require('../models/MemberProfile');
+
+const MemberProfileForDashboard = (userId) =>
+  MemberProfile.findOne({ user: userId })
+    .populate('assignedTrainer', 'name email avatar')
+    .lean();
+
+// Trainer shown on the member dashboard: the current trainer of the primary
+// (soonest-expiring) ACTIVE membership when it carries a membership-level
+// assignment, otherwise the legacy profile mirror. Temporary covers are
+// surfaced as the current trainer without exposing any medical detail.
+const resolveDashboardTrainer = async (userId, activeMemberships, profile) => {
+  const primary = (activeMemberships || []).find((m) => {
+    const a = m.trainerAssignment;
+    return a && a.assignmentInitialized && a.status === 'ASSIGNED' && a.currentTrainer;
+  });
+  const trainerId = primary ? primary.trainerAssignment.currentTrainer
+    : (profile && profile.assignedTrainer ? profile.assignedTrainer : null);
+  if (!trainerId) return null;
+  const [trainerUser, trainerProfile] = await Promise.all([
+    User.findById(trainerId).select('name email avatar isActive').lean(),
+    require('../models/TrainerProfile').findOne({ user: trainerId })
+      .select('specializations experience workingDays workingHours isAvailable').lean()
+  ]);
+  if (!trainerUser) return null;
+  return {
+    ...trainerUser,
+    profile: trainerProfile || null,
+    temporaryReplacement: Boolean(primary && primary.trainerAssignment.temporaryReplacement)
+  };
+};
 
 router.get('/admin/dashboard', auth, authorize('admin'), async (req, res) => {
   try {
@@ -165,9 +196,11 @@ router.get('/member/dashboard', auth, async (req, res) => {
     const WorkoutPlan = require('../models/WorkoutPlan');
     const BodyMeasurement = require('../models/BodyMeasurement');
 
-    const [membership, totalDays, recentDays, totalWorkouts, recentWorkouts, latestMeasurement,
-      todayAttendance, todayWorkout] = await Promise.all([
-      Membership.findOne({ user: userId, status: 'ACTIVE' }).populate('plan', 'name price duration').lean(),
+    const [activeMemberships, totalDays, recentDays, totalWorkouts, recentWorkouts, latestMeasurement,
+      todayAttendance, todayWorkout, profile] = await Promise.all([
+      // All ACTIVE memberships: the member may hold several at once. The
+      // "primary" one shown on the dashboard ends soonest (nearest renewal).
+      Membership.find({ user: userId, status: 'ACTIVE' }).populate('plan', 'name price duration').sort({ endDate: 1 }).lean(),
       Attendance.countDocuments({ user: userId }),
       Attendance.countDocuments({ user: userId, date: { $gte: thirtyDaysAgo } }),
       WorkoutLog.countDocuments({ user: userId }),
@@ -176,13 +209,19 @@ router.get('/member/dashboard', auth, async (req, res) => {
       Attendance.findOne({ user: userId, checkInTime: { $gte: startOfToday, $lt: startOfTomorrow } }).select('checkOutTime').lean(),
       WorkoutPlan.findOne({ member: userId, isActive: true, dayOfWeek: todayName })
         .populate('exercises.exercise', 'name category muscleGroup')
-        .populate('trainer', 'name').lean()
+        .populate('trainer', 'name').lean(),
+      MemberProfileForDashboard(userId)
     ]);
+
+    const membership = activeMemberships[0] || null;
+    const trainer = await resolveDashboardTrainer(userId, activeMemberships, profile);
 
     const attendancePercentage = Math.min(100, Math.round((recentDays / 30) * 100));
 
     res.json({
       membership,
+      memberships: activeMemberships,
+      trainer,
       totalDays,
       attendancePercentage,
       totalWorkouts,

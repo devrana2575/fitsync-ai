@@ -20,12 +20,14 @@ const AdminAnnouncements = lazy(() => import('./pages/admin/Announcements'));
 const AdminAnalytics = lazy(() => import('./pages/admin/Analytics'));
 const AdminAllData = lazy(() => import('./pages/admin/AllData'));
 const AdminSettings = lazy(() => import('./pages/admin/Settings'));
+const AdminTrainerLeaves = lazy(() => import('./pages/admin/TrainerLeaves'));
 const TrainerDashboard = lazy(() => import('./pages/trainer/Dashboard'));
 const TrainerMembers = lazy(() => import('./pages/trainer/Members'));
 const TrainerWorkouts = lazy(() => import('./pages/trainer/Workouts'));
 const TrainerAttendance = lazy(() => import('./pages/trainer/Attendance'));
 const TrainerTemplates = lazy(() => import('./pages/trainer/Templates'));
 const TrainerProfile = lazy(() => import('./pages/trainer/Profile'));
+const TrainerSickLeave = lazy(() => import('./pages/trainer/SickLeave'));
 const MemberAnnouncements = lazy(() => import('./pages/member/Announcements'));
 const MemberDashboard = lazy(() => import('./pages/member/Dashboard'));
 const MemberAttendance = lazy(() => import('./pages/member/Attendance'));
@@ -92,6 +94,7 @@ export default function App() {
             <Route path="attendance" element={<AdminAttendance />} />
             <Route path="equipment" element={<AdminEquipment />} />
             <Route path="announcements" element={<AdminAnnouncements />} />
+            <Route path="sick-leaves" element={<AdminTrainerLeaves />} />
             <Route path="analytics" element={<AdminAnalytics />} />
             <Route path="all-data" element={<AdminAllData />} />
             <Route path="settings" element={<AdminSettings />} />
@@ -111,6 +114,7 @@ export default function App() {
             <Route path="attendance" element={<TrainerAttendance />} />
             <Route path="workouts" element={<TrainerWorkouts />} />
             <Route path="templates" element={<TrainerTemplates />} />
+            <Route path="sick-leave" element={<TrainerSickLeave />} />
             <Route path="profile" element={<TrainerProfile />} />
           </Route>
 

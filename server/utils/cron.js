@@ -6,6 +6,7 @@ const User = require('../models/User');
 const { bulkCreateNotifications } = require('./notify');
 const { logAudit } = require('./audit');
 const { getGymTimezone, gymWallTimeToUtc, setGymTimezone } = require('./gymTime');
+const { reconcileSickLeaves } = require('./sickLeaveCoverage');
 
 // Translate the intended gym-local trigger wall-clocks to UTC cron
 // expressions so the host's wall clock never matters. Returns one entry per
@@ -17,10 +18,12 @@ const buildCronExpressions = (gymTimezone) => {
   const daily = gymWallTimeToUtc(8, 0); // generateNotifications daily 08:00 gym time
   const monday = gymWallTimeToUtc(12, 0); // generateNotifications Monday 12:00 gym time
   const expiry = gymWallTimeToUtc(0, 15); // expireMemberships daily 00:15 gym time
+  const sickLeave = gymWallTimeToUtc(0, 30); // reconcileSickLeaves daily 00:30 gym time
   return [
     { expression: `${pad(daily.minute)} ${pad(daily.hour)} * * *`, timezone: 'Etc/UTC', target: 'generateNotifications_daily' },
     { expression: `${pad(monday.minute)} ${pad(monday.hour)} * * 1`, timezone: 'Etc/UTC', target: 'generateNotifications_monday' },
-    { expression: `${pad(expiry.minute)} ${pad(expiry.hour)} * * *`, timezone: 'Etc/UTC', target: 'expireMemberships_daily' }
+    { expression: `${pad(expiry.minute)} ${pad(expiry.hour)} * * *`, timezone: 'Etc/UTC', target: 'expireMemberships_daily' },
+    { expression: `${pad(sickLeave.minute)} ${pad(sickLeave.hour)} * * *`, timezone: 'Etc/UTC', target: 'reconcileSickLeaves_daily' }
   ];
 };
 
@@ -140,13 +143,26 @@ const expireMemberships = async () => {
 
 const scheduledJobs = [];
 
+// target -> handler, resolved by `target` (not array position) so adding a
+// job can never silently bind a handler to the wrong expression.
+const CRON_HANDLERS = {
+  generateNotifications_daily: generateNotifications,
+  generateNotifications_monday: generateNotifications,
+  expireMemberships_daily: expireMemberships,
+  reconcileSickLeaves_daily: () => reconcileSickLeaves()
+};
+
 const startCronJobs = () => {
   const expressions = buildCronExpressions(getGymTimezone());
-  const handlers = [generateNotifications, generateNotifications, expireMemberships];
-  expressions.forEach((job, i) => {
-    scheduledJobs.push(cron.schedule(job.expression, handlers[i], { timezone: job.timezone }));
+  expressions.forEach((job) => {
+    const handler = CRON_HANDLERS[job.target];
+    if (!handler) {
+      console.error(`[Cron] No handler registered for target "${job.target}" - job skipped`);
+      return;
+    }
+    scheduledJobs.push(cron.schedule(job.expression, handler, { timezone: job.timezone }));
   });
-  console.log('[Cron] Scheduled notification + membership expiry jobs (Etc/UTC)');
+  console.log(`[Cron] Scheduled ${expressions.length} job(s) (notification + expiry + sick-leave reconcile, Etc/UTC)`);
 };
 
 const stopCronJobs = () => {
@@ -164,4 +180,12 @@ const rescheduleCronJobs = () => {
   startCronJobs();
 };
 
-module.exports = { startCronJobs, stopCronJobs, rescheduleCronJobs, generateNotifications, expireMemberships, buildCronExpressions };
+module.exports = {
+  startCronJobs,
+  stopCronJobs,
+  rescheduleCronJobs,
+  generateNotifications,
+  expireMemberships,
+  reconcileSickLeaves,
+  buildCronExpressions
+};

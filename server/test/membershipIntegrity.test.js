@@ -1,10 +1,15 @@
 'use strict';
 // Membership-integrity + trainer-capacity + payment-ledger hardening tests.
 //
-// P1#6: at most one ACTIVE membership per user.
-//   - DB partial unique index rejects a second ACTIVE row for the same user.
-//   - activation supersedes competitors; concurrent activations reconcile via
-//     an E11000 catch-and-retry so exactly one ACTIVE ever survives.
+// P1#6 (superseded business rule): a user may hold SEVERAL ACTIVE memberships
+// at once. The old "at most one ACTIVE per user" rule (partial unique index
+// `user_1_active` + activation superseding siblings) was removed; these tests
+// now assert the new independence semantics and that no unique partial index
+// on ACTIVE remains to resurrect the old rule:
+//   - a second ACTIVE row for the same user is legal (no E11000);
+//   - activating / complimentary-granting a sibling leaves every existing
+//     ACTIVE membership untouched;
+//   - concurrent activations both succeed without racing an E11000.
 // P1#7: trainer capacity under concurrent activation (allocateTrainerForMembership
 //   runs inside an in-process mutex, so the eligibility pool is recomputed after
 //   each committed assignment).
@@ -60,15 +65,24 @@ const makeUser = async (prefix) =>
   User.create({ name: uniqueName(prefix), email: uniqueEmail(prefix.toLowerCase()), password: 'Member@123', role: 'member' });
 
 // ---------------------------------------------------------------------------
-// P1#6 - one ACTIVE membership per member
+// P1#6 - independent ACTIVE memberships per member (new business rule)
 // ---------------------------------------------------------------------------
 
-test('P1#6: DB partial unique index rejects a second ACTIVE membership per user', async () => {
+test('P1#6: several ACTIVE memberships per user are legal and no unique partial index blocks them', async () => {
   const user = await makeUser('dup');
   const plan1 = await MembershipPlan.create({ name: uniqueName('Plan'), price: 1000, duration: 30 });
   const plan2 = await MembershipPlan.create({ name: uniqueName('Plan'), price: 2000, duration: 60 });
 
-  await Membership.create({
+  // Schema must not declare any unique partial index filtered to ACTIVE -
+  // that index was the old one-ACTIVE-per-user enforcement point.
+  const schemaIndexes = Membership.schema.indexes();
+  const legacyUniqueActive = schemaIndexes.filter(
+    ([key, opts]) => opts && opts.unique && key.user === 1
+      && opts.partialFilterExpression && opts.partialFilterExpression.status === 'ACTIVE'
+  );
+  assert.equal(legacyUniqueActive.length, 0, 'no unique ACTIVE-per-user index remains in the schema');
+
+  const first = await Membership.create({
     user: user._id,
     plan: plan1._id,
     startDate: new Date(),
@@ -76,19 +90,17 @@ test('P1#6: DB partial unique index rejects a second ACTIVE membership per user'
     status: 'ACTIVE',
   });
 
-  await assert.rejects(
-    Membership.create({
-      user: user._id,
-      plan: plan2._id,
-      startDate: new Date(),
-      endDate: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000),
-      status: 'ACTIVE',
-    }),
-    (error) => error && error.code === 11000,
-    'the DB must reject a second ACTIVE membership for the same user (E11000)'
-  );
+  // The second ACTIVE row must succeed (previously E11000).
+  const second = await Membership.create({
+    user: user._id,
+    plan: plan2._id,
+    startDate: new Date(),
+    endDate: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000),
+    status: 'ACTIVE',
+  });
+  assert.ok(second._id, 'second ACTIVE membership persisted');
 
-  // Historical rows in any non-ACTIVE status stay legal (partial filter).
+  // Non-ACTIVE historical rows stay legal alongside them.
   await Membership.create({
     user: user._id,
     plan: plan1._id,
@@ -104,11 +116,13 @@ test('P1#6: DB partial unique index rejects a second ACTIVE membership per user'
     status: 'PENDING',
   });
 
-  const activeCount = await Membership.countDocuments({ user: user._id, status: 'ACTIVE' });
-  assert.equal(activeCount, 1, 'exactly one ACTIVE row survives for the user');
+  const activeIds = await Membership.find({ user: user._id, status: 'ACTIVE' }).select('_id');
+  assert.equal(activeIds.length, 2, 'both ACTIVE memberships survive for the user');
+  assert.ok(activeIds.some((m) => String(m._id) === String(first._id)));
+  assert.ok(activeIds.some((m) => String(m._id) === String(second._id)));
 });
 
-test('P1#6: activating a second membership cancels the existing ACTIVE one', async () => {
+test('P1#6: activating a second membership leaves the existing ACTIVE one untouched', async () => {
   const { token } = await adminContext();
   const member = await registerMember();
   const plan = await createPlan(token);
@@ -120,13 +134,13 @@ test('P1#6: activating a second membership cancels the existing ACTIVE one', asy
   const second = await makePendingMembership(member.user.id, plan);
   await activateMembershipFromPayment(second._id);
 
-  assert.equal((await Membership.findById(first._id)).status, 'CANCELLED');
+  assert.equal((await Membership.findById(first._id)).status, 'ACTIVE', 'sibling activation must not cancel the first');
   assert.equal((await Membership.findById(second._id)).status, 'ACTIVE');
   const activeCount = await Membership.countDocuments({ user: member.user.id, status: 'ACTIVE' });
-  assert.equal(activeCount, 1, 'no more than one ACTIVE membership for the user');
+  assert.equal(activeCount, 2, 'the two memberships are independent');
 });
 
-test('P1#6: concurrent activations race safely - exactly one ACTIVE, no E11000 escapes', async () => {
+test('P1#6: concurrent activations both succeed - two ACTIVE, no E11000 escapes', async () => {
   const { token } = await adminContext();
   const member = await registerMember();
   const planA = await createPlan(token);
@@ -143,11 +157,11 @@ test('P1#6: concurrent activations race safely - exactly one ACTIVE, no E11000 e
   const docs = await Membership.find({ user: member.user.id });
   const active = docs.filter((d) => d.status === 'ACTIVE').length;
   const cancelled = docs.filter((d) => d.status === 'CANCELLED').length;
-  assert.equal(active, 1, 'exactly one ACTIVE membership after the race');
-  assert.equal(cancelled, 1, 'the loser is superseded to CANCELLED');
+  assert.equal(active, 2, 'both memberships are ACTIVE after the race');
+  assert.equal(cancelled, 0, 'no sibling is superseded');
 });
 
-test('P1#6: complimentary grant supersedes an existing ACTIVE membership (route flow)', async () => {
+test('P1#6: complimentary grant coexists with an existing ACTIVE membership (route flow)', async () => {
   const { token } = await adminContext();
   const member = await registerMember();
   const plan = await createPlan(token);
@@ -168,10 +182,10 @@ test('P1#6: complimentary grant supersedes an existing ACTIVE membership (route 
   assert.equal(second.status, 201, second.body && second.body.message);
   const secondId = second.body.membership._id;
 
-  assert.equal((await Membership.findById(firstId)).status, 'CANCELLED', 'old membership superseded');
+  assert.equal((await Membership.findById(firstId)).status, 'ACTIVE', 'existing membership stays ACTIVE');
   assert.equal((await Membership.findById(secondId)).status, 'ACTIVE', 'new complimentary grant is ACTIVE');
   const activeCount = await Membership.countDocuments({ user: member.user.id, status: 'ACTIVE' });
-  assert.equal(activeCount, 1, 'exactly one ACTIVE after the complimentary flow');
+  assert.equal(activeCount, 2, 'both complimentary grants are held simultaneously');
 });
 
 // ---------------------------------------------------------------------------
