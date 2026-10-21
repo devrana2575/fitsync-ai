@@ -28,6 +28,13 @@ import { SkeletonCard } from '../../components/common/Skeleton';
 import ProfileCompletionCard from '../../components/common/ProfileCompletionCard';
 import exerciseImage from '../../assets/exerciseImage';
 import { fmtDate } from '../../utils/format';
+import {
+  AXIS,
+  CHART_COLORS,
+  TOOLTIP_ITEM_STYLE,
+  TOOLTIP_LABEL_STYLE,
+  TOOLTIP_STYLE,
+} from '../../utils/chartTheme';
 
 export default function MemberDashboard() {
   const { user } = useAuth();
