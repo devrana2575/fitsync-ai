@@ -183,13 +183,13 @@ export default function Workouts() {
 
       {recommendations && (
         <section className="space-y-4">
-          <div className="card-dark relative overflow-hidden rounded-xl border-ink-700 p-6 sm:p-7">
-            <div className="flex flex-wrap items-center gap-2 text-brand-400">
+          <div className="card relative overflow-hidden rounded-xl p-6 sm:p-7">
+            <div className="flex flex-wrap items-center gap-2 text-brand-600">
               <SparklesIcon className="h-5 w-5" aria-hidden="true" />
-              <h2 className="text-lg font-semibold text-white">Recommended For You</h2>
+              <h2 className="text-lg font-semibold text-slate-900">Recommended For You</h2>
             </div>
             {recContext && (
-              <p className="mt-2 text-sm text-slate-400">
+              <p className="mt-2 text-sm text-slate-500">
                 {[
                   recContext.primaryGoal ? `Based on your ${recContext.primaryGoal} goal` : null,
                   recContext.difficulty ? `${recContext.difficulty} level` : null,
@@ -227,7 +227,7 @@ export default function Workouts() {
                           {rec.reasons.slice(0, 2).map((reason, idx) => (
                             <span
                               key={idx}
-                              className="inline-flex items-center gap-1 rounded-full bg-brand-500/12 px-2.5 py-1 text-xs text-brand-400"
+                              className="inline-flex items-center gap-1 rounded-full bg-brand-50 px-2.5 py-1 text-xs text-brand-700"
                             >
                               <SparklesIcon className="h-3 w-3" aria-hidden="true" />
                               {reason}

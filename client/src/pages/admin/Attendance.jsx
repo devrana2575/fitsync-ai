@@ -118,7 +118,7 @@ export default function Attendance() {
                   <span className="flex-1 text-sm text-slate-900">
                     {availableMembers.find((m) => String(m._id) === String(selectedMember))?.name || 'Member selected'}
                   </span>
-                  <button type="button" onClick={() => setSelectedMember('')} className="text-slate-400 hover:text-slate-600 text-lg leading-none">&times;</button>
+                  <button type="button" onClick={() => setSelectedMember('')} className="text-slate-500 hover:text-slate-600 text-lg leading-none">&times;</button>
                 </div>
               ) : (
                 <input

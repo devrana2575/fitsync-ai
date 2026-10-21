@@ -123,17 +123,17 @@ function CollectionCard({ collection, expanded, onToggle, onEdit, onDelete }) {
     <div className="card">
       <button onClick={onToggle} className="w-full flex items-center justify-between gap-3 px-5 py-4 hover:bg-surface transition-colors rounded-t-xl">
         <div className="flex items-center gap-3 min-w-0">
-          {expanded ? <ChevronDownIcon className="h-4 w-4 text-slate-400 shrink-0" /> : <ChevronRightIcon className="h-4 w-4 text-slate-400 shrink-0" />}
+          {expanded ? <ChevronDownIcon className="h-4 w-4 text-slate-500 shrink-0" /> : <ChevronRightIcon className="h-4 w-4 text-slate-500 shrink-0" />}
           <span className="font-semibold text-slate-900 truncate">{label}</span>
           <span className="badge badge-brand shrink-0">{count} records</span>
-          {count > rows.length && <span className="text-xs text-slate-400 shrink-0">showing latest {rows.length}</span>}
+          {count > rows.length && <span className="text-xs text-slate-500 shrink-0">showing latest {rows.length}</span>}
         </div>
       </button>
 
       {expanded && (
         <div className="border-t border-slate-100">
           {rows.length === 0 ? (
-            <p className="px-5 py-4 text-sm text-slate-400">No records.</p>
+            <p className="px-5 py-4 text-sm text-slate-500">No records.</p>
           ) : (
             <div className="max-h-96 overflow-auto">
               <table className="w-full text-sm">

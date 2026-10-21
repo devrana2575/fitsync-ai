@@ -222,7 +222,7 @@ export default function Members() {
                       <p className="text-xs text-slate-500">Until {m.membership.endDate ? new Date(m.membership.endDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '—'}</p>
                     </div>
                   ) : (
-                    <span className="text-slate-400">No active plan</span>
+                    <span className="text-slate-500">No active plan</span>
                   )}
                 </td>
                 <td className="px-6 py-4">
@@ -253,7 +253,7 @@ export default function Members() {
                 <td className="px-6 py-4">
                   <div className="flex gap-3">
                     <button onClick={() => navigate(`/admin/members/${m._id}`)} className="text-slate-600 hover:text-slate-900 font-medium text-sm">View</button>
-                    <button onClick={() => openEdit(m)} className="text-brand-400 hover:text-brand-300 font-medium text-sm">Edit</button>
+                    <button onClick={() => openEdit(m)} className="text-brand-600 hover:text-brand-700 font-medium text-sm">Edit</button>
                     <button onClick={() => toggleDeactivate(m)} className={`font-medium text-sm ${m.isActive ? 'text-danger hover:text-danger' : 'text-success hover:text-success'}`}>
                       {m.isActive ? 'Deactivate' : 'Activate'}
                     </button>
@@ -264,11 +264,11 @@ export default function Members() {
           </DataTable>
 
           <div className="flex items-center justify-center gap-4">
-            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="px-4 py-2 rounded-lg border border-border text-sm font-medium bg-surface text-slate-400 disabled:opacity-50 hover:bg-surface-hover">
+            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="px-4 py-2 rounded-lg border border-border text-sm font-medium bg-surface text-slate-500 disabled:opacity-50 hover:bg-surface-hover">
               Previous
             </button>
             <span className="text-sm text-slate-600">Page {page} of {totalPages}</span>
-            <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="px-4 py-2 rounded-lg border border-border text-sm font-medium bg-surface text-slate-400 disabled:opacity-50 hover:bg-surface-hover">
+            <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="px-4 py-2 rounded-lg border border-border text-sm font-medium bg-surface text-slate-500 disabled:opacity-50 hover:bg-surface-hover">
               Next
             </button>
           </div>
@@ -320,7 +320,7 @@ export default function Members() {
                   </div>
                 ))}
               </div>
-              <button type="button" onClick={addPhoneRow} className="mt-1 text-sm text-brand-400 hover:text-brand-300 font-medium">+ Add another number</button>
+              <button type="button" onClick={addPhoneRow} className="mt-1 text-sm text-brand-600 hover:text-brand-700 font-medium">+ Add another number</button>
             </div>
           )}
           <div className="grid grid-cols-2 gap-4">
@@ -378,8 +378,8 @@ export default function Members() {
                   })}
                   className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
                     form.preferredWorkoutDays.includes(d)
-                      ? 'bg-brand-500 text-slate-400 border-brand-500'
-                      : 'bg-surface text-slate-400 border-border hover:bg-surface-hover'
+                      ? 'bg-brand-600 text-white border-brand-600'
+                      : 'bg-surface text-slate-500 border-border hover:bg-surface-hover'
                   }`}
                 >
                   {d.slice(0, 3)}

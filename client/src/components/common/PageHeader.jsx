@@ -3,7 +3,7 @@ export default function PageHeader({ title, subtitle, actions, icon: Icon }) {
     <header className="page-header fade-in">
       <div className="flex items-center gap-3">
         {Icon && (
-          <div className="hidden sm:flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-ink-900 text-brand-400">
+          <div className="hidden sm:flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600 ring-1 ring-brand-100">
             <Icon className="h-5 w-5" aria-hidden="true" />
           </div>
         )}

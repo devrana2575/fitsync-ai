@@ -128,7 +128,7 @@ export default function Settings() {
                 {payment.webhookConfigured ? 'Webhook configured' : 'Webhook NOT configured'}
               </span>
               {payment.keyId && (
-                <span className="font-mono text-slate-400">{payment.keyId}</span>
+                <span className="font-mono text-slate-500">{payment.keyId}</span>
               )}
             </div>
           )}

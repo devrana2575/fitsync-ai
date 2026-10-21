@@ -14,7 +14,7 @@ export default function ProgressBar({ value = 0, tone = 'brand', className = '',
       {label && (
         <div className="flex items-center justify-between mb-1.5">
           <span className="text-xs font-medium text-slate-500">{label}</span>
-          <span className="text-xs font-semibold text-slate-400 tabular-nums">{Math.round(clamped)}%</span>
+          <span className="text-xs font-semibold text-slate-600 tabular-nums">{Math.round(clamped)}%</span>
         </div>
       )}
       <div

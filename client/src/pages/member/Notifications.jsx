@@ -34,7 +34,7 @@ const typeIcons = {
 };
 
 const typeTones = {
-  membership_expiry: 'text-brand-400',
+  membership_expiry: 'text-brand-600',
   payment_due: 'text-warning',
   low_attendance: 'text-info',
   high_risk: 'text-danger',
@@ -155,7 +155,7 @@ export default function Notifications() {
               type="checkbox"
               checked={unreadOnly}
               onChange={(e) => setUnreadOnly(e.target.checked)}
-              className="h-4 w-4 rounded border-slate-300 text-brand-400 focus:ring-brand-500"
+              className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
             />
             Unread only
           </label>
@@ -250,7 +250,7 @@ export default function Notifications() {
                     key={t.value}
                     type="button"
                     onClick={() => toggleNotifyType(t.value)}
-                    className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${active ? 'border-brand-500 bg-brand-500 text-slate-400' : 'border-border bg-surface text-slate-400 hover:bg-surface-hover'}`}
+                    className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${active ? 'border-brand-600 bg-brand-600 text-white' : 'border-border bg-surface text-slate-500 hover:bg-surface-hover'}`}
                   >
                     {t.label}
                   </button>
@@ -286,7 +286,7 @@ export default function Notifications() {
                 className={`card w-full p-5 text-left transition-colors hover:bg-surface/60 ${unread ? 'border-l-4 border-l-brand-500' : ''}`}
               >
                 <div className="flex items-start gap-3">
-                  <TypeIcon className={`h-5 w-5 mt-0.5 shrink-0 ${typeTones[n.type] || 'text-slate-400'}`} aria-hidden="true" />
+                  <TypeIcon className={`h-5 w-5 mt-0.5 shrink-0 ${typeTones[n.type] || 'text-slate-500'}`} aria-hidden="true" />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex min-w-0 items-center gap-2">
@@ -297,7 +297,7 @@ export default function Notifications() {
                           {n.title}
                         </p>
                       </div>
-                      <span className="shrink-0 text-xs text-slate-400">{timeAgo(n.createdAt)}</span>
+                      <span className="shrink-0 text-xs text-slate-500">{timeAgo(n.createdAt)}</span>
                     </div>
                     <p className="mt-0.5 text-sm text-slate-500">{n.message}</p>
                   </div>

@@ -76,7 +76,7 @@ export default function Announcements() {
                     <h2 className="mt-2 text-lg font-semibold text-slate-900">{a.title}</h2>
                     <p className="mt-1 text-slate-600 whitespace-pre-wrap">{a.message}</p>
                   </div>
-                  <span className="text-xs text-slate-400 shrink-0 whitespace-nowrap">{fmtDate(a.createdAt || a.createdAAt)}</span>
+                  <span className="text-xs text-slate-500 shrink-0 whitespace-nowrap">{fmtDate(a.createdAt || a.createdAAt)}</span>
                 </div>
               </div>
             );

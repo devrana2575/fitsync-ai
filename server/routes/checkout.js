@@ -25,6 +25,21 @@ const {
 
 const isProduction = () => process.env.NODE_ENV === 'production';
 
+// A gateway call (Razorpay/Stripe) can fail for reasons that are NOT our bug:
+// bad or rotated credentials, a gateway outage, rate limiting, a rejected
+// payload. Surfacing those as a bare 500 "Server error" tells the member
+// nothing actionable. We log the real cause server-side and return a 502 with
+// a message the member can act on (retry later / contact the gym), without
+// leaking any gateway credential or raw provider payload.
+const respondGatewayFailure = (res, { scope, error, memberMessage }) => {
+  const detail = error?.error?.description || error?.message || String(error);
+  console.error(`[checkout/${scope}] gateway error:`, detail);
+  return res.status(502).json({
+    message: memberMessage || 'The payment gateway is temporarily unavailable. Please try again in a moment.',
+    gatewayError: true
+  });
+};
+
 const generateUpiUri = ({ upiId, upiName, amount, note, reference }) => {
   const params = new URLSearchParams();
   params.set('pa', upiId);
@@ -340,8 +355,11 @@ router.post('/razorpay/order', auth, authorize('member'), async (req, res) => {
       planPrice: plan.price
     });
   } catch (error) {
-    console.error('[checkout/razorpay-order] Error:', error.message);
-    res.status(500).json({ message: 'Server error' });
+    return respondGatewayFailure(res, {
+      scope: 'razorpay-order',
+      error,
+      memberMessage: 'We could not start the payment. Please try again in a moment or contact the gym.'
+    });
   }
 });
 

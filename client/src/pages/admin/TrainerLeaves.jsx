@@ -147,15 +147,15 @@ export default function AdminTrainerLeaves() {
                   <tr key={leave._id} className="odd:bg-transparent even:bg-surface/60">
                     <td className="px-6 py-4 text-sm font-medium text-slate-900">
                       {leave.trainer?.name || '—'}
-                      {leave.trainer?.email ? <p className="truncate text-xs font-normal text-slate-400">{leave.trainer.email}</p> : null}
+                      {leave.trainer?.email ? <p className="truncate text-xs font-normal text-slate-500">{leave.trainer.email}</p> : null}
                     </td>
                     <td className="px-6 py-4 text-sm text-slate-700">
-                      {fmtDate(leave.startDate)} <span className="text-slate-400">→</span> {fmtDate(leave.endDate)}
+                      {fmtDate(leave.startDate)} <span className="text-slate-500">→</span> {fmtDate(leave.endDate)}
                     </td>
                     <td className="max-w-xs truncate px-6 py-4 text-sm text-slate-500">{leave.reason}</td>
                     <td className="px-6 py-4">
                       <StatusBadge value={leave.status} tone={statusTone[leave.status]} />
-                      {leave.reviewNote ? <p className="mt-1 max-w-xs truncate text-xs text-slate-400">{leave.reviewNote}</p> : null}
+                      {leave.reviewNote ? <p className="mt-1 max-w-xs truncate text-xs text-slate-500">{leave.reviewNote}</p> : null}
                     </td>
                     <td className="px-6 py-4 text-sm text-slate-500">
                       {leave.hasCertificate ? (
@@ -174,9 +174,9 @@ export default function AdminTrainerLeaves() {
                         <span className="badge badge-danger ml-1">{leave.coverage.uncovered} need assignment</span>
                       )}
                       {leave.coverage?.restoredAt && (
-                        <p className="mt-1 text-xs text-slate-400">Restored {fmtDate(leave.coverage.restoredAt)}</p>
+                        <p className="mt-1 text-xs text-slate-500">Restored {fmtDate(leave.coverage.restoredAt)}</p>
                       )}
-                      {!leave.coverage?.covered && !leave.coverage?.uncovered ? <span className="text-slate-400">—</span> : null}
+                      {!leave.coverage?.covered && !leave.coverage?.uncovered ? <span className="text-slate-500">—</span> : null}
                     </td>
                     <td className="px-6 py-4 text-right">
                       {leave.status === 'PENDING' ? (
@@ -199,12 +199,12 @@ export default function AdminTrainerLeaves() {
                           </button>
                         </div>
                       ) : leave.status === 'APPROVED' ? (
-                        <span className="inline-flex items-center gap-1 text-xs text-slate-400">
+                        <span className="inline-flex items-center gap-1 text-xs text-slate-500">
                           <ArrowPathIcon className="h-3.5 w-3.5" aria-hidden="true" />
                           {leave.coverage?.restoredAt ? 'Completed cover' : 'Cover active / scheduled'}
                         </span>
                       ) : (
-                        <span className="text-xs text-slate-400">—</span>
+                        <span className="text-xs text-slate-500">—</span>
                       )}
                     </td>
                   </tr>

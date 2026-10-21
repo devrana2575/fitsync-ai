@@ -271,10 +271,10 @@ export default function Payments() {
                 {p.membership ? (
                   <div>
                     <p className="font-medium text-slate-900">{p.membership.plan?.name || 'Membership'}</p>
-                    <p className="text-xs text-slate-400 capitalize">{p.membership.status || ''}</p>
+                    <p className="text-xs text-slate-500 capitalize">{p.membership.status || ''}</p>
                   </div>
                 ) : (
-                  <span className="text-slate-400">—</span>
+                  <span className="text-slate-500">—</span>
                 )}
               </td>
               <td className="px-4 py-3 font-semibold text-slate-900">{toINR(p.amount)}</td>
@@ -286,11 +286,11 @@ export default function Payments() {
                       {p.gateway === 'razorpay' ? 'Razorpay' : p.gateway}
                     </span>
                     {p.gatewayOrderId && (
-                      <p className="font-mono text-[10px] text-slate-400">{p.gatewayOrderId}</p>
+                      <p className="font-mono text-[10px] text-slate-500">{p.gatewayOrderId}</p>
                     )}
                   </div>
                 ) : (
-                  <span className="text-xs text-slate-400">—</span>
+                  <span className="text-xs text-slate-500">—</span>
                 )}
               </td>
               <td className="px-4 py-3 text-sm">
@@ -305,7 +305,7 @@ export default function Payments() {
                   </button>
                 )}
                 {p.status === 'PENDING' && p.gateway && (
-                  <span className="text-xs text-slate-400">Gateway pending</span>
+                  <span className="text-xs text-slate-500">Gateway pending</span>
                 )}
                 {p.status === 'COMPLETED' && p.gateway && (
                   <span className="inline-flex items-center gap-1 text-xs font-medium text-success">
@@ -326,7 +326,7 @@ export default function Payments() {
             {selectedMember ? (
               <div className="flex items-center gap-2 px-3 py-2 border border-slate-300 rounded-lg bg-surface">
                 <span className="flex-1 text-sm text-slate-900">{selectedMember.name} ({selectedMember.email})</span>
-                <button type="button" onClick={handleSubmittedMemberChange} className="text-slate-400 hover:text-slate-600 text-lg leading-none">&times;</button>
+                <button type="button" onClick={handleSubmittedMemberChange} className="text-slate-500 hover:text-slate-600 text-lg leading-none">&times;</button>
               </div>
             ) : (
               <input
@@ -349,9 +349,9 @@ export default function Payments() {
           <div>
             <label className="label">Membership (optional)</label>
             {!selectedMember ? (
-              <input disabled placeholder="Select a member first" className="input bg-surface text-slate-400" />
+              <input disabled placeholder="Select a member first" className="input bg-surface text-slate-500" />
             ) : loadingMemberships ? (
-              <input disabled placeholder="Loading memberships..." className="input bg-surface text-slate-400" />
+              <input disabled placeholder="Loading memberships..." className="input bg-surface text-slate-500" />
             ) : memberMemberships.length === 0 ? (
               <div className="px-3 py-2 border border-slate-300 rounded-lg bg-surface text-sm text-slate-500">No memberships found for this member</div>
             ) : (
@@ -366,7 +366,7 @@ export default function Payments() {
           <div>
             <label className="label">Plan (optional — creates new membership)</label>
             {!selectedMember ? (
-              <input disabled placeholder="Select a member first" className="input bg-surface text-slate-400" />
+              <input disabled placeholder="Select a member first" className="input bg-surface text-slate-500" />
             ) : (
               <select value={form.planId} onChange={handlePlanChange} className="input">
                 <option value="">None</option>
@@ -378,13 +378,13 @@ export default function Payments() {
                 ))}
               </select>
             )}
-            <p className="text-xs text-slate-400 mt-1">Pick this when the member is buying a plan at the counter — a new membership is created automatically and activated when the cumulative paid amount reaches the plan price.</p>
+            <p className="text-xs text-slate-500 mt-1">Pick this when the member is buying a plan at the counter — a new membership is created automatically and activated when the cumulative paid amount reaches the plan price.</p>
           </div>
           <div>
             <label className="label">Amount (₹)</label>
             <input required type="number" min="0" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} className="input" />
             {form.planId && form.status === 'completed' && (
-              <p className="text-xs text-slate-400 mt-1">Plan-based completed payments must match the plan price exactly (or the next due installment for installment plans - amounts that differ are rejected).</p>
+              <p className="text-xs text-slate-500 mt-1">Plan-based completed payments must match the plan price exactly (or the next due installment for installment plans - amounts that differ are rejected).</p>
             )}
           </div>
           <div>

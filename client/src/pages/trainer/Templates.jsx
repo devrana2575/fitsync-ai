@@ -217,10 +217,10 @@ export default function Templates() {
                       {tpl.description && <p className="mt-0.5 text-xs text-slate-500 line-clamp-1 max-w-xs">{tpl.description}</p>}
                     </td>
                     <td className="px-6 py-4">
-                      {tpl.goal ? <span className={`badge ${GOAL_COLORS[tpl.goal] || 'badge-muted'}`}>{GOAL_LABELS[tpl.goal] || tpl.goal}</span> : <span className="text-slate-400 text-xs">—</span>}
+                      {tpl.goal ? <span className={`badge ${GOAL_COLORS[tpl.goal] || 'badge-muted'}`}>{GOAL_LABELS[tpl.goal] || tpl.goal}</span> : <span className="text-slate-500 text-xs">—</span>}
                     </td>
                     <td className="px-6 py-4">
-                      {tpl.difficulty ? <span className={`badge ${DIFF_COLORS[tpl.difficulty] || 'badge-muted'}`}>{DIFF_LABELS[tpl.difficulty] || tpl.difficulty}</span> : <span className="text-slate-400 text-xs">—</span>}
+                      {tpl.difficulty ? <span className={`badge ${DIFF_COLORS[tpl.difficulty] || 'badge-muted'}`}>{DIFF_LABELS[tpl.difficulty] || tpl.difficulty}</span> : <span className="text-slate-500 text-xs">—</span>}
                     </td>
                     <td className="px-6 py-4 text-sm text-slate-500 tabular-nums">{tpl.exercises?.length || 0}</td>
                     <td className="px-6 py-4 text-sm text-slate-500 tabular-nums">{tpl.timesAssigned || 0}</td>
@@ -289,7 +289,7 @@ export default function Templates() {
           <div>
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-semibold text-slate-700">Exercises *</h3>
-              <button type="button" onClick={addExercise} className="btn btn-sm btn-outline text-brand-400 border-brand-500/30 hover:bg-brand-500/120/10">
+              <button type="button" onClick={addExercise} className="btn btn-sm btn-outline text-brand-600 border-brand-200 hover:bg-brand-50">
                 <PlusIcon className="h-4 w-4" aria-hidden="true" />
                 Add Exercise
               </button>

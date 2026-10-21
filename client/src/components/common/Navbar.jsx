@@ -18,9 +18,9 @@ import api from '../../services/api';
 import Avatar from './Avatar';
 
 const roleStyles = {
-  admin: 'bg-brand-500/15 text-brand-400 ring-1 ring-inset ring-brand-500/25',
+  admin: 'bg-brand-50 text-brand-700 ring-1 ring-inset ring-brand-200',
   trainer: 'bg-info/12 text-info ring-1 ring-inset ring-info/25',
-  member: 'bg-surface-elevated text-slate-400 ring-1 ring-inset ring-slate-300/50',
+  member: 'bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-200',
 };
 
 const typeIcons = {
@@ -37,8 +37,8 @@ const typeTones = {
   warning: 'text-warning',
   success: 'text-success',
   error: 'text-danger',
-  membership: 'text-brand-400',
-  attendance: 'text-slate-400',
+  membership: 'text-brand-600',
+  attendance: 'text-slate-500',
 };
 
 function timeAgo(dateStr) {
@@ -159,7 +159,7 @@ export default function Navbar({ onMenuClick }) {
     <header className="h-16 bg-base/85 backdrop-blur border-b border-border flex items-center justify-between px-4 sm:px-6 sticky top-0 z-20">
       <button
         onClick={onMenuClick}
-        className="lg:hidden p-2 text-slate-400 hover:text-white hover:bg-surface-hover rounded-lg transition-colors"
+        className="lg:hidden p-2 text-slate-500 hover:text-slate-900 hover:bg-surface-hover rounded-lg transition-colors"
         aria-label="Open menu"
       >
         <Bars3Icon className="h-5 w-5" aria-hidden="true" />
@@ -167,7 +167,7 @@ export default function Navbar({ onMenuClick }) {
 
       <div className="hidden lg:block text-sm text-slate-500">
         {user?.role ? (
-          <span className={`inline-block rounded-md px-2 py-0.5 text-[11px] font-medium capitalize ${roleStyles[user.role] || 'bg-surface text-slate-400'}`}>
+          <span className={`inline-block rounded-md px-2 py-0.5 text-[11px] font-medium capitalize ${roleStyles[user.role] || 'bg-surface text-slate-500'}`}>
             {user.role} console
           </span>
         ) : null}
@@ -181,7 +181,7 @@ export default function Navbar({ onMenuClick }) {
               setShowNotifications((prev) => !prev);
               setShowDropdown(false);
             }}
-            className="relative p-2 text-slate-400 hover:text-white hover:bg-surface-hover rounded-lg transition-colors"
+            className="relative p-2 text-slate-500 hover:text-slate-900 hover:bg-surface-hover rounded-lg transition-colors"
             aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ''}`}
           >
             <BellIcon className="h-5 w-5" aria-hidden="true" />
@@ -198,7 +198,7 @@ export default function Navbar({ onMenuClick }) {
                 <div className="flex items-center justify-between px-4 py-3 border-b border-border">
                   <h3 className="text-sm font-semibold text-slate-900">Notifications</h3>
                   {unreadCount > 0 && (
-                    <button onClick={handleMarkAllRead} className="text-xs text-brand-400 hover:text-brand-300 font-medium">
+                    <button onClick={handleMarkAllRead} className="text-xs text-brand-600 hover:text-brand-500 font-medium">
                       Mark all read
                     </button>
                   )}
@@ -224,19 +224,19 @@ export default function Navbar({ onMenuClick }) {
                           if (!n.isRead) handleMarkRead(n._id);
                         }}
                         className={`w-full text-left px-4 py-3 hover:bg-surface-hover transition-colors ${
-                          !n.isRead ? 'bg-brand-500/8' : ''
+                          !n.isRead ? 'bg-brand-50' : ''
                         }`}
                       >
                         <div className="flex items-start gap-2.5">
                           <TypeIcon
-                            className={`h-5 w-5 mt-0.5 shrink-0 ${typeTones[n.type] || 'text-slate-400'}`}
+                            className={`h-5 w-5 mt-0.5 shrink-0 ${typeTones[n.type] || 'text-slate-500'}`}
                             aria-hidden="true"
                           />
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center justify-between gap-2">
                               <p
                                 className={`text-sm leading-snug ${
-                                  !n.isRead ? 'font-semibold text-slate-900' : 'text-slate-400'
+                                  !n.isRead ? 'font-semibold text-slate-900' : 'text-slate-500'
                                 }`}
                               >
                                 {n.title}
@@ -278,7 +278,7 @@ export default function Navbar({ onMenuClick }) {
                 {user?.name || 'User'}
               </p>
               <span
-                className={`inline-block mt-0.5 text-[11px] px-1.5 py-0.5 rounded-md font-medium capitalize ${roleStyles[user?.role] || 'bg-surface text-slate-400'}`}
+                className={`inline-block mt-0.5 text-[11px] px-1.5 py-0.5 rounded-md font-medium capitalize ${roleStyles[user?.role] || 'bg-surface text-slate-500'}`}
               >
                 {user?.role || 'user'}
               </span>
@@ -292,7 +292,7 @@ export default function Navbar({ onMenuClick }) {
                 <p className="text-xs text-slate-500 truncate">{user?.email}</p>
               </div>
               <div className="px-4 py-2.5 border-b border-border flex items-center gap-2">
-                <span className={`rounded-md px-2 py-0.5 text-[11px] font-medium capitalize ${roleStyles[user?.role] || 'bg-surface text-slate-400'}`}>
+                <span className={`rounded-md px-2 py-0.5 text-[11px] font-medium capitalize ${roleStyles[user?.role] || 'bg-surface text-slate-500'}`}>
                   {user?.role || 'user'}
                 </span>
               </div>

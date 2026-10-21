@@ -196,22 +196,22 @@ export default function MemberDashboard() {
         </div>
       ) : (
         <>
-          <div className="card-dark relative overflow-hidden rounded-xl border-ink-700 p-6 sm:p-8">
+          <div className="card relative overflow-hidden rounded-xl p-6 sm:p-8">
             <div
-              className="absolute inset-0 opacity-[0.05]"
+              className="absolute inset-0 opacity-50"
               style={{
-                backgroundImage: 'linear-gradient(#2a3037 1px, transparent 1px), linear-gradient(90deg, #2a3037 1px, transparent 1px)',
+                backgroundImage: 'linear-gradient(#dbe4f0 1px, transparent 1px), linear-gradient(90deg, #dbe4f0 1px, transparent 1px)',
                 backgroundSize: '32px 32px',
               }}
               aria-hidden="true"
             />
             <div className="relative">
-              <div className="flex flex-wrap items-center gap-2 text-brand-400">
+              <div className="flex flex-wrap items-center gap-2 text-brand-600">
                 <CalendarDaysIcon className="h-5 w-5" aria-hidden="true" />
                 <p className="text-sm font-medium">{todayDate}</p>
               </div>
-              <h1 className="mt-2 text-3xl font-bold text-white sm:text-4xl">Welcome back, {greeting}</h1>
-              <p className="mt-1 text-sm text-slate-400">
+              <h1 className="mt-2 text-3xl font-bold text-slate-900 sm:text-4xl">Welcome back, {greeting}</h1>
+              <p className="mt-1 text-sm text-slate-500">
                 {dashboard?.todayCheckIn
                   ? (dashboard.todayCheckOut
                       ? 'Checked in and completed today\u2019s visit. Great work!'
@@ -224,28 +224,28 @@ export default function MemberDashboard() {
                   <MapPinIcon className="h-5 w-5 shrink-0" aria-hidden="true" />
                   <span className="text-left leading-tight">
                     <span className="block font-semibold">Check In</span>
-                    <span className="block text-xs font-normal text-slate-400/70">Mark your attendance</span>
+                    <span className="block text-xs font-normal text-white/80">Mark your attendance</span>
                   </span>
                 </button>
                 <button onClick={() => navigate('/member/membership')} className="btn btn-md btn-outline-dark justify-start">
                   <BuildingOffice2Icon className="h-5 w-5 shrink-0" aria-hidden="true" />
                   <span className="text-left leading-tight">
                     <span className="block font-semibold">View Membership</span>
-                    <span className="block text-xs font-normal text-slate-400">Plan & renewals</span>
+                    <span className="block text-xs font-normal text-slate-500">Plan & renewals</span>
                   </span>
                 </button>
                 <button onClick={() => navigate('/member/workouts')} className="btn btn-md btn-outline-dark justify-start">
                   <BoltIcon className="h-5 w-5 shrink-0" aria-hidden="true" />
                   <span className="text-left leading-tight">
                     <span className="block font-semibold">Log Workout</span>
-                    <span className="block text-xs font-normal text-slate-400">Record your workout</span>
+                    <span className="block text-xs font-normal text-slate-500">Record your workout</span>
                   </span>
                 </button>
                 <button onClick={() => navigate('/member/progress')} className="btn btn-md btn-outline-dark justify-start">
                   <ClipboardDocumentCheckIcon className="h-5 w-5 shrink-0" aria-hidden="true" />
                   <span className="text-left leading-tight">
                     <span className="block font-semibold">Record Measurement</span>
-                    <span className="block text-xs font-normal text-slate-400">Track body metrics</span>
+                    <span className="block text-xs font-normal text-slate-500">Track body metrics</span>
                   </span>
                 </button>
               </div>
@@ -263,7 +263,7 @@ export default function MemberDashboard() {
             <div className="lg:col-span-2 space-y-4">
               <div className="card p-5">
                 <div className="mb-4 flex items-center gap-2">
-                  <BoltIcon className="h-5 w-5 text-brand-400" aria-hidden="true" />
+                  <BoltIcon className="h-5 w-5 text-brand-600" aria-hidden="true" />
                   <h2 className="card-title">Today&apos;s Workout</h2>
                   <span className="badge badge-info ml-auto">{todayName()}</span>
                 </div>
@@ -275,7 +275,7 @@ export default function MemberDashboard() {
                         <p className="mt-0.5 text-sm text-slate-500">
                           {workoutExercises.length} exercises{todayWorkout.description ? ` · ${todayWorkout.description}` : ''}
                         </p>
-                        {totalSets > 0 && <p className="text-xs text-slate-400">{totalSets} total sets planned</p>}
+                        {totalSets > 0 && <p className="text-xs text-slate-500">{totalSets} total sets planned</p>}
                       </div>
                       <button onClick={() => navigate('/member/workouts')} className="btn btn-sm btn-primary">
                         View Plan <ArrowRightIcon className="h-4 w-4" aria-hidden="true" />
@@ -306,10 +306,10 @@ export default function MemberDashboard() {
                 ) : (
                   <div className="flex flex-col items-center py-8 text-center">
                     <div className="mb-3 rounded-full bg-brand-500/15 p-3">
-                      <CheckCircleIcon className="h-6 w-6 text-brand-400" aria-hidden="true" />
+                      <CheckCircleIcon className="h-6 w-6 text-brand-600" aria-hidden="true" />
                     </div>
                     <p className="text-sm font-medium text-slate-700">Rest day — no workout scheduled.</p>
-                    <p className="mt-1 text-xs text-slate-400">Check your plans or log a workout and keep the momentum going.</p>
+                    <p className="mt-1 text-xs text-slate-500">Check your plans or log a workout and keep the momentum going.</p>
                     <button onClick={() => navigate('/member/workouts')} className="btn btn-md btn-outline mt-4">
                       Browse Workout Plans <ArrowRightIcon className="h-4 w-4" aria-hidden="true" />
                     </button>
@@ -319,7 +319,7 @@ export default function MemberDashboard() {
 
               <div className="card p-5">
                 <div className="mb-4 flex items-center gap-2">
-                  <BuildingOffice2Icon className="h-5 w-5 text-brand-400" aria-hidden="true" />
+                  <BuildingOffice2Icon className="h-5 w-5 text-brand-600" aria-hidden="true" />
                   <h2 className="card-title">Membership</h2>
                 </div>
                 {membership.planName ? (
@@ -356,10 +356,10 @@ export default function MemberDashboard() {
                 ) : (
                   <div className="flex flex-col items-center py-8 text-center">
                     <div className="mb-3 rounded-full bg-slate-100 p-3">
-                      <BuildingOffice2Icon className="h-6 w-6 text-slate-400" aria-hidden="true" />
+                      <BuildingOffice2Icon className="h-6 w-6 text-slate-500" aria-hidden="true" />
                     </div>
                     <p className="text-sm font-medium text-slate-700">No active membership</p>
-                    <p className="mt-1 text-xs text-slate-400">Pick a plan to keep training and unlock perks.</p>
+                    <p className="mt-1 text-xs text-slate-500">Pick a plan to keep training and unlock perks.</p>
                     <button onClick={() => navigate('/member/membership')} className="btn btn-md btn-primary mt-4">
                       View Membership Plans <ArrowRightIcon className="h-4 w-4" aria-hidden="true" />
                     </button>
@@ -370,7 +370,7 @@ export default function MemberDashboard() {
 
             <div className="card p-5 self-start">
               <div className="mb-4 flex items-center gap-2">
-                <AcademicCapIcon className="h-5 w-5 text-brand-400" aria-hidden="true" />
+                <AcademicCapIcon className="h-5 w-5 text-brand-600" aria-hidden="true" />
                 <h2 className="card-title">Your Trainer</h2>
               </div>
               {trainer && trainer.name ? (
@@ -393,10 +393,10 @@ export default function MemberDashboard() {
               ) : (
                 <div className="flex flex-col items-center py-8 text-center">
                   <div className="mb-3 rounded-full bg-slate-100 p-3">
-                    <AcademicCapIcon className="h-6 w-6 text-slate-400" aria-hidden="true" />
+                    <AcademicCapIcon className="h-6 w-6 text-slate-500" aria-hidden="true" />
                   </div>
                   <p className="text-sm font-medium text-slate-700">Get assigned a trainer</p>
-                  <p className="mt-1 text-xs text-slate-400">Premium plans include dedicated coach support.</p>
+                  <p className="mt-1 text-xs text-slate-500">Premium plans include dedicated coach support.</p>
                   <button onClick={() => navigate('/member/membership')} className="btn btn-md btn-outline mt-4">
                     View Plans <ArrowRightIcon className="h-4 w-4" aria-hidden="true" />
                   </button>
@@ -408,27 +408,27 @@ export default function MemberDashboard() {
           <div className="card p-5">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2">
-                <ChartBarIcon className="h-5 w-5 text-brand-400" aria-hidden="true" />
+                <ChartBarIcon className="h-5 w-5 text-brand-600" aria-hidden="true" />
                 <h2 className="card-title">Weight Trend</h2>
               </div>
-              {weightData.length > 0 && <span className="text-xs text-slate-400">{weightData.length} measurement{weightData.length === 1 ? '' : 's'}</span>}
+              {weightData.length > 0 && <span className="text-xs text-slate-500">{weightData.length} measurement{weightData.length === 1 ? '' : 's'}</span>}
             </div>
             {errors.measurements ? (
               <ErrorState message="We couldn't load your measurements right now. Please try again." onRetry={handleRefresh} />
             ) : weightData.length > 0 ? (
               <ResponsiveContainer width="100%" height={250}>
                 <LineChart data={weightData} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#23282e" />
-                  <XAxis dataKey="date" tickLine={false} axisLine={{ stroke: "#292f35" }} tick={{ fontSize: 12, fill: "#6f7983" }} />
-                  <YAxis tickLine={false} axisLine={{ stroke: "#292f35" }} tick={{ fontSize: 12, fill: "#6f7983" }} />
-                  <Tooltip contentStyle={{ backgroundColor: '#181c20', border: '1px solid #292f35', borderRadius: '0.75rem', color: '#f3f5f4' }} labelStyle={{ color: '#9aa4ad' }} itemStyle={{ color: '#f3f5f4' }} />
-                  <Line type="monotone" dataKey="weight" stroke="#18A878" strokeWidth={2} dot={{ fill: '#18A878' }} activeDot={{ r: 5 }} />
+                  <CartesianGrid strokeDasharray="3 3" stroke={AXIS.grid} />
+                  <XAxis dataKey="date" tickLine={false} axisLine={{ stroke: AXIS.axis }} tick={{ fontSize: 12, fill: AXIS.tick }} />
+                  <YAxis tickLine={false} axisLine={{ stroke: AXIS.axis }} tick={{ fontSize: 12, fill: AXIS.tick }} />
+                  <Tooltip contentStyle={TOOLTIP_STYLE} labelStyle={TOOLTIP_LABEL_STYLE} itemStyle={TOOLTIP_ITEM_STYLE} />
+                  <Line type="monotone" dataKey="weight" stroke={CHART_COLORS.brand} strokeWidth={2} dot={{ fill: CHART_COLORS.brand }} activeDot={{ r: 5 }} />
                 </LineChart>
               </ResponsiveContainer>
             ) : (
               <div className="flex h-[250px] flex-col items-center justify-center text-center">
                 <p className="text-sm font-medium text-slate-600">No measurements recorded yet</p>
-                <p className="mt-1 text-xs text-slate-400">Record your first measurement to see your weight trend.</p>
+                <p className="mt-1 text-xs text-slate-500">Record your first measurement to see your weight trend.</p>
                 <button onClick={() => navigate('/member/progress')} className="btn btn-md btn-primary mt-4">
                   Record Measurement
                 </button>

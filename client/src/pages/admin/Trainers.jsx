@@ -156,11 +156,11 @@ export default function Trainers() {
                 </div>
               </td>
               <td className="px-6 py-4 text-slate-600">{t.profile?.experience ? `${t.profile.experience} yrs` : '—'}</td>
-              <td className="px-6 py-4 text-slate-600">{t.memberCount ?? t.assignedMembers?.length ?? '—'} <span className="text-xs text-slate-400">/ {t.profile?.maxMembers ?? '—'}</span></td>
+              <td className="px-6 py-4 text-slate-600">{t.memberCount ?? t.assignedMembers?.length ?? '—'} <span className="text-xs text-slate-500">/ {t.profile?.maxMembers ?? '—'}</span></td>
               <td className="px-6 py-4">
                 <StatusBadge value={t.profile?.isAvailable !== false} tone={t.profile?.isAvailable !== false ? 'success' : 'warning'} label={t.profile?.isAvailable !== false ? 'Available' : 'Away'} />
                 {t.profile?.isAvailable === false && t.profile?.absenceReason && (
-                  <p className="text-xs text-slate-400 mt-1 max-w-[180px] truncate" title={t.profile.absenceReason}>{t.profile.absenceReason}</p>
+                  <p className="text-xs text-slate-500 mt-1 max-w-[180px] truncate" title={t.profile.absenceReason}>{t.profile.absenceReason}</p>
                 )}
               </td>
               <td className="px-6 py-4">
@@ -209,7 +209,7 @@ export default function Trainers() {
           <div>
             <label className="label">Max Members</label>
             <input type="number" min="0" value={form.maxMembers} onChange={(e) => setForm({ ...form, maxMembers: e.target.value })} className="input" />
-            <p className="text-xs text-slate-400 mt-1">Caps how many members can be assigned to this trainer.</p>
+            <p className="text-xs text-slate-500 mt-1">Caps how many members can be assigned to this trainer.</p>
           </div>
           <div className="flex justify-end gap-3 pt-2">
             <button type="button" onClick={() => setShowModal(false)} className="btn btn-outline btn-md">Cancel</button>

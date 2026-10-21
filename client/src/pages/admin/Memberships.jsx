@@ -244,10 +244,10 @@ export default function Memberships() {
       )}
 
       <div className="flex gap-1 border-b border-slate-200">
-        <button onClick={() => setTab('plans')} className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${tab === 'plans' ? 'border-brand-600 text-brand-400' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
+        <button onClick={() => setTab('plans')} className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${tab === 'plans' ? 'border-brand-600 text-brand-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
           Plans
         </button>
-        <button onClick={() => setTab('memberships')} className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${tab === 'memberships' ? 'border-brand-600 text-brand-400' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
+        <button onClick={() => setTab('memberships')} className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${tab === 'memberships' ? 'border-brand-600 text-brand-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
           Memberships
         </button>
       </div>
@@ -277,7 +277,7 @@ export default function Memberships() {
                       <h3 className="text-lg font-semibold text-slate-900">{p.name}</h3>
                       <button onClick={() => openEditPlan(p)} className="btn btn-sm btn-outline">Edit</button>
                     </div>
-                    <p className="text-2xl font-semibold tabular-nums text-brand-400 mb-1">{toINR(p.price)}</p>
+                    <p className="text-2xl font-semibold tabular-nums text-brand-600 mb-1">{toINR(p.price)}</p>
                     <p className="text-sm font-semibold uppercase tracking-wide text-slate-500 mb-2">{p.duration} DAYS</p>
                     <div className="flex flex-wrap gap-1.5 mb-3">
                       {p.paymentMode === 'INSTALLMENT' && (
@@ -398,7 +398,7 @@ export default function Memberships() {
           )}
 
           <div className="flex items-center gap-2">
-            <input id="plan-trainer" type="checkbox" checked={planForm.trainerIncluded} onChange={(e) => setPlanForm({ ...planForm, trainerIncluded: e.target.checked })} className="h-4 w-4 text-brand-400 border-slate-300 rounded focus:ring-brand-500" />
+            <input id="plan-trainer" type="checkbox" checked={planForm.trainerIncluded} onChange={(e) => setPlanForm({ ...planForm, trainerIncluded: e.target.checked })} className="h-4 w-4 text-brand-600 border-slate-300 rounded focus:ring-brand-500 focus:ring-offset-0" />
             <label htmlFor="plan-trainer" className="text-sm font-medium text-slate-700">Includes personal trainer</label>
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -420,7 +420,7 @@ export default function Memberships() {
           </p>
 
           <div className="flex items-center gap-2">
-            <input id="plan-workouts" type="checkbox" checked={planForm.workoutPlanIncluded} onChange={(e) => setPlanForm({ ...planForm, workoutPlanIncluded: e.target.checked })} className="h-4 w-4 text-brand-400 border-slate-300 rounded focus:ring-brand-500" />
+            <input id="plan-workouts" type="checkbox" checked={planForm.workoutPlanIncluded} onChange={(e) => setPlanForm({ ...planForm, workoutPlanIncluded: e.target.checked })} className="h-4 w-4 text-brand-600 border-slate-300 rounded focus:ring-brand-500 focus:ring-offset-0" />
             <label htmlFor="plan-workouts" className="text-sm font-medium text-slate-700">Includes workout plans</label>
           </div>
           <div className="flex justify-end gap-3 pt-2">
@@ -439,7 +439,7 @@ export default function Memberships() {
             {assignForm.selectedMember ? (
               <div className="flex items-center gap-2 px-3 py-2 border border-slate-300 rounded-lg bg-surface">
                 <span className="flex-1 text-sm text-slate-900">{assignForm.selectedMember.name} ({assignForm.selectedMember.email})</span>
-                <button type="button" onClick={() => setAssignForm({ ...assignForm, selectedMember: null })} className="text-slate-400 hover:text-slate-600 text-lg leading-none">&times;</button>
+                <button type="button" onClick={() => setAssignForm({ ...assignForm, selectedMember: null })} className="text-slate-500 hover:text-slate-600 text-lg leading-none">&times;</button>
               </div>
             ) : (
               <input
@@ -476,7 +476,7 @@ export default function Memberships() {
             <input type="date" value={assignForm.startDate} onChange={(e) => setAssignForm({ ...assignForm, startDate: e.target.value })} className="input" />
           </div>
           <div className="flex items-center gap-2">
-            <input id="complimentary" type="checkbox" checked={assignForm.complimentary} onChange={(e) => setAssignForm({ ...assignForm, complimentary: e.target.checked })} className="h-4 w-4 text-brand-400 border-slate-300 rounded focus:ring-brand-500" />
+            <input id="complimentary" type="checkbox" checked={assignForm.complimentary} onChange={(e) => setAssignForm({ ...assignForm, complimentary: e.target.checked })} className="h-4 w-4 text-brand-600 border-slate-300 rounded focus:ring-brand-500 focus:ring-offset-0" />
             <label htmlFor="complimentary" className="text-sm font-medium text-slate-700">Complementary / free grant (activate immediately)</label>
           </div>
           <div className={`rounded-lg px-3 py-2 text-xs ${assignForm.complimentary ? 'bg-warning/10 text-warning border border-warning/25' : 'bg-surface text-slate-500 border border-slate-200'}`}>
@@ -553,7 +553,7 @@ export default function Memberships() {
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {(detail.payments || []).length === 0 ? (
-                      <tr><td colSpan="5" className="px-4 py-3 text-sm text-slate-400 text-center">No payments recorded for this membership</td></tr>
+                      <tr><td colSpan="5" className="px-4 py-3 text-sm text-slate-500 text-center">No payments recorded for this membership</td></tr>
                     ) : detail.payments.map((p) => (
                       <tr key={p._id}>
                         <td className="px-4 py-3 font-mono text-xs text-slate-500">{p.transactionId || '—'}</td>

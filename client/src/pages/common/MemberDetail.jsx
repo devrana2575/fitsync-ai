@@ -111,7 +111,7 @@ export default function MemberDetail() {
   const section = (title, Icon, children, emptyMsg) => (
     <div className="card flex flex-col overflow-hidden">
       <div className="flex items-center gap-2 border-b border-slate-100 px-5 py-3.5">
-        <Icon className="h-4 w-4 text-brand-400" aria-hidden="true" />
+        <Icon className="h-4 w-4 text-brand-600" aria-hidden="true" />
         <h2 className="section-title">{title}</h2>
       </div>
       <div className="flex-1 p-5">
@@ -132,11 +132,11 @@ export default function MemberDetail() {
         </div>
       </div>
 
-      <div className="card-dark relative overflow-hidden rounded-xl border-ink-700 p-6 sm:p-7">
+      <div className="card relative overflow-hidden rounded-xl p-6 sm:p-7">
         <div
-          className="absolute inset-0 opacity-[0.04]"
+          className="absolute inset-0 opacity-50"
           style={{
-            backgroundImage: 'linear-gradient(#2a3037 1px, transparent 1px), linear-gradient(90deg, #2a3037 1px, transparent 1px)',
+            backgroundImage: 'linear-gradient(#dbe4f0 1px, transparent 1px), linear-gradient(90deg, #dbe4f0 1px, transparent 1px)',
             backgroundSize: '32px 32px',
           }}
           aria-hidden="true"
@@ -145,7 +145,7 @@ export default function MemberDetail() {
           <Avatar name={data.member.name} src={data.member.avatar} size="xl" />
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-2xl font-bold text-white">{data.member.name}</h1>
+              <h1 className="text-2xl font-bold text-slate-900">{data.member.name}</h1>
               <StatusBadge
                 value={data.member.isActive !== false ? 'active' : 'inactive'}
                 label={data.member.isActive !== false ? 'Active' : 'Inactive'}
@@ -159,22 +159,22 @@ export default function MemberDetail() {
               )}
             </div>
 
-            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-400">
+            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-500">
               <span className="inline-flex items-center gap-1.5">
-                <EnvelopeIcon className="h-4 w-4 text-brand-400" aria-hidden="true" />
+                <EnvelopeIcon className="h-4 w-4 text-brand-600" aria-hidden="true" />
                 {data.member.email}
               </span>
               {profile?.phone && (
                 <span className="inline-flex items-center gap-1.5">
-                  <PhoneIcon className="h-4 w-4 text-brand-400" aria-hidden="true" />
+                  <PhoneIcon className="h-4 w-4 text-brand-600" aria-hidden="true" />
                   {profile.phone}
                 </span>
               )}
             </div>
 
-            <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-400">
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-500">
               <span className="inline-flex items-center gap-1">
-                <CalendarDaysIcon className="h-4 w-4 text-brand-400" aria-hidden="true" />
+                <CalendarDaysIcon className="h-4 w-4 text-brand-600" aria-hidden="true" />
                 Joined {fmtDate(profile?.joinDate || data.member.createdAt)}
               </span>
               {profile?.assignedTrainer && (
@@ -198,7 +198,7 @@ export default function MemberDetail() {
             )}
 
             {profile?.medicalConditions && (
-              <p className="mt-4 rounded-lg border border-amber-400/30 bg-amber-400/10 p-3 text-sm text-amber-200">
+              <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
                 <span className="font-semibold">Medical conditions:</span> {profile.medicalConditions}
               </p>
             )}
@@ -380,13 +380,13 @@ export default function MemberDetail() {
                       {plan.exercises.slice(0, 6).map((ex, idx) => {
                         const exData = ex.exercise || ex;
                         return (
-                          <span key={idx} className="inline-flex items-center gap-1.5 rounded-full bg-surface-elevated px-2.5 py-1 text-xs text-slate-400 ring-1 ring-inset ring-slate-300/50">
+                          <span key={idx} className="inline-flex items-center gap-1.5 rounded-full bg-surface-elevated px-2.5 py-1 text-xs text-slate-500 ring-1 ring-inset ring-slate-300/50">
                             <img src={exerciseImage(exData)} alt={exData?.name || 'Exercise'} loading="lazy" className="h-4 w-4 rounded-full bg-surface object-cover" />
                             {exData?.name || 'Exercise'}
                           </span>
                         );
                       })}
-                      {plan.exercises.length > 6 && <span className="self-center text-xs text-slate-400">+{plan.exercises.length - 6} more</span>}
+                      {plan.exercises.length > 6 && <span className="self-center text-xs text-slate-500">+{plan.exercises.length - 6} more</span>}
                     </div>
                   )}
                 </div>

@@ -137,24 +137,24 @@ export default function Sidebar({ open = false, onClose }) {
         <div className="fixed inset-0 bg-black/60 z-40 lg:hidden" onClick={close} aria-hidden="true" />
       )}
       <aside
-        className={`w-72 bg-ink-950 border-r border-ink-800 flex flex-col min-h-screen fixed left-0 top-0 z-50 transition-transform lg:translate-x-0 lg:z-30 ${
+        className={`w-72 bg-surface border-r border-border flex flex-col min-h-screen fixed left-0 top-0 z-50 transition-transform lg:translate-x-0 lg:z-30 ${
           open ? 'translate-x-0' : '-translate-x-full'
         }`}
         aria-label="Main navigation"
       >
-        <div className="px-5 py-5 border-b border-ink-800 flex items-center gap-3">
-          <div className="h-9 w-9 rounded-lg bg-brand-500 flex items-center justify-center shrink-0">
-            <BoltIcon className="h-5 w-5 text-slate-400" aria-hidden="true" />
+        <div className="px-5 py-5 border-b border-border flex items-center gap-3">
+          <div className="h-9 w-9 rounded-lg bg-brand-600 flex items-center justify-center shrink-0">
+            <BoltIcon className="h-5 w-5 text-white" aria-hidden="true" />
           </div>
           <div className="flex-1 min-w-0">
-            <h1 className="text-sm font-bold tracking-tight text-white leading-none truncate">
+            <h1 className="text-sm font-bold tracking-tight text-slate-900 leading-none truncate">
               {gymName || 'FitSync AI'}
             </h1>
             <p className="text-[11px] text-slate-500 mt-1 leading-none">Gym Management</p>
           </div>
           <button
             onClick={close}
-            className="lg:hidden p-1.5 text-slate-400 hover:text-white hover:bg-ink-800 rounded-lg"
+            className="lg:hidden p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg"
             aria-label="Close menu"
           >
             <XMarkIcon className="h-5 w-5" aria-hidden="true" />
@@ -164,7 +164,7 @@ export default function Sidebar({ open = false, onClose }) {
         <nav className="flex-1 px-3 py-5 overflow-y-auto space-y-6">
           {groups.map((group) => (
             <div key={group.label}>
-              <p className="px-3 mb-1.5 text-[11px] font-semibold text-slate-600 uppercase tracking-wider">
+              <p className="px-3 mb-1.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
                 {group.label}
               </p>
               <div className="space-y-0.5">
@@ -177,8 +177,8 @@ export default function Sidebar({ open = false, onClose }) {
                     className={({ isActive }) =>
                       `relative flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                         isActive
-                          ? 'bg-brand-500/12 text-brand-400'
-                          : 'text-slate-400 hover:bg-ink-800 hover:text-white'
+                          ? 'bg-brand-50 text-brand-700'
+                          : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                       }`
                     }
                   >
@@ -201,11 +201,11 @@ export default function Sidebar({ open = false, onClose }) {
           ))}
         </nav>
 
-        <div className="px-4 py-4 border-t border-ink-800">
+        <div className="px-4 py-4 border-t border-border">
           <div className="flex items-center gap-3 px-2">
             <Avatar name={user?.name} src={user?.avatar} size="sm" />
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium text-white truncate">{user?.name || 'User'}</p>
+              <p className="text-sm font-medium text-slate-900 truncate">{user?.name || 'User'}</p>
               <p className="text-[11px] text-slate-500 capitalize">{user?.role || 'user'}</p>
             </div>
           </div>

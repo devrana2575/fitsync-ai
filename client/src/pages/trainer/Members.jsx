@@ -67,7 +67,7 @@ export default function Members() {
         actions={
           <div className="relative w-full sm:w-72">
             <MagnifyingGlassIcon
-              className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+              className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500"
               aria-hidden="true"
             />
             <input

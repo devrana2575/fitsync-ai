@@ -6,58 +6,48 @@
   --font-display: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
     Roboto, "Helvetica Neue", Arial, sans-serif;
 
-  /* ---- Neutral graphite scale (dark-first surface system) ----
-     Remapped from the legacy light "slate" palette so existing
-     text/border/background utilities resolve to the premium dark theme. */
-  --color-slate-50: #0e1114;
-  --color-slate-100: #14181c;
-  --color-slate-200: #1b2026;
-  --color-slate-300: #2a3037;
-  --color-slate-400: #6f7983;
-  --color-slate-500: #9aa4ad;
-  --color-slate-600: #aeb7bf;
-  --color-slate-700: #d3d9de;
-  --color-slate-800: #e8ecef;
-  --color-slate-900: #f3f5f4;
-  --color-slate-950: #0b0d0f;
+  /* ---- Professional light neutral scale (classic slate) ---- */
+  --color-slate-50: #f8fafc;
+  --color-slate-100: #f1f5f9;
+  --color-slate-200: #e2e8f0;
+  --color-slate-300: #cbd5e1;
+  --color-slate-400: #94a3b8;
+  --color-slate-500: #64748b;
+  --color-slate-600: #475569;
+  --color-slate-700: #334155;
+  --color-slate-800: #1e293b;
+  --color-slate-900: #0f172a;
+  --color-slate-950: #020617;
 
-  /* Explicit surface tokens */
-  --color-base: #0b0d0f;
-  --color-surface: #121518;
-  --color-surface-elevated: #181c20;
-  --color-surface-hover: #1d2227;
-  --color-border: #292f35;
-  --color-border-strong: #343b43;
+  /* Explicit surface tokens (clean white workspace) */
+  --color-base: #f4f6f8;
+  --color-surface: #ffffff;
+  --color-surface-elevated: #ffffff;
+  --color-surface-hover: #f1f5f9;
+  --color-border: #e4e8ee;
+  --color-border-strong: #cfd6df;
 
-  /* Deep panel surfaces (sidebar, heroes, auth) */
-  --color-ink-950: #0b0d0f;
-  --color-ink-900: #101418;
-  --color-ink-800: #171c21;
-  --color-ink-700: #21272d;
-  --color-ink-600: #2c343c;
-  --color-ink-500: #3b444d;
+  /* Corporate indigo brand accent */
+  --color-brand-50: #eff4ff;
+  --color-brand-100: #dbe6fe;
+  --color-brand-200: #bfd4fe;
+  --color-brand-300: #8fb0f7;
+  --color-brand-400: #4b76e8;
+  --color-brand-500: #356cf0;
+  --color-brand-600: #2554d8;
+  --color-brand-700: #1f43ae;
+  --color-brand-800: #1e3a8a;
+  --color-brand-900: #1e3274;
 
-  /* Refined emerald brand accent (professional, low-neon) */
-  --color-brand-50: #eafaf2;
-  --color-brand-100: #d2f3e2;
-  --color-brand-200: #a8e7c9;
-  --color-brand-300: #75d6ab;
-  --color-brand-400: #3fc18d;
-  --color-brand-500: #18a878;
-  --color-brand-600: #0f8764;
-  --color-brand-700: #116b52;
-  --color-brand-800: #125344;
-  --color-brand-900: #0f4438;
+  /* Semantic status colors (accessible on light backgrounds) */
+  --color-success: #15803d;
+  --color-warning: #b45309;
+  --color-danger: #dc2626;
+  --color-info: #1d6fd6;
 
-  /* Semantic status colors */
-  --color-success: #35c979;
-  --color-warning: #f4b740;
-  --color-danger: #ef5b63;
-  --color-info: #5ea7ff;
-
-  --radius-card: 0.875rem;
-  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.3), 0 10px 30px -18px rgb(0 0 0 / 0.5);
-  --shadow-pop: 0 16px 48px -16px rgb(0 0 0 / 0.65);
+  --radius-card: 0.75rem;
+  --shadow-card: 0 1px 2px rgb(15 23 42 / 0.04), 0 1px 3px rgb(15 23 42 / 0.06);
+  --shadow-pop: 0 20px 40px -16px rgb(15 23 42 / 0.18);
 }
 
 :root {
@@ -65,7 +55,7 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 html,
@@ -176,14 +166,6 @@ body {
     box-shadow: var(--shadow-card);
   }
 
-  .card-dark {
-    background-color: var(--color-ink-900);
-    color: var(--color-slate-100);
-    border: 1px solid var(--color-ink-600);
-    border-radius: var(--radius-card);
-    box-shadow: var(--shadow-card);
-  }
-
   .page-wrap {
     @apply w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8 max-w-7xl;
   }
@@ -225,35 +207,35 @@ body {
     @apply px-5 py-3 text-base;
   }
   .btn-primary {
-    @apply bg-brand-500 text-ink-950 font-semibold hover:bg-brand-400;
+    @apply bg-brand-600 text-white font-semibold hover:bg-brand-500 shadow-sm;
   }
   .btn-dark {
-    @apply bg-ink-800 text-white hover:bg-ink-700 border border-ink-600;
+    @apply bg-slate-900 text-white hover:bg-slate-800 border border-slate-900;
   }
   .btn-outline {
-    @apply bg-surface text-slate-200 border border-border-strong hover:bg-surface-hover hover:text-white;
+    @apply bg-surface text-slate-700 border border-border-strong hover:bg-slate-50;
   }
   .btn-outline-dark {
-    @apply bg-transparent text-slate-200 border border-ink-600 hover:bg-ink-700 hover:text-white;
+    @apply bg-surface text-slate-700 border border-slate-300 hover:bg-slate-50;
   }
   .btn-ghost {
-    @apply bg-transparent text-slate-500 hover:bg-surface-hover hover:text-slate-100;
+    @apply bg-transparent text-slate-500 hover:bg-slate-100 hover:text-slate-900;
   }
   .btn-danger {
-    @apply bg-danger/15 text-danger hover:bg-danger/25 border border-danger/30;
+    @apply bg-danger text-white hover:bg-danger/90 border border-danger shadow-sm;
   }
   .btn-success {
-    @apply bg-success/15 text-success hover:bg-success/25 border border-success/30;
+    @apply bg-success text-white hover:bg-success/90 border border-success shadow-sm;
   }
 
   /* Inputs */
   .input {
-    @apply w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-slate-900
-      placeholder:text-slate-500 transition-colors focus:border-brand-500
-      focus:outline-none focus:ring-2 focus:ring-brand-500/20 disabled:bg-slate-100/60 disabled:text-slate-500;
+    @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900
+      placeholder:text-slate-400 transition-colors focus:border-brand-500
+      focus:outline-none focus:ring-2 focus:ring-brand-500/15 disabled:bg-slate-50 disabled:text-slate-400;
   }
   .label {
-    @apply block text-xs font-medium text-slate-500 mb-1.5;
+    @apply block text-xs font-medium text-slate-600 mb-1.5;
   }
   .field-hint {
     @apply text-xs text-slate-500 mt-1;
@@ -264,25 +246,25 @@ body {
     @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium;
   }
   .badge-success {
-    @apply bg-success/12 text-success ring-1 ring-inset ring-success/25 inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium;
+    @apply bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200 inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium;
   }
   .badge-warning {
-    @apply bg-warning/12 text-warning ring-1 ring-inset ring-warning/25 inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium;
+    @apply bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200 inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium;
   }
   .badge-danger {
-    @apply bg-danger/12 text-danger ring-1 ring-inset ring-danger/25 inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium;
+    @apply bg-red-50 text-red-700 ring-1 ring-inset ring-red-200 inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium;
   }
   .badge-info {
-    @apply bg-info/12 text-info ring-1 ring-inset ring-info/25 inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium;
+    @apply bg-sky-50 text-sky-700 ring-1 ring-inset ring-sky-200 inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium;
   }
   .badge-brand {
-    @apply bg-brand-500/15 text-brand-400 ring-1 ring-inset ring-brand-500/25 inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium;
+    @apply bg-brand-50 text-brand-700 ring-1 ring-inset ring-brand-200 inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium;
   }
   .badge-muted {
-    @apply bg-slate-200/70 text-slate-400 ring-1 ring-inset ring-slate-300/60 inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium;
+    @apply bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-200 inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium;
   }
   .badge-dark {
-    @apply bg-ink-800 text-white ring-1 ring-inset ring-ink-600 inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium;
+    @apply bg-slate-800 text-white ring-1 ring-inset ring-slate-700 inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium;
   }
 
   /* Status banners */
@@ -290,31 +272,31 @@ body {
     @apply flex items-start gap-2.5 rounded-lg border px-3.5 py-3 text-sm;
   }
   .banner-success {
-    @apply border-success/25 bg-success/10 text-success flex items-start gap-2.5 rounded-lg px-3.5 py-3 text-sm;
+    @apply border-emerald-200 bg-emerald-50 text-emerald-800 flex items-start gap-2.5 rounded-lg px-3.5 py-3 text-sm;
   }
   .banner-warning {
-    @apply border-warning/25 bg-warning/10 text-warning flex items-start gap-2.5 rounded-lg px-3.5 py-3 text-sm;
+    @apply border-amber-200 bg-amber-50 text-amber-800 flex items-start gap-2.5 rounded-lg px-3.5 py-3 text-sm;
   }
   .banner-danger {
-    @apply border-danger/25 bg-danger/10 text-danger flex items-start gap-2.5 rounded-lg px-3.5 py-3 text-sm;
+    @apply border-red-200 bg-red-50 text-red-800 flex items-start gap-2.5 rounded-lg px-3.5 py-3 text-sm;
   }
   .banner-info {
-    @apply border-info/25 bg-info/10 text-info flex items-start gap-2.5 rounded-lg px-3.5 py-3 text-sm;
+    @apply border-sky-200 bg-sky-50 text-sky-800 flex items-start gap-2.5 rounded-lg px-3.5 py-3 text-sm;
   }
 
   .chip {
-    @apply inline-flex items-center gap-1 rounded-md bg-slate-200/60 px-2 py-0.5 text-xs text-slate-400 ring-1 ring-inset ring-slate-300/50;
+    @apply inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-600 ring-1 ring-inset ring-slate-200;
   }
 }
 
 /* Skeleton shimmer */
 @layer utilities {
   .skeleton {
-    @apply relative overflow-hidden rounded-lg bg-slate-200/80;
+    @apply relative overflow-hidden rounded-lg bg-slate-100;
   }
   .skeleton::after {
     content: "";
-    @apply absolute inset-0 -translate-x-full animate-pulse bg-gradient-to-r from-transparent via-white/5 to-transparent;
+    @apply absolute inset-0 -translate-x-full animate-pulse bg-gradient-to-r from-transparent via-white/70 to-transparent;
     animation: shimmer 1.6s infinite;
   }
   @keyframes shimmer {
@@ -328,6 +310,6 @@ body {
   }
 
   .text-link {
-    @apply text-brand-500 hover:text-brand-400 font-medium;
+    @apply text-brand-600 hover:text-brand-500 font-medium;
   }
 }

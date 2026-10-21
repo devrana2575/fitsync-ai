@@ -128,8 +128,8 @@ export default function Payments() {
         <div className="card overflow-hidden">
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-5 py-4">
             <h2 className="card-title">Payment records</h2>
-            <span className="inline-flex items-center gap-1 text-xs text-slate-400">
-              <ShieldCheckIcon className="h-4 w-4 text-brand-400" aria-hidden="true" />
+            <span className="inline-flex items-center gap-1 text-xs text-slate-500">
+              <ShieldCheckIcon className="h-4 w-4 text-brand-600" aria-hidden="true" />
               Verified against gateway records
             </span>
           </div>

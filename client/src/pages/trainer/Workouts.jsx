@@ -267,7 +267,7 @@ export default function Workouts() {
                 <button
                   type="button"
                   onClick={addExercise}
-                  className="btn btn-sm btn-outline text-brand-400 border-brand-500/30 hover:bg-brand-500/120/10"
+                  className="btn btn-sm btn-outline text-brand-600 border-brand-200 hover:bg-brand-50"
                 >
                   <PlusIcon className="h-4 w-4" aria-hidden="true" />
                   Add Exercise
@@ -408,7 +408,7 @@ export default function Workouts() {
               </tbody>
             </table>
           </div>
-          <div className="px-6 py-3 border-t border-slate-100 flex items-center gap-1.5 text-xs text-slate-400">
+          <div className="px-6 py-3 border-t border-slate-100 flex items-center gap-1.5 text-xs text-slate-500">
             <ArrowRightIcon className="h-3.5 w-3.5" aria-hidden="true" />
             Plans are created for members assigned to you.
           </div>

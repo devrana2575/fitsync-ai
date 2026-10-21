@@ -11,6 +11,7 @@ import {
 } from '@heroicons/react/24/outline';
 import api from '../../services/api';
 import { useToast } from '../../context/ToastContext';
+import { useAuth } from '../../context/AuthContext';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import EmptyState from '../../components/common/EmptyState';
 import ErrorState from '../../components/common/ErrorState';
@@ -63,6 +64,7 @@ export default function Membership() {
   const [myProfile, setMyProfile] = useState(null);
   const [selectedMembershipId, setSelectedMembershipId] = useState(null);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const fetchData = async () => {
     try {
@@ -127,6 +129,15 @@ export default function Membership() {
       order_id: order.orderId,
       name: 'FitSync AI',
       description: `${order.planName} Membership`,
+      image: '/favicon.svg',
+      prefill: {
+        name: user?.name || '',
+        email: user?.email || '',
+        contact: myProfile?.phone || user?.phone || '',
+      },
+      notes: {
+        fitsyncPlan: order.planName,
+      },
       handler: async (response) => {
         try {
           setProcessing(true);
@@ -144,7 +155,15 @@ export default function Membership() {
           setProcessing(false);
         }
       },
-      theme: { color: '#9FE031' },
+      // Keep the hosted checkout on brand so the member never leaves a
+      // different-looking payment page mid-flow.
+      theme: { color: '#2554d8' },
+      modal: {
+        ondismiss: () => {
+          setProcessing(false);
+          toast.info('Payment cancelled', 'No charge was made.');
+        },
+      },
     };
     const rzp = new window.Razorpay(options);
     rzp.on('payment.failed', (failed) => {
@@ -304,7 +323,7 @@ export default function Membership() {
               {Array.isArray(trainer.profile?.specializations) && trainer.profile.specializations.length > 0 && (
                 <p className="truncate text-xs text-slate-500">{trainer.profile.specializations.join(', ')}</p>
               )}
-              {trainer.email && <p className="truncate text-xs text-slate-400">{trainer.email}</p>}
+              {trainer.email && <p className="truncate text-xs text-slate-500">{trainer.email}</p>}
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-1.5">
@@ -331,9 +350,9 @@ export default function Membership() {
     return (
       <div className="flex flex-col items-center py-6 text-center">
         <div className="mb-3 rounded-full bg-surface-elevated p-3">
-          <UserIcon className="h-6 w-6 text-slate-400" aria-hidden="true" />
+          <UserIcon className="h-6 w-6 text-slate-500" aria-hidden="true" />
         </div>
-        <p className="text-sm font-medium text-slate-400">No trainer assigned yet</p>
+        <p className="text-sm font-medium text-slate-500">No trainer assigned yet</p>
         <p className="mt-1 text-xs text-slate-500">Pick a plan that includes coach support to get one.</p>
         <button onClick={scrollToPlans} className="btn btn-md btn-primary mt-4">
           Browse Plans <ArrowRightIcon className="h-4 w-4" aria-hidden="true" />
@@ -354,7 +373,7 @@ export default function Membership() {
 
       {activeMemberships.length > 1 && (
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+          <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
             Your {activeMemberships.length} active memberships
           </span>
           {activeMemberships.map((m) => (
@@ -384,11 +403,11 @@ export default function Membership() {
         </div>
       ) : (
         <>
-          <div className="card-dark relative overflow-hidden rounded-xl border-ink-700 p-6 sm:p-7">
+          <div className="card relative overflow-hidden rounded-xl p-6 sm:p-7">
             <div
-              className="absolute inset-0 opacity-[0.04]"
+              className="absolute inset-0 opacity-50"
               style={{
-                backgroundImage: 'linear-gradient(#2a3037 1px, transparent 1px), linear-gradient(90deg, #2a3037 1px, transparent 1px)',
+                backgroundImage: 'linear-gradient(#dbe4f0 1px, transparent 1px), linear-gradient(90deg, #dbe4f0 1px, transparent 1px)',
                 backgroundSize: '32px 32px',
               }}
               aria-hidden="true"
@@ -396,9 +415,9 @@ export default function Membership() {
             <div className="relative">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div className="min-w-0">
-                  <p className="section-title text-slate-400">{activeMemberships.length > 1 ? 'Selected Membership' : 'Current Membership'}</p>
-                  <h2 className="mt-1 text-2xl font-bold text-white sm:text-3xl">{currentPlan.name || 'Membership'}</h2>
-                  <p className="mt-1 font-mono text-xs text-slate-400">{current.membershipId || '—'}</p>
+                  <p className="section-title text-slate-500">{activeMemberships.length > 1 ? 'Selected Membership' : 'Current Membership'}</p>
+                  <h2 className="mt-1 text-2xl font-bold text-slate-900 sm:text-3xl">{currentPlan.name || 'Membership'}</h2>
+                  <p className="mt-1 font-mono text-xs text-slate-500">{current.membershipId || '—'}</p>
                   <div className="mt-2.5 flex flex-wrap items-center gap-2">
                     <StatusBadge value={current.status} />
                     <StatusBadge value="yes" label={current.autoRenew ? 'Auto-renew on' : 'Auto-renew off'} tone={current.autoRenew ? 'success' : 'muted'} />
@@ -407,22 +426,22 @@ export default function Membership() {
                 </div>
                 {currentPlanPrice && (
                   <div className="text-right">
-                    <p className="text-sm text-slate-400">Plan value</p>
-                    <p className="text-2xl font-bold text-brand-400 tabular-nums">{currentPlanPrice}</p>
+                    <p className="text-sm text-slate-500">Plan value</p>
+                    <p className="text-2xl font-bold text-brand-600 tabular-nums">{currentPlanPrice}</p>
                   </div>
                 )}
               </div>
 
               <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div className="rounded-lg bg-ink-800/70 p-4">
-                  <p className="text-xs text-slate-400">Plan validity</p>
-                  <p className="mt-1 text-sm font-medium text-white">
+                <div className="rounded-lg bg-slate-50 border border-border p-4">
+                  <p className="text-xs text-slate-500">Plan validity</p>
+                  <p className="mt-1 text-sm font-medium text-slate-900">
                     {fmtDate(current.startDate)} <span className="text-slate-500">→</span> {fmtDate(current.endDate)}
                   </p>
                 </div>
-                <div className="rounded-lg bg-ink-800/70 p-4">
-                  <p className="text-xs text-slate-400">Days remaining</p>
-                  <p className="mt-1 text-2xl font-bold text-brand-400 tabular-nums">
+                <div className="rounded-lg bg-slate-50 border border-border p-4">
+                  <p className="text-xs text-slate-500">Days remaining</p>
+                  <p className="mt-1 text-2xl font-bold text-brand-600 tabular-nums">
                     {daysRemaining === null ? '—' : `${daysRemaining} DAY${daysRemaining === 1 ? '' : 'S'}`}
                   </p>
                 </div>
@@ -451,13 +470,13 @@ export default function Membership() {
               )}
 
               <div className="mt-6">
-                <p className="section-title text-slate-400">What your plan includes</p>
+                <p className="section-title text-slate-500">What your plan includes</p>
                 <ul className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
                   {buildIncludes(currentPlan)
                     .filter(Boolean)
                     .map((item, idx) => (
                       <li key={idx} className="flex items-start gap-2 text-sm text-slate-500">
-                        <CheckCircleIcon className="mt-0.5 h-4 w-4 shrink-0 text-brand-400" aria-hidden="true" />
+                        <CheckCircleIcon className="mt-0.5 h-4 w-4 shrink-0 text-brand-600" aria-hidden="true" />
                         <span>{item}</span>
                       </li>
                     ))}
@@ -468,7 +487,7 @@ export default function Membership() {
 
           <div className="card p-5">
             <div className="mb-4 flex items-center gap-2">
-              <AcademicCapIcon className="h-5 w-5 text-brand-400" aria-hidden="true" />
+              <AcademicCapIcon className="h-5 w-5 text-brand-600" aria-hidden="true" />
               <h2 className="card-title">Your Trainer</h2>
             </div>
             {renderTrainerSection()}
@@ -553,7 +572,7 @@ export default function Membership() {
       {current && (
         <div className="card p-5">
           <div className="mb-4 flex items-center gap-2">
-            <BanknotesIcon className="h-5 w-5 text-brand-400" aria-hidden="true" />
+            <BanknotesIcon className="h-5 w-5 text-brand-600" aria-hidden="true" />
             <h2 className="card-title">Payment Summary</h2>
           </div>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
@@ -659,7 +678,7 @@ export default function Membership() {
               ) : qrUrl ? (
                 <img src={qrUrl} alt="UPI payment QR" className="h-56 w-56" />
               ) : (
-                <p className="h-56 w-56 flex items-center justify-center text-sm text-slate-400">QR unavailable</p>
+                <p className="h-56 w-56 flex items-center justify-center text-sm text-slate-500">QR unavailable</p>
               )}
             </div>
             <table className="text-sm w-full max-w-sm mb-4">
@@ -667,8 +686,8 @@ export default function Membership() {
                 <tr><td className="py-1.5 text-slate-500">Pay to</td><td className="py-1.5 text-right font-medium text-slate-900">{upiInfo.upiId}</td></tr>
                 <tr><td className="py-1.5 text-slate-500">Name</td><td className="py-1.5 text-right font-medium text-slate-900">{upiInfo.upiName || '—'}</td></tr>
                 <tr><td className="py-1.5 text-slate-500">Amount</td><td className="py-1.5 text-right font-medium text-slate-900">₹{Number(upiInfo.amount || 0).toLocaleString('en-IN')}</td></tr>
-                <tr><td className="py-1.5 text-slate-500">Reference</td><td className="py-1.5 text-right font-mono text-xs text-slate-400">{upiInfo.reference}</td></tr>
-                <tr><td className="py-1.5 text-slate-500">Note</td><td className="py-1.5 text-right text-slate-400">{upiInfo.note || '—'}</td></tr>
+                <tr><td className="py-1.5 text-slate-500">Reference</td><td className="py-1.5 text-right font-mono text-xs text-slate-500">{upiInfo.reference}</td></tr>
+                <tr><td className="py-1.5 text-slate-500">Note</td><td className="py-1.5 text-right text-slate-500">{upiInfo.note || '—'}</td></tr>
               </tbody>
             </table>
             <p className="text-xs text-slate-500 text-center mb-4">

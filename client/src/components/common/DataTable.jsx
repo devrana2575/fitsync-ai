@@ -6,7 +6,7 @@ export default function DataTable({ headers, children, className = '' }) {
           <thead>
             <tr className="bg-surface/60 border-b border-border">
               {headers.map((header, i) => (
-                <th key={i} scope="col" className="px-5 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider whitespace-nowrap">
+                <th key={i} scope="col" className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">
                   {header}
                 </th>
               ))}

@@ -16,6 +16,14 @@ import ErrorState from '../../components/common/ErrorState';
 import Modal from '../../components/common/Modal';
 import Skeleton, { SkeletonCard, SkeletonRow } from '../../components/common/Skeleton';
 import { fmtDate } from '../../utils/format';
+import {
+  AXIS,
+  CHART_COLORS,
+  LEGEND_STYLE,
+  TOOLTIP_ITEM_STYLE,
+  TOOLTIP_LABEL_STYLE,
+  TOOLTIP_STYLE,
+} from '../../utils/chartTheme';
 
 export default function Progress() {
   const { toast } = useToast();
@@ -258,11 +266,11 @@ export default function Progress() {
           {enough('weight') ? (
             <ResponsiveContainer width="100%" height={250}>
               <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#23282e" />
-                <XAxis dataKey="date" tickLine={false} axisLine={{ stroke: "#292f35" }} tick={{ fontSize: 12, fill: "#6f7983" }} />
-                <YAxis tickLine={false} axisLine={{ stroke: "#292f35" }} tick={{ fontSize: 12, fill: "#6f7983" }} />
-                <Tooltip contentStyle={{ backgroundColor: '#181c20', border: '1px solid #292f35', borderRadius: '0.75rem', color: '#f3f5f4' }} labelStyle={{ color: '#9aa4ad' }} itemStyle={{ color: '#f3f5f4' }} />
-                <Line type="monotone" dataKey="weight" stroke="#18A878" strokeWidth={2} dot={{ fill: '#18A878' }} name="Weight (kg)" />
+                <CartesianGrid strokeDasharray="3 3" stroke={AXIS.grid} />
+                <XAxis dataKey="date" tickLine={false} axisLine={{ stroke: AXIS.axis }} tick={{ fontSize: 12, fill: AXIS.tick }} />
+                <YAxis tickLine={false} axisLine={{ stroke: AXIS.axis }} tick={{ fontSize: 12, fill: AXIS.tick }} />
+                <Tooltip contentStyle={TOOLTIP_STYLE} labelStyle={TOOLTIP_LABEL_STYLE} itemStyle={TOOLTIP_ITEM_STYLE} />
+                <Line type="monotone" dataKey="weight" stroke={CHART_COLORS.brand} strokeWidth={2} dot={{ fill: CHART_COLORS.brand }} name="Weight (kg)" />
               </LineChart>
             </ResponsiveContainer>
           ) : (
@@ -286,11 +294,11 @@ export default function Progress() {
           {enough('bmi') ? (
             <ResponsiveContainer width="100%" height={250}>
               <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#23282e" />
-                <XAxis dataKey="date" tickLine={false} axisLine={{ stroke: "#292f35" }} tick={{ fontSize: 12, fill: "#6f7983" }} />
-                <YAxis tickLine={false} axisLine={{ stroke: "#292f35" }} tick={{ fontSize: 12, fill: "#6f7983" }} />
-                <Tooltip contentStyle={{ backgroundColor: '#181c20', border: '1px solid #292f35', borderRadius: '0.75rem', color: '#f3f5f4' }} labelStyle={{ color: '#9aa4ad' }} itemStyle={{ color: '#f3f5f4' }} />
-                <Line type="monotone" dataKey="bmi" stroke="#10b981" strokeWidth={2} dot={{ fill: '#10b981' }} name="BMI" />
+                <CartesianGrid strokeDasharray="3 3" stroke={AXIS.grid} />
+                <XAxis dataKey="date" tickLine={false} axisLine={{ stroke: AXIS.axis }} tick={{ fontSize: 12, fill: AXIS.tick }} />
+                <YAxis tickLine={false} axisLine={{ stroke: AXIS.axis }} tick={{ fontSize: 12, fill: AXIS.tick }} />
+                <Tooltip contentStyle={TOOLTIP_STYLE} labelStyle={TOOLTIP_LABEL_STYLE} itemStyle={TOOLTIP_ITEM_STYLE} />
+                <Line type="monotone" dataKey="bmi" stroke={CHART_COLORS.success} strokeWidth={2} dot={{ fill: CHART_COLORS.success }} name="BMI" />
               </LineChart>
             </ResponsiveContainer>
           ) : (
@@ -315,14 +323,14 @@ export default function Progress() {
         {enough('chest') || enough('waist') || enough('hips') ? (
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#23282e" />
-              <XAxis dataKey="date" tickLine={false} axisLine={{ stroke: "#292f35" }} tick={{ fontSize: 12, fill: "#6f7983" }} />
-              <YAxis tickLine={false} axisLine={{ stroke: "#292f35" }} tick={{ fontSize: 12, fill: "#6f7983" }} />
-              <Tooltip contentStyle={{ backgroundColor: '#181c20', border: '1px solid #292f35', borderRadius: '0.75rem', color: '#f3f5f4' }} labelStyle={{ color: '#9aa4ad' }} itemStyle={{ color: '#f3f5f4' }} />
-              <Legend wrapperStyle={{ color: '#9aa4ad' }} />
-              <Line type="monotone" dataKey="chest" stroke="#18A878" strokeWidth={2} dot={{ fill: '#18A878' }} name="Chest (cm)" />
-              <Line type="monotone" dataKey="waist" stroke="#F4B740" strokeWidth={2} dot={{ fill: '#F4B740' }} name="Waist (cm)" />
-              <Line type="monotone" dataKey="hips" stroke="#10b981" strokeWidth={2} dot={{ fill: '#10b981' }} name="Hips (cm)" />
+              <CartesianGrid strokeDasharray="3 3" stroke={AXIS.grid} />
+              <XAxis dataKey="date" tickLine={false} axisLine={{ stroke: AXIS.axis }} tick={{ fontSize: 12, fill: AXIS.tick }} />
+              <YAxis tickLine={false} axisLine={{ stroke: AXIS.axis }} tick={{ fontSize: 12, fill: AXIS.tick }} />
+              <Tooltip contentStyle={TOOLTIP_STYLE} labelStyle={TOOLTIP_LABEL_STYLE} itemStyle={TOOLTIP_ITEM_STYLE} />
+              <Legend wrapperStyle={LEGEND_STYLE} />
+              <Line type="monotone" dataKey="chest" stroke={CHART_COLORS.brand} strokeWidth={2} dot={{ fill: CHART_COLORS.brand }} name="Chest (cm)" />
+              <Line type="monotone" dataKey="waist" stroke={CHART_COLORS.warning} strokeWidth={2} dot={{ fill: CHART_COLORS.warning }} name="Waist (cm)" />
+              <Line type="monotone" dataKey="hips" stroke={CHART_COLORS.success} strokeWidth={2} dot={{ fill: CHART_COLORS.success }} name="Hips (cm)" />
             </LineChart>
           </ResponsiveContainer>
         ) : (
@@ -418,7 +426,7 @@ export default function Progress() {
               name="photo"
               accept="image/*"
               onChange={handlePhotoChange}
-              className="input file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-brand-500 file:text-slate-400"
+              className="input file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-brand-600 file:text-white"
             />
           </div>
           <div className="flex justify-end">

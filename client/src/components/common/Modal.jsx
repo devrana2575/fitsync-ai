@@ -37,7 +37,7 @@ export default function Modal({ isOpen, onClose, title, description, children, m
           </div>
           <button
             onClick={onClose}
-            className="shrink-0 rounded-lg p-1 text-slate-500 hover:text-white hover:bg-surface-hover text-xl leading-none"
+            className="shrink-0 rounded-lg p-1 text-slate-500 hover:text-slate-900 hover:bg-surface-hover text-xl leading-none"
             aria-label="Close dialog"
           >
             &times;

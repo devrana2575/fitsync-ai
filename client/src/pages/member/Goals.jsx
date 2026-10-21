@@ -326,14 +326,14 @@ export default function Goals() {
                     {goal.description && <p className="mt-1 text-sm text-slate-500">{goal.description}</p>}
                   </div>
                   {goal.targetDate && (
-                    <span className="shrink-0 text-xs text-slate-400">Target: {fmtDate(goal.targetDate)}</span>
+                    <span className="shrink-0 text-xs text-slate-500">Target: {fmtDate(goal.targetDate)}</span>
                   )}
                 </div>
 
                 <div className="mt-4">
                   <div className="mb-1.5 flex items-center justify-between text-sm">
                     <span className="text-slate-600">
-                      {goal.start != null && <span className="text-slate-400">{goal.start} → </span>}
+                      {goal.start != null && <span className="text-slate-500">{goal.start} → </span>}
                       {goal.current ?? 0} / {goal.target} {goal.unit || ''}
                     </span>
                     <span className="font-medium text-slate-900 tabular-nums">{Math.round(progress)}%</span>

@@ -169,7 +169,7 @@ export default function TrainerSickLeave() {
           </div>
           <div className="sm:col-span-2">
             <label htmlFor="sl-cert" className="mb-1 block text-sm font-medium text-slate-700">
-              Medical certificate <span className="text-xs font-normal text-slate-400">(JPEG, PNG or PDF — required before approval)</span>
+              Medical certificate <span className="text-xs font-normal text-slate-500">(JPEG, PNG or PDF — required before approval)</span>
             </label>
             <input
               id="sl-cert"
@@ -179,7 +179,7 @@ export default function TrainerSickLeave() {
               onChange={(e) => setCertificate(e.target.files?.[0] || null)}
               className="input"
             />
-            <p className="mt-1 text-xs text-slate-400">
+            <p className="mt-1 text-xs text-slate-500">
               Your certificate is stored privately — it is never shown to other members or trainers.
             </p>
           </div>
@@ -223,12 +223,12 @@ export default function TrainerSickLeave() {
                   return (
                     <tr key={leave._id} className="odd:bg-transparent even:bg-surface/60">
                       <td className="px-6 py-4 text-sm text-slate-700">
-                        {fmtDate(leave.startDate)} <span className="text-slate-400">→</span> {fmtDate(leave.endDate)}
+                        {fmtDate(leave.startDate)} <span className="text-slate-500">→</span> {fmtDate(leave.endDate)}
                       </td>
                       <td className="max-w-xs truncate px-6 py-4 text-sm text-slate-500">{leave.reason}</td>
                       <td className="px-6 py-4">
                         <StatusBadge value={leave.status} tone={statusTone[leave.status]} />
-                        {leave.reviewNote ? <p className="mt-1 max-w-xs truncate text-xs text-slate-400">{leave.reviewNote}</p> : null}
+                        {leave.reviewNote ? <p className="mt-1 max-w-xs truncate text-xs text-slate-500">{leave.reviewNote}</p> : null}
                       </td>
                       <td className="px-6 py-4 text-sm text-slate-500">
                         {leave.hasCertificate ? (
@@ -236,7 +236,7 @@ export default function TrainerSickLeave() {
                             <EyeIcon className="h-3.5 w-3.5" aria-hidden="true" /> View
                           </button>
                         ) : (
-                          <span className="text-xs text-slate-400">None attached</span>
+                          <span className="text-xs text-slate-500">None attached</span>
                         )}
                       </td>
                       <td className="px-6 py-4 text-sm text-slate-500">

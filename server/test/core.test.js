@@ -374,8 +374,10 @@ test('revenue trend returns the latest 12 months ascending', async () => {
   assert.equal(trend.status, 200);
   assert.ok(Array.isArray(trend.body.trend));
   assert.ok(trend.body.trend.length >= 2);
-  const keys = trend.body.trend.map((t) => `${t._id.year}-${t._id.month}`);
-  const sorted = [...keys].sort();
+  // Compare on the numeric (year, month) pair - a lexicographic sort of
+  // "YYYY-M" puts month 10 before month 9 and would fail the real ordering.
+  const keys = trend.body.trend.map((t) => [t._id.year, t._id.month]);
+  const sorted = [...keys].sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]));
   assert.deepEqual(keys, sorted, 'trend must be ascending');
   assert.equal(trend.body.trend.length <= 12, true, 'only the latest 12 months');
 });

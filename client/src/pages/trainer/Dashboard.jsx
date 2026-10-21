@@ -126,7 +126,7 @@ export default function TrainerDashboard() {
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <div className="card p-5">
           <div className="flex items-center gap-4">
-            <span className="shrink-0 p-3 rounded-lg ring-1 bg-brand-500/15 text-brand-400 ring-brand-500/25">
+            <span className="shrink-0 p-3 rounded-lg ring-1 bg-brand-50 text-brand-700 ring-brand-200">
               <UserGroupIcon className="h-5 w-5" aria-hidden="true" />
             </span>
             <div className="min-w-0 flex-1">
@@ -142,7 +142,7 @@ export default function TrainerDashboard() {
                   className="mt-2"
                 />
               ) : (
-                <p className="mt-1.5 text-xs text-slate-400">Assigned member count</p>
+                <p className="mt-1.5 text-xs text-slate-500">Assigned member count</p>
               )}
             </div>
           </div>
@@ -162,7 +162,7 @@ export default function TrainerDashboard() {
               )}
             </div>
             {needsAttention.length === 0 ? (
-              <div className="px-5 py-10 text-center text-sm text-slate-400">
+              <div className="px-5 py-10 text-center text-sm text-slate-500">
                 All assigned members are on track. Nothing needs your attention.
               </div>
             ) : (
@@ -188,7 +188,7 @@ export default function TrainerDashboard() {
                           <span className="badge bg-warning/15 text-warning">Membership expiring</span>
                         )}
                       </span>
-                      <ArrowRightIcon className="h-4 w-4 text-slate-400 shrink-0" aria-hidden="true" />
+                      <ArrowRightIcon className="h-4 w-4 text-slate-500 shrink-0" aria-hidden="true" />
                     </button>
                   </li>
                 ))}
@@ -199,7 +199,7 @@ export default function TrainerDashboard() {
           <div className="card overflow-hidden">
             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
               <h2 className="card-title">Assigned Members</h2>
-              <span className="text-xs text-slate-400">{members.length} total</span>
+              <span className="text-xs text-slate-500">{members.length} total</span>
             </div>
             {members.length === 0 ? (
               <EmptyState
@@ -259,14 +259,14 @@ export default function TrainerDashboard() {
                   onClick={() => navigate(action.path)}
                   className="flex w-full items-center gap-3 rounded-xl border border-slate-200 px-4 py-3 text-left hover:bg-surface hover:border-slate-300 transition-colors"
                 >
-                  <span className="shrink-0 p-2 rounded-lg bg-brand-500/15 text-brand-400">
+                  <span className="shrink-0 p-2 rounded-lg bg-brand-50 text-brand-700">
                     <action.icon className="h-5 w-5" aria-hidden="true" />
                   </span>
                   <span className="flex-1 min-w-0">
                     <span className="block text-sm font-medium text-slate-900">{action.label}</span>
                     <span className="block text-xs text-slate-500">{action.hint}</span>
                   </span>
-                  <ArrowRightIcon className="h-4 w-4 text-slate-400 shrink-0" aria-hidden="true" />
+                  <ArrowRightIcon className="h-4 w-4 text-slate-500 shrink-0" aria-hidden="true" />
                 </button>
               ))}
             </div>

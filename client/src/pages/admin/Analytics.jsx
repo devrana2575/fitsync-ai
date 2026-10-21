@@ -6,8 +6,17 @@ import ErrorState from '../../components/common/ErrorState';
 import EmptyState from '../../components/common/EmptyState';
 import PageHeader from '../../components/common/PageHeader';
 import { Skeleton } from '../../components/common/Skeleton';
+import {
+  AXIS,
+  CHART_COLORS,
+  LEGEND_STYLE,
+  SERIES_COLORS,
+  TOOLTIP_ITEM_STYLE,
+  TOOLTIP_LABEL_STYLE,
+  TOOLTIP_STYLE,
+} from '../../utils/chartTheme';
 
-const COLORS = ['#18A878', '#35C979', '#F4B740', '#EF5B63', '#5EA7FF', '#A78BFA'];
+const COLORS = SERIES_COLORS;
 
 export default function Analytics() {
   const [revenue, setRevenue] = useState([]);
@@ -109,12 +118,12 @@ export default function Analytics() {
         >
           <ResponsiveContainer width="100%" height={400}>
             <LineChart data={revenue}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#23282e" />
-              <XAxis dataKey="month" tickLine={false} axisLine={{ stroke: "#292f35" }} tick={{ fontSize: 12, fill: "#6f7983" }} />
-              <YAxis tickLine={false} axisLine={{ stroke: "#292f35" }} tick={{ fontSize: 12, fill: "#6f7983" }} tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} />
-              <Tooltip formatter={(v) => fmtCurrency(v)} contentStyle={{ backgroundColor: '#181c20', border: '1px solid #292f35', borderRadius: '0.75rem', color: '#f3f5f4' }} labelStyle={{ color: '#9aa4ad' }} itemStyle={{ color: '#f3f5f4' }} />
-              <Legend wrapperStyle={{ color: '#9aa4ad' }} />
-              <Line type="monotone" dataKey="revenue" stroke="#18A878" strokeWidth={3} dot={{ r: 5, fill: '#18A878' }} activeDot={{ r: 7 }} />
+              <CartesianGrid strokeDasharray="3 3" stroke={AXIS.grid} />
+              <XAxis dataKey="month" tickLine={false} axisLine={{ stroke: AXIS.axis }} tick={{ fontSize: 12, fill: AXIS.tick }} />
+              <YAxis tickLine={false} axisLine={{ stroke: AXIS.axis }} tick={{ fontSize: 12, fill: AXIS.tick }} tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} />
+              <Tooltip formatter={(v) => fmtCurrency(v)} contentStyle={TOOLTIP_STYLE} labelStyle={TOOLTIP_LABEL_STYLE} itemStyle={TOOLTIP_ITEM_STYLE} />
+              <Legend wrapperStyle={LEGEND_STYLE} />
+              <Line type="monotone" dataKey="revenue" stroke={CHART_COLORS.brand} strokeWidth={3} dot={{ r: 5, fill: CHART_COLORS.brand }} activeDot={{ r: 7 }} />
             </LineChart>
           </ResponsiveContainer>
         </ChartCard>
@@ -129,12 +138,12 @@ export default function Analytics() {
         >
           <ResponsiveContainer width="100%" height={400}>
             <BarChart data={attendance}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#23282e" />
-              <XAxis dataKey="day" tickLine={false} axisLine={{ stroke: "#292f35" }} tick={{ fontSize: 12, fill: "#6f7983" }} />
-              <YAxis tickLine={false} axisLine={{ stroke: "#292f35" }} tick={{ fontSize: 12, fill: "#6f7983" }} />
-              <Tooltip contentStyle={{ backgroundColor: '#181c20', border: '1px solid #292f35', borderRadius: '0.75rem', color: '#f3f5f4' }} labelStyle={{ color: '#9aa4ad' }} itemStyle={{ color: '#f3f5f4' }} />
-              <Legend wrapperStyle={{ color: '#9aa4ad' }} />
-              <Bar dataKey="count" fill="#18A878" radius={[6, 6, 0, 0]} />
+              <CartesianGrid strokeDasharray="3 3" stroke={AXIS.grid} />
+              <XAxis dataKey="day" tickLine={false} axisLine={{ stroke: AXIS.axis }} tick={{ fontSize: 12, fill: AXIS.tick }} />
+              <YAxis tickLine={false} axisLine={{ stroke: AXIS.axis }} tick={{ fontSize: 12, fill: AXIS.tick }} />
+              <Tooltip contentStyle={TOOLTIP_STYLE} labelStyle={TOOLTIP_LABEL_STYLE} itemStyle={TOOLTIP_ITEM_STYLE} />
+              <Legend wrapperStyle={LEGEND_STYLE} />
+              <Bar dataKey="count" fill={CHART_COLORS.brand} radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>
@@ -149,12 +158,12 @@ export default function Analytics() {
         >
           <ResponsiveContainer width="100%" height={400}>
             <BarChart data={peakHours}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#23282e" />
-              <XAxis dataKey="hour" tickLine={false} axisLine={{ stroke: "#292f35" }} tick={{ fontSize: 12, fill: "#6f7983" }} />
-              <YAxis tickLine={false} axisLine={{ stroke: "#292f35" }} tick={{ fontSize: 12, fill: "#6f7983" }} />
-              <Tooltip contentStyle={{ backgroundColor: '#181c20', border: '1px solid #292f35', borderRadius: '0.75rem', color: '#f3f5f4' }} labelStyle={{ color: '#9aa4ad' }} itemStyle={{ color: '#f3f5f4' }} />
-              <Legend wrapperStyle={{ color: '#9aa4ad' }} />
-              <Bar dataKey="count" fill="#5EA7FF" radius={[6, 6, 0, 0]} />
+              <CartesianGrid strokeDasharray="3 3" stroke={AXIS.grid} />
+              <XAxis dataKey="hour" tickLine={false} axisLine={{ stroke: AXIS.axis }} tick={{ fontSize: 12, fill: AXIS.tick }} />
+              <YAxis tickLine={false} axisLine={{ stroke: AXIS.axis }} tick={{ fontSize: 12, fill: AXIS.tick }} />
+              <Tooltip contentStyle={TOOLTIP_STYLE} labelStyle={TOOLTIP_LABEL_STYLE} itemStyle={TOOLTIP_ITEM_STYLE} />
+              <Legend wrapperStyle={LEGEND_STYLE} />
+              <Bar dataKey="count" fill={CHART_COLORS.info} radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>
@@ -184,8 +193,8 @@ export default function Analytics() {
                   <Cell key={i} fill={COLORS[i % COLORS.length]} />
                 ))}
               </Pie>
-              <Tooltip formatter={(v) => v} contentStyle={{ backgroundColor: '#181c20', border: '1px solid #292f35', borderRadius: '0.75rem', color: '#f3f5f4' }} labelStyle={{ color: '#9aa4ad' }} itemStyle={{ color: '#f3f5f4' }} />
-              <Legend wrapperStyle={{ color: '#9aa4ad' }} />
+              <Tooltip formatter={(v) => v} contentStyle={TOOLTIP_STYLE} labelStyle={TOOLTIP_LABEL_STYLE} itemStyle={TOOLTIP_ITEM_STYLE} />
+              <Legend wrapperStyle={LEGEND_STYLE} />
             </PieChart>
           </ResponsiveContainer>
         </ChartCard>

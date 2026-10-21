@@ -21,8 +21,17 @@ import StatCard from '../../components/common/StatCard';
 import ErrorState from '../../components/common/ErrorState';
 import Skeleton, { SkeletonCard } from '../../components/common/Skeleton';
 import { toINR, fmtDateShort, daysUntil } from '../../utils/format';
+import {
+  AXIS,
+  CHART_COLORS,
+  LEGEND_STYLE,
+  SERIES_COLORS,
+  TOOLTIP_ITEM_STYLE,
+  TOOLTIP_LABEL_STYLE,
+  TOOLTIP_STYLE,
+} from '../../utils/chartTheme';
 
-const PIE_COLORS = ['#18A878', '#35C979', '#F4B740', '#EF5B63', '#5EA7FF', '#A78BFA'];
+const PIE_COLORS = SERIES_COLORS;
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -188,7 +197,7 @@ export default function Dashboard() {
             <h2 className="card-title">Expiring Soon</h2>
             <button
               onClick={() => navigate('/admin/memberships')}
-              className="btn btn-ghost btn-sm text-brand-400 hover:bg-brand-500/120/12"
+              className="btn btn-ghost btn-sm text-brand-600 hover:bg-brand-50"
             >
               View all
               <ArrowRightIcon className="h-4 w-4" aria-hidden="true" />
@@ -228,7 +237,7 @@ export default function Dashboard() {
               })}
             </ul>
           ) : (
-            <div className="flex items-center justify-center h-24 text-slate-400 text-sm">
+            <div className="flex items-center justify-center h-24 text-slate-500 text-sm">
               No memberships expiring in the next 30 days
             </div>
           )}
@@ -263,12 +272,12 @@ export default function Dashboard() {
         <ChartCard title="Revenue Trend" loading={loading} error={errors.revenue && 'Failed to load revenue data'} onRetry={handleRefresh} hasData={revenue.length > 0}>
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={revenue}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#23282e" />
-              <XAxis dataKey="month" tickLine={false} axisLine={{ stroke: "#292f35" }} tick={{ fontSize: 12, fill: "#6f7983" }} />
-              <YAxis tickLine={false} axisLine={{ stroke: "#292f35" }} tick={{ fontSize: 12, fill: "#6f7983" }} />
-              <Tooltip formatter={(v) => toINR(v)} contentStyle={{ backgroundColor: '#181c20', border: '1px solid #292f35', borderRadius: '0.75rem', color: '#f3f5f4' }} labelStyle={{ color: '#9aa4ad' }} itemStyle={{ color: '#f3f5f4' }} />
-              <Legend wrapperStyle={{ color: '#9aa4ad' }} />
-              <Line type="monotone" dataKey="revenue" stroke="#18A878" strokeWidth={2} dot={{ r: 4 }} />
+              <CartesianGrid strokeDasharray="3 3" stroke={AXIS.grid} />
+              <XAxis dataKey="month" tickLine={false} axisLine={{ stroke: AXIS.axis }} tick={{ fontSize: 12, fill: AXIS.tick }} />
+              <YAxis tickLine={false} axisLine={{ stroke: AXIS.axis }} tick={{ fontSize: 12, fill: AXIS.tick }} />
+              <Tooltip formatter={(v) => toINR(v)} contentStyle={TOOLTIP_STYLE} labelStyle={TOOLTIP_LABEL_STYLE} itemStyle={TOOLTIP_ITEM_STYLE} />
+              <Legend wrapperStyle={LEGEND_STYLE} />
+              <Line type="monotone" dataKey="revenue" stroke={CHART_COLORS.brand} strokeWidth={2} dot={{ r: 4 }} />
             </LineChart>
           </ResponsiveContainer>
         </ChartCard>
@@ -276,12 +285,12 @@ export default function Dashboard() {
         <ChartCard title="Attendance Trend" loading={loading} error={errors.attendance && 'Failed to load attendance data'} onRetry={handleRefresh} hasData={attendance.length > 0}>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={attendance}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#23282e" />
-              <XAxis dataKey="day" tickLine={false} axisLine={{ stroke: "#292f35" }} tick={{ fontSize: 12, fill: "#6f7983" }} />
-              <YAxis tickLine={false} axisLine={{ stroke: "#292f35" }} tick={{ fontSize: 12, fill: "#6f7983" }} />
-              <Tooltip contentStyle={{ backgroundColor: '#181c20', border: '1px solid #292f35', borderRadius: '0.75rem', color: '#f3f5f4' }} labelStyle={{ color: '#9aa4ad' }} itemStyle={{ color: '#f3f5f4' }} />
-              <Legend wrapperStyle={{ color: '#9aa4ad' }} />
-              <Bar dataKey="count" fill="#18A878" radius={[4, 4, 0, 0]} />
+              <CartesianGrid strokeDasharray="3 3" stroke={AXIS.grid} />
+              <XAxis dataKey="day" tickLine={false} axisLine={{ stroke: AXIS.axis }} tick={{ fontSize: 12, fill: AXIS.tick }} />
+              <YAxis tickLine={false} axisLine={{ stroke: AXIS.axis }} tick={{ fontSize: 12, fill: AXIS.tick }} />
+              <Tooltip contentStyle={TOOLTIP_STYLE} labelStyle={TOOLTIP_LABEL_STYLE} itemStyle={TOOLTIP_ITEM_STYLE} />
+              <Legend wrapperStyle={LEGEND_STYLE} />
+              <Bar dataKey="count" fill={CHART_COLORS.brand} radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>
@@ -302,8 +311,8 @@ export default function Dashboard() {
                   <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
                 ))}
               </Pie>
-              <Tooltip formatter={(v) => fmt(v)} contentStyle={{ backgroundColor: '#181c20', border: '1px solid #292f35', borderRadius: '0.75rem', color: '#f3f5f4' }} labelStyle={{ color: '#9aa4ad' }} itemStyle={{ color: '#f3f5f4' }} />
-              <Legend wrapperStyle={{ color: '#9aa4ad' }} />
+              <Tooltip formatter={(v) => fmt(v)} contentStyle={TOOLTIP_STYLE} labelStyle={TOOLTIP_LABEL_STYLE} itemStyle={TOOLTIP_ITEM_STYLE} />
+              <Legend wrapperStyle={LEGEND_STYLE} />
             </PieChart>
           </ResponsiveContainer>
         </ChartCard>
@@ -311,12 +320,12 @@ export default function Dashboard() {
         <ChartCard title="Peak Hours" loading={loading} error={errors.peakHours && 'Failed to load peak hours data'} onRetry={handleRefresh} hasData={peakHours.length > 0}>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={peakHours}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#23282e" />
-              <XAxis dataKey="hour" tickLine={false} axisLine={{ stroke: "#292f35" }} tick={{ fontSize: 12, fill: "#6f7983" }} />
-              <YAxis tickLine={false} axisLine={{ stroke: "#292f35" }} tick={{ fontSize: 12, fill: "#6f7983" }} />
-              <Tooltip contentStyle={{ backgroundColor: '#181c20', border: '1px solid #292f35', borderRadius: '0.75rem', color: '#f3f5f4' }} labelStyle={{ color: '#9aa4ad' }} itemStyle={{ color: '#f3f5f4' }} />
-              <Legend wrapperStyle={{ color: '#9aa4ad' }} />
-              <Bar dataKey="count" fill="#5EA7FF" radius={[4, 4, 0, 0]} />
+              <CartesianGrid strokeDasharray="3 3" stroke={AXIS.grid} />
+              <XAxis dataKey="hour" tickLine={false} axisLine={{ stroke: AXIS.axis }} tick={{ fontSize: 12, fill: AXIS.tick }} />
+              <YAxis tickLine={false} axisLine={{ stroke: AXIS.axis }} tick={{ fontSize: 12, fill: AXIS.tick }} />
+              <Tooltip contentStyle={TOOLTIP_STYLE} labelStyle={TOOLTIP_LABEL_STYLE} itemStyle={TOOLTIP_ITEM_STYLE} />
+              <Legend wrapperStyle={LEGEND_STYLE} />
+              <Bar dataKey="count" fill={CHART_COLORS.info} radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>
@@ -347,7 +356,7 @@ function ChartCard({ title, loading, error, onRetry, hasData, children }) {
 
 function EmptyChart() {
   return (
-    <div className="flex items-center justify-center h-[300px] text-slate-400">
+    <div className="flex items-center justify-center h-[300px] text-slate-500">
       No data available
     </div>
   );

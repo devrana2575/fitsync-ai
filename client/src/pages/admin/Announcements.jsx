@@ -135,7 +135,7 @@ export default function Announcements() {
                 {a.pinned ? (
                   <span className="badge badge-warning">Pinned</span>
                 ) : (
-                  <span className="text-slate-400">—</span>
+                  <span className="text-slate-500">—</span>
                 )}
               </td>
               <td className="px-4 py-3 text-sm text-slate-600">{a.createdBy?.name || '—'}</td>
@@ -174,7 +174,7 @@ export default function Announcements() {
             <input type="date" value={form.expiresAt} onChange={(e) => setForm({ ...form, expiresAt: e.target.value })} className="input" />
           </div>
           <div className="flex items-center gap-2">
-            <input id="pinned" type="checkbox" checked={form.pinned} onChange={(e) => setForm({ ...form, pinned: e.target.checked })} className="h-4 w-4 text-brand-400 border-slate-300 rounded focus:ring-brand-500" />
+            <input id="pinned" type="checkbox" checked={form.pinned} onChange={(e) => setForm({ ...form, pinned: e.target.checked })} className="h-4 w-4 text-brand-600 border-slate-300 rounded focus:ring-brand-500 focus:ring-offset-0" />
             <label htmlFor="pinned" className="text-sm font-medium text-slate-700">Pinned</label>
           </div>
           <div className="flex justify-end gap-3 pt-2">

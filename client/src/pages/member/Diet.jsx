@@ -109,7 +109,7 @@ export default function Diet() {
 
             <div className="mt-5">
               {dietTypes.length === 0 ? (
-                <p className="text-sm text-slate-400">No diet types available.</p>
+                <p className="text-sm text-slate-500">No diet types available.</p>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {dietTypes.map((d) => {
@@ -126,12 +126,12 @@ export default function Diet() {
                           checked={isChecked}
                           disabled={saving}
                           onChange={(e) => handleToggle(d.value, e.target.checked)}
-                          className="h-5 w-5 rounded border-slate-300 text-brand-400 focus:ring-brand-500"
+                          className="h-5 w-5 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
                         />
-                        <span className={`text-sm font-medium flex-1 ${isChecked ? 'text-brand-400' : 'text-slate-700'}`}>
+                        <span className={`text-sm font-medium flex-1 ${isChecked ? 'text-brand-600' : 'text-slate-700'}`}>
                           {d.label}
                         </span>
-                        {isChecked && <CheckIcon className="h-5 w-5 text-brand-400 shrink-0" aria-hidden="true" />}
+                        {isChecked && <CheckIcon className="h-5 w-5 text-brand-600 shrink-0" aria-hidden="true" />}
                       </label>
                     );
                   })}
@@ -143,14 +143,14 @@ export default function Diet() {
           <div className="card p-5 sm:p-6">
             <h2 className="card-title mb-5">Last 7 Days</h2>
             {!stats || stats.last7Days.length === 0 ? (
-              <p className="text-sm text-slate-400">No diet checklist entries in the last week.</p>
+              <p className="text-sm text-slate-500">No diet checklist entries in the last week.</p>
             ) : (
               <div className="flex flex-wrap gap-3">
                 {stats.last7Days.map((day) => (
                   <div key={new Date(day.date).toISOString()} className="rounded-xl border border-border px-4 py-3 text-center min-w-[96px] bg-surface-elevated">
                     <p className="text-xs text-slate-500">{fmtDay(day.date)}</p>
                     <p className="text-lg font-semibold text-slate-900 mt-1 tabular-nums">{day.count}</p>
-                    <p className="text-[11px] text-slate-400">completed</p>
+                    <p className="text-[11px] text-slate-500">completed</p>
                   </div>
                 ))}
               </div>
