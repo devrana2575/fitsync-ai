@@ -21,6 +21,7 @@ const WorkoutTemplate = require('../models/WorkoutTemplate');
 const Announcement = require('../models/Announcement');
 const ProgressPhoto = require('../models/ProgressPhoto');
 const GymSetting = require('../models/GymSetting');
+const TrainerSickLeave = require('../models/TrainerSickLeave');
 
 const EDITABLE_FIELDS = {
   // role is deliberately not editable through AllData: authz decoupled from
@@ -31,7 +32,7 @@ const EDITABLE_FIELDS = {
   // service or the admin assign-trainer business route so status stays coherent.
   memberProfiles: ['phone', 'phoneNumbers', 'dateOfBirth', 'gender', 'address', 'emergencyContact', 'joinDate', 'medicalConditions', 'injuries', 'medicalNotes', 'allergies', 'medicalRestrictions', 'doctorRecommendation', 'trainerRecommendation', 'goals', 'activityLevel', 'preferredWorkoutDays', 'preferredWorkoutDuration', 'heightCm', 'weightKg'],
   trainerProfiles: ['phone', 'dateOfBirth', 'gender', 'address', 'heightCm', 'weightKg', 'specializations', 'certifications', 'experience', 'bio', 'languages', 'workingDays', 'workingHours', 'maxMembers', 'isAvailable', 'absenceReason', 'absenceFrom', 'absenceTo'],
-  membershipPlans: ['name', 'price', 'duration', 'description', 'features', 'isActive', 'trainerIncluded', 'trainerAllocationMode', 'requiredSpecialization', 'workoutPlanIncluded', 'paymentMode', 'installments'],
+  membershipPlans: ['name', 'price', 'duration', 'description', 'details', 'features', 'isActive', 'trainerIncluded', 'trainerAllocationMode', 'requiredSpecialization', 'workoutPlanIncluded', 'paymentMode', 'installments'],
   // status is not editable through AllData: activation must flow through the
   // payment-verified paths (or explicit admin flows in the memberships API).
   memberships: ['startDate', 'endDate', 'autoRenew'],
@@ -54,6 +55,9 @@ const EDITABLE_FIELDS = {
   announcements: ['title', 'message', 'priority', 'pinned', 'expiresAt', 'isActive'],
   progressPhotos: ['url', 'caption', 'angle', 'date', 'isActive'],
   gymSettings: ['name', 'address', 'phone', 'email', 'currency', 'timezone', 'operatingHours'],
+  // Leave status/coverage is workflow-owned. Only human-authored text may be
+  // corrected here; status must continue through the review/restore API.
+  trainerSickLeaves: ['reason', 'reviewNote'],
 };
 
 const COLLECTIONS = [
@@ -76,6 +80,7 @@ const COLLECTIONS = [
   { key: 'announcements', label: 'Announcements', model: Announcement },
   { key: 'progressPhotos', label: 'Progress Photos', model: ProgressPhoto },
   { key: 'gymSettings', label: 'Gym Settings', model: GymSetting },
+  { key: 'trainerSickLeaves', label: 'Trainer Sick Leaves', model: TrainerSickLeave },
 ];
 
 const MAX_ROWS = 100;
@@ -103,6 +108,9 @@ const DELETE_GUARDS = {
   // reconstructible (ledger property); if a transaction was wrong it gets
   // refunded/annotated, not erased.
   payments: async () => 'Payment records are financial records and cannot be deleted - issue a refund or annotate instead',
+  announcements: async () => 'Announcements cannot be deleted - deactivate them instead so the audit trail stays intact',
+  gymSettings: async () => 'Gym settings cannot be deleted - edit the settings record instead',
+  trainerSickLeaves: async () => 'Trainer leave records cannot be deleted - use the leave review workflow instead',
 };
 
 router.get('/all', auth, authorize('admin'), async (req, res) => {

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
-import { XCircleIcon, ClipboardDocumentListIcon, CheckCircleIcon, ClockIcon, BellAlertIcon, PlusIcon } from '@heroicons/react/24/outline';
+import { useLocation, useSearchParams } from 'react-router-dom';
+import { XCircleIcon, ClipboardDocumentListIcon, CheckCircleIcon, ClockIcon, BellAlertIcon, PlusIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import api from '../../services/api';
 import useDebounce from '../../hooks/useDebounce';
 import EmptyState from '../../components/common/EmptyState';
@@ -8,6 +8,8 @@ import PageHeader from '../../components/common/PageHeader';
 import Modal from '../../components/common/Modal';
 import DataTable from '../../components/common/DataTable';
 import StatCard from '../../components/common/StatCard';
+import StatusBadge from '../../components/common/StatusBadge';
+import PlanDetailModal from '../../components/common/PlanDetailModal';
 import ProgressBar from '../../components/common/ProgressBar';
 import Avatar from '../../components/common/Avatar';
 import { SkeletonCard, SkeletonRow } from '../../components/common/Skeleton';
@@ -15,18 +17,34 @@ import { toINR, fmtDate } from '../../utils/format';
 import { useToast } from '../../context/ToastContext';
 
 const initialPlan = {
-  name: '', price: '', duration: '', features: '', description: '',
+  name: '', price: '', duration: '', description: '', details: '', features: '',
   trainerIncluded: false, trainerAllocationMode: 'SHARED', requiredSpecialization: '',
   workoutPlanIncluded: false, paymentMode: 'FULL', installments: 1,
 };
+
+const STATUS_FILTERS = [
+  { key: 'ACTIVE', label: 'Active' },
+  { key: 'EXPIRED', label: 'Expired' },
+  { key: 'PENDING', label: 'Pending' },
+  { key: 'CANCELLED', label: 'Cancelled' },
+  { key: 'SUSPENDED', label: 'Suspended' },
+  { key: 'EXPIRING_SOON', label: 'Expiring Soon' },
+];
 const initialAssignForm = { selectedMember: null, selectedPlan: null, startDate: new Date().toISOString().split('T')[0], complimentary: false };
 
 const ALLOCATION_MODES = ['NONE', 'SHARED', 'ASSIGNED', 'DEDICATED'];
 
+const resolveStatusFilter = (value) => {
+  const status = String(value || '').toUpperCase();
+  return STATUS_FILTERS.some((f) => f.key === status) ? status : 'ALL';
+};
+
 export default function Memberships() {
   const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const initialStatusFilter = resolveStatusFilter(searchParams.get('status'));
   const { toast } = useToast();
-  const [tab, setTab] = useState('plans');
+  const [tab, setTab] = useState(initialStatusFilter === 'ALL' ? 'plans' : 'memberships');
   const [plans, setPlans] = useState([]);
   const [memberships, setMemberships] = useState([]);
   const [stats, setStats] = useState(null);
@@ -34,6 +52,8 @@ export default function Memberships() {
   const [showPlanModal, setShowPlanModal] = useState(false);
   const [editingPlan, setEditingPlan] = useState(null);
   const [planForm, setPlanForm] = useState(initialPlan);
+  const [viewingPlan, setViewingPlan] = useState(null);
+  const [statusFilter, setStatusFilter] = useState(initialStatusFilter);
   const [saving, setSaving] = useState(false);
 
   const [showAssignModal, setShowAssignModal] = useState(false);
@@ -51,7 +71,7 @@ export default function Memberships() {
     try {
       const [planRes, memRes, statRes] = await Promise.all([
         api.get('/membership-plans/all'),
-        api.get('/memberships'),
+        api.get('/memberships', { params: { limit: 100 } }),
         api.get('/memberships/stats'),
       ]);
       setPlans(planRes.data.data || planRes.data.plans || []);
@@ -66,8 +86,17 @@ export default function Memberships() {
 
   const fetchMembers = async () => {
     try {
-      const res = await api.get('/members', { params: { limit: 200 } });
-      setAllMembers(res.data.data || res.data.members || []);
+      const collected = [];
+      let page = 1;
+      let pages = 1;
+      do {
+        const res = await api.get('/members', { params: { page, limit: 100 } });
+        collected.push(...(res.data.data || res.data.members || []));
+        pages = res.data.pages || 1;
+        page += 1;
+      } while (page <= pages);
+      collected.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+      setAllMembers(collected);
     } catch (err) {
       console.error(err);
     }
@@ -90,6 +119,7 @@ export default function Memberships() {
       name: p.name, price: p.price, duration: p.duration,
       features: Array.isArray(p.features) ? p.features.join(', ') : (p.features || ''),
       description: p.description || '',
+      details: p.details || '',
       trainerIncluded: Boolean(p.trainerIncluded),
       trainerAllocationMode: p.trainerAllocationMode || 'SHARED',
       requiredSpecialization: p.requiredSpecialization || '',
@@ -116,7 +146,8 @@ export default function Memberships() {
   const filteredMembers = allMembers.filter((m) => {
     if (!debouncedMemberSearch) return true;
     const q = debouncedMemberSearch.toLowerCase();
-    return (m.name || '').toLowerCase().includes(q) || (m.email || '').toLowerCase().includes(q);
+    const phone = m.phone || m.profile?.phone || '';
+    return `${m.name || ''} ${m.email || ''} ${phone}`.toLowerCase().includes(q);
   });
 
   const openAssignModal = () => {
@@ -127,7 +158,6 @@ export default function Memberships() {
 
   const handleAssignMemberSelect = (member) => {
     setAssignForm({ ...assignForm, selectedMember: member });
-    setMemberSearch('');
   };
 
   const handleAssignSubmit = async (e) => {
@@ -221,8 +251,26 @@ export default function Memberships() {
   };
 
   const statusColor = (s) => {
-    const map = { active: 'badge-success', expired: 'badge-danger', pending: 'badge-warning', cancelled: 'badge-muted' };
+    const map = { active: 'badge-success', expired: 'badge-danger', pending: 'badge-warning', cancelled: 'badge-muted', suspended: 'badge-info' };
     return map[s?.toLowerCase()] || 'badge-muted';
+  };
+
+  const expiryWindowEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+  const matchesStatusFilter = (m) => {
+    if (statusFilter === 'ALL') return true;
+    const status = String(m.status || '').toUpperCase();
+    if (statusFilter === 'EXPIRING_SOON') {
+      const end = new Date(m.endDate);
+      return status === 'ACTIVE' && end >= new Date() && end <= expiryWindowEnd;
+    }
+    return status === statusFilter;
+  };
+  const visibleMemberships = memberships.filter(matchesStatusFilter);
+  const activeFilterLabel = STATUS_FILTERS.find((f) => f.key === statusFilter)?.label;
+
+  const applyStatusFilter = (key) => {
+    setStatusFilter(key);
+    setTab('memberships');
   };
 
   return (
@@ -235,11 +283,11 @@ export default function Memberships() {
 
       {stats && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-          <StatCard icon={CheckCircleIcon} label="Active" value={stats.active || 0} color="green" />
-          <StatCard icon={XCircleIcon} label="Expired" value={stats.expired || 0} color="red" />
-          <StatCard icon={ClockIcon} label="Pending" value={stats.pending || 0} color="yellow" />
-          <StatCard icon={XCircleIcon} label="Cancelled" value={stats.cancelled || 0} color="blue" />
-          <StatCard icon={BellAlertIcon} label="Expiring Soon" value={stats.expiringSoon || 0} color="purple" />
+          <StatCard icon={CheckCircleIcon} label="Active" value={stats.active || 0} color="green" onClick={() => applyStatusFilter('ACTIVE')} active={statusFilter === 'ACTIVE'} ariaLabel="Show active memberships" />
+          <StatCard icon={XCircleIcon} label="Expired" value={stats.expired || 0} color="red" onClick={() => applyStatusFilter('EXPIRED')} active={statusFilter === 'EXPIRED'} ariaLabel="Show expired memberships" />
+          <StatCard icon={ClockIcon} label="Pending" value={stats.pending || 0} color="yellow" onClick={() => applyStatusFilter('PENDING')} active={statusFilter === 'PENDING'} ariaLabel="Show pending memberships" />
+          <StatCard icon={XCircleIcon} label="Cancelled" value={stats.cancelled || 0} color="blue" onClick={() => applyStatusFilter('CANCELLED')} active={statusFilter === 'CANCELLED'} ariaLabel="Show cancelled memberships" />
+          <StatCard icon={BellAlertIcon} label="Expiring Soon" value={stats.expiringSoon || 0} color="orange" onClick={() => applyStatusFilter('EXPIRING_SOON')} active={statusFilter === 'EXPIRING_SOON'} ariaLabel="Show memberships expiring within 30 days" />
         </div>
       )}
 
@@ -251,6 +299,17 @@ export default function Memberships() {
           Memberships
         </button>
       </div>
+
+      {tab === 'memberships' && statusFilter !== 'ALL' && (
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <span className="text-slate-500">Showing</span>
+          <span className="badge badge-brand">{activeFilterLabel}</span>
+          <span className="text-slate-500">({visibleMemberships.length})</span>
+          <button type="button" onClick={() => setStatusFilter('ALL')} className="text-xs font-medium text-brand-600 hover:text-brand-700 hover:underline">
+            Clear filter
+          </button>
+        </div>
+      )}
 
       {loading ? (
         tab === 'plans' ? (
@@ -272,41 +331,50 @@ export default function Memberships() {
             {plans.length === 0 ? <EmptyState icon={ClipboardDocumentListIcon} message="No plans created yet" /> : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {plans.map((p) => (
-                  <div key={p._id} className="card p-6 hover:shadow-md transition-shadow">
-                    <div className="flex items-start justify-between mb-3">
-                      <h3 className="text-lg font-semibold text-slate-900">{p.name}</h3>
-                      <button onClick={() => openEditPlan(p)} className="btn btn-sm btn-outline">Edit</button>
+                  <div key={p._id} className="card relative p-6 group transition-shadow hover:shadow-md focus-within:ring-2 focus-within:ring-brand-500/30">
+                    <button
+                      type="button"
+                      onClick={() => setViewingPlan(p)}
+                      className="absolute inset-0 z-0 rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+                      aria-label={`View full details for ${p.name}`}
+                    />
+                    <div className="relative z-10 pointer-events-none">
+                      <div className="flex items-start justify-between gap-3 mb-3">
+                        <h3 className="text-lg font-semibold text-slate-900 group-hover:text-brand-700">{p.name}</h3>
+                        <button onClick={() => openEditPlan(p)} className="btn btn-sm btn-outline pointer-events-auto">Edit</button>
+                      </div>
+                      <p className="text-2xl font-semibold tabular-nums text-brand-600 mb-1">{toINR(p.price)}</p>
+                      <p className="text-sm font-semibold uppercase tracking-wide text-slate-500 mb-2">{p.duration} DAYS</p>
+                      <div className="flex flex-wrap gap-1.5 mb-3">
+                        {p.paymentMode === 'INSTALLMENT' && (
+                          <span className="badge badge-warning">
+                            {p.installments || 2} × {toINR(p.installmentAmount || 0)}
+                          </span>
+                        )}
+                        {p.trainerIncluded ? (
+                          <span className="badge badge-brand">
+                            Trainer: {p.trainerAllocationMode || 'SHARED'}
+                          </span>
+                        ) : (
+                          <span className="badge badge-muted">No trainer</span>
+                        )}
+                        {p.workoutPlanIncluded && (
+                          <span className="badge badge-success">Workout plan</span>
+                        )}
+                        {p.requiredSpecialization && (
+                          <span className="badge badge-info">Specialty: {p.requiredSpecialization}</span>
+                        )}
+                      </div>
+                      {p.description && <p className="text-sm text-slate-600 mb-3">{p.description}</p>}
+                      {p.features?.length > 0 && (
+                        <ul className="flex flex-wrap gap-1.5">
+                          {p.features.map((f, i) => (
+                            <li key={i} className="badge badge-muted">{f}</li>
+                          ))}
+                        </ul>
+                      )}
+                      <p className="mt-3 text-xs font-medium text-brand-600 group-hover:text-brand-700">View full details</p>
                     </div>
-                    <p className="text-2xl font-semibold tabular-nums text-brand-600 mb-1">{toINR(p.price)}</p>
-                    <p className="text-sm font-semibold uppercase tracking-wide text-slate-500 mb-2">{p.duration} DAYS</p>
-                    <div className="flex flex-wrap gap-1.5 mb-3">
-                      {p.paymentMode === 'INSTALLMENT' && (
-                        <span className="badge badge-warning">
-                          {p.installments || 2} × {toINR(p.installmentAmount || 0)}
-                        </span>
-                      )}
-                      {p.trainerIncluded ? (
-                        <span className="badge badge-brand">
-                          Trainer: {p.trainerAllocationMode || 'SHARED'}
-                        </span>
-                      ) : (
-                        <span className="badge badge-muted">No trainer</span>
-                      )}
-                      {p.workoutPlanIncluded && (
-                        <span className="badge badge-success">Workout plan</span>
-                      )}
-                      {p.requiredSpecialization && (
-                        <span className="badge badge-info">Specialty: {p.requiredSpecialization}</span>
-                      )}
-                    </div>
-                    {p.description && <p className="text-sm text-slate-600 mb-3">{p.description}</p>}
-                    {p.features?.length > 0 && (
-                      <ul className="flex flex-wrap gap-1.5">
-                        {p.features.map((f, i) => (
-                          <li key={i} className="badge badge-muted">{f}</li>
-                        ))}
-                      </ul>
-                    )}
                   </div>
                 ))}
               </div>
@@ -320,9 +388,20 @@ export default function Memberships() {
                 Assign Membership
               </button>
             </div>
-            {memberships.length === 0 ? <EmptyState icon={ClipboardDocumentListIcon} message="No active memberships" /> : (
+            {visibleMemberships.length === 0 ? (
+              <EmptyState
+                icon={ClipboardDocumentListIcon}
+                message={memberships.length === 0 ? 'No memberships yet' : `No ${activeFilterLabel?.toLowerCase()} memberships`}
+                description={memberships.length > 0 ? 'Clear the status filter to see every membership.' : undefined}
+                action={statusFilter !== 'ALL' ? (
+                  <button type="button" onClick={() => setStatusFilter('ALL')} className="btn btn-outline btn-md">
+                    Clear filter
+                  </button>
+                ) : undefined}
+              />
+            ) : (
               <DataTable headers={['Member', 'Plan', 'Start Date', 'End Date', 'Status', 'Actions']}>
-                {memberships.map((m) => (
+                {visibleMemberships.map((m) => (
                   <tr key={m._id} className="odd:bg-transparent even:bg-surface/60">
                     <td className="px-4 py-3 text-sm">
                       <div className="flex items-center gap-2">
@@ -334,15 +413,15 @@ export default function Memberships() {
                     <td className="px-4 py-3 text-sm text-slate-600">{fmtDate(m.startDate)}</td>
                     <td className="px-4 py-3 text-sm text-slate-600">{fmtDate(m.endDate)}</td>
                     <td className="px-4 py-3 text-sm">
-                      <span className={`badge ${statusColor(m.status)}`}>{m.status}</span>
+                      <StatusBadge value={m.status} />
                     </td>
                     <td className="px-4 py-3 text-sm">
                       <div className="flex gap-1 flex-wrap">
                         <button onClick={() => viewMembership(m)} className="btn btn-sm btn-outline">View</button>
                         {m.status?.toLowerCase() === 'active' && (
                           <>
-                            <button onClick={() => renewMembership(m)} className="btn btn-sm text-success hover:bg-success/10">Renew</button>
-                            <button onClick={() => cancelMembership(m)} className="btn btn-sm text-danger hover:bg-danger/10">Cancel</button>
+                            <button onClick={() => renewMembership(m)} className="btn btn-sm bg-success/10 text-success border border-success/25 hover:bg-success/20">Renew</button>
+                            <button onClick={() => cancelMembership(m)} className="btn btn-sm bg-danger/10 text-danger border border-danger/25 hover:bg-danger/20">Cancel</button>
                           </>
                         )}
                       </div>
@@ -370,8 +449,19 @@ export default function Memberships() {
             <input required type="number" min="1" value={planForm.duration} onChange={(e) => setPlanForm({ ...planForm, duration: e.target.value })} className="input" />
           </div>
           <div>
-            <label className="label">Description</label>
-            <textarea value={planForm.description} onChange={(e) => setPlanForm({ ...planForm, description: e.target.value })} rows={2} className="input" />
+            <label className="label">Short Description</label>
+            <textarea value={planForm.description} onChange={(e) => setPlanForm({ ...planForm, description: e.target.value })} rows={2} className="input" placeholder="One-line summary shown on the plan card" />
+          </div>
+          <div>
+            <label className="label">Full Plan Details</label>
+            <textarea
+              value={planForm.details}
+              onChange={(e) => setPlanForm({ ...planForm, details: e.target.value })}
+              rows={4}
+              className="input"
+              placeholder="Explain what the plan includes, access rules, and who it suits. Keep it consistent with the price."
+            />
+            <p className="field-hint">Shown to members and admins when they open the plan.</p>
           </div>
           <div>
             <label className="label">Features (comma-separated)</label>
@@ -434,30 +524,81 @@ export default function Memberships() {
 
       <Modal isOpen={showAssignModal} onClose={() => setShowAssignModal(false)} title="Assign Membership">
         <form onSubmit={handleAssignSubmit} className="space-y-4">
-          <div className="relative">
-            <label className="label">Select Member</label>
-            {assignForm.selectedMember ? (
-              <div className="flex items-center gap-2 px-3 py-2 border border-slate-300 rounded-lg bg-surface">
-                <span className="flex-1 text-sm text-slate-900">{assignForm.selectedMember.name} ({assignForm.selectedMember.email})</span>
-                <button type="button" onClick={() => setAssignForm({ ...assignForm, selectedMember: null })} className="text-slate-500 hover:text-slate-600 text-lg leading-none">&times;</button>
+          <div>
+            <div className="flex items-end justify-between gap-2">
+              <label className="label">Select Member</label>
+              <span className="text-xs text-slate-500">{filteredMembers.length} of {allMembers.length} members</span>
+            </div>
+
+            {assignForm.selectedMember && (
+              <div className="mb-2 flex items-center gap-2 rounded-lg border border-brand-200 bg-brand-50 px-3 py-2">
+                <CheckCircleIcon className="h-4 w-4 shrink-0 text-brand-600" aria-hidden="true" />
+                <span className="min-w-0 flex-1 truncate text-sm text-slate-900">
+                  {assignForm.selectedMember.name} <span className="text-slate-500">({assignForm.selectedMember.email})</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setAssignForm({ ...assignForm, selectedMember: null })}
+                  className="text-lg leading-none text-slate-500 hover:text-slate-600"
+                  aria-label="Clear selected member"
+                >
+                  &times;
+                </button>
               </div>
-            ) : (
+            )}
+
+            <div className="relative">
+              <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
               <input
                 value={memberSearch}
                 onChange={(e) => setMemberSearch(e.target.value)}
-                placeholder="Search member..."
-                className="input"
+                placeholder="Search members by name, email or phone..."
+                className="input pl-9 pr-9"
               />
-            )}
-            {memberSearch && !assignForm.selectedMember && filteredMembers.length > 0 && (
-              <ul className="absolute z-10 mt-1 w-full bg-surface-elevated border border-border rounded-lg shadow-pop max-h-48 overflow-y-auto">
-                {filteredMembers.slice(0, 20).map((m) => (
-                  <li key={m._id} onClick={() => handleAssignMemberSelect(m)} className="px-3 py-2 text-sm hover:bg-brand-500/12 cursor-pointer">
-                    {m.name} <span className="text-slate-500">({m.email})</span>
-                  </li>
-                ))}
-              </ul>
-            )}
+              {memberSearch && (
+                <button
+                  type="button"
+                  onClick={() => setMemberSearch('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-lg leading-none text-slate-400 hover:text-slate-600"
+                  aria-label="Clear search"
+                >
+                  &times;
+                </button>
+              )}
+            </div>
+
+            <div className="mt-2 overflow-hidden rounded-lg border border-border bg-surface/50">
+              {filteredMembers.length === 0 ? (
+                <p className="px-3 py-5 text-center text-sm text-slate-500">
+                  {allMembers.length === 0 ? 'No members found.' : 'No members match your search.'}
+                </p>
+              ) : (
+                <ul className="max-h-56 divide-y divide-border overflow-y-auto">
+                  {filteredMembers.map((m) => {
+                    const selected = assignForm.selectedMember && String(assignForm.selectedMember._id) === String(m._id);
+                    return (
+                      <li key={m._id}>
+                        <button
+                          type="button"
+                          onClick={() => handleAssignMemberSelect(m)}
+                          className={`flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors ${selected ? 'bg-brand-50' : 'hover:bg-surface-hover'}`}
+                        >
+                          <Avatar name={m.name} src={m.avatar} size="sm" />
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-sm font-medium text-slate-900">{m.name}</span>
+                            <span className="block truncate text-xs text-slate-500">{m.email}</span>
+                          </span>
+                          {m.membership && (
+                            <span className="badge badge-muted">{m.membership.plan?.name || m.membership.status}</span>
+                          )}
+                          {selected && <CheckCircleIcon className="h-4 w-4 shrink-0 text-brand-600" aria-hidden="true" />}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
           </div>
           <div>
             <label className="label">Plan</label>
@@ -573,6 +714,17 @@ export default function Memberships() {
           </div>
         )}
       </Modal>
+
+      <PlanDetailModal
+        plan={viewingPlan}
+        isOpen={Boolean(viewingPlan)}
+        onClose={() => setViewingPlan(null)}
+        onEdit={() => {
+          const plan = viewingPlan;
+          setViewingPlan(null);
+          if (plan) openEditPlan(plan);
+        }}
+      />
     </div>
   );
 }

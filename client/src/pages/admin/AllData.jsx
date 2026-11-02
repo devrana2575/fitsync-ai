@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { ServerStackIcon, ChevronDownIcon, ChevronRightIcon, ArrowPathIcon, PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { ServerStackIcon, ChevronDownIcon, ChevronRightIcon, ArrowPathIcon, PencilSquareIcon, TrashIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import api from '../../services/api';
 import ErrorState from '../../components/common/ErrorState';
 import StatCard from '../../components/common/StatCard';
@@ -25,7 +25,7 @@ function formatValue(value, isId = false) {
 function pickColumns(row) {
   const keys = Object.keys(row).filter((k) => !IGNORED_KEYS.has(k));
   const isRef = (k) => /Id$/.test(k) || ['user', 'trainer', 'member', 'createdBy', 'plan'].includes(k);
-  return keys.slice(0, 7).map((k) => ({ key: k, isId: /(^|_)(id|Id)$/.test(k) || isRef(k) || row[k] && /^[a-f0-9]{24}$/i.test(String(row[k])) }));
+  return keys.slice(0, 8).map((k) => ({ key: k, isId: /(^|_)(id|Id)$/.test(k) || isRef(k) || row[k] && /^[a-f0-9]{24}$/i.test(String(row[k])) }));
 }
 
 function EditModal({ collectionLabel, id, fields, onClose, onSave, saving }) {
@@ -116,7 +116,8 @@ function EditModal({ collectionLabel, id, fields, onClose, onSave, saving }) {
 }
 
 function CollectionCard({ collection, expanded, onToggle, onEdit, onDelete }) {
-  const { label, count, rows } = collection;
+  const { label, count, rows, editableFields } = collection;
+  const hasEditableFields = Array.isArray(editableFields) && editableFields.length > 0;
   const columns = useMemo(() => (rows.length > 0 ? pickColumns(rows[0]) : []), [rows]);
 
   return (
@@ -126,6 +127,7 @@ function CollectionCard({ collection, expanded, onToggle, onEdit, onDelete }) {
           {expanded ? <ChevronDownIcon className="h-4 w-4 text-slate-500 shrink-0" /> : <ChevronRightIcon className="h-4 w-4 text-slate-500 shrink-0" />}
           <span className="font-semibold text-slate-900 truncate">{label}</span>
           <span className="badge badge-brand shrink-0">{count} records</span>
+          {!hasEditableFields && <span className="badge badge-muted shrink-0">Read only</span>}
           {count > rows.length && <span className="text-xs text-slate-500 shrink-0">showing latest {rows.length}</span>}
         </div>
       </button>
@@ -157,9 +159,11 @@ function CollectionCard({ collection, expanded, onToggle, onEdit, onDelete }) {
                       ))}
                       <td className="pl-4 pr-5 py-2.5 whitespace-nowrap">
                         <div className="flex gap-1">
-                          <button onClick={() => onEdit(row)} className="btn btn-sm btn-outline">
-                            <PencilSquareIcon className="h-4 w-4" /> Edit
-                          </button>
+                          {hasEditableFields && (
+                            <button onClick={() => onEdit(row)} className="btn btn-sm btn-outline">
+                              <PencilSquareIcon className="h-4 w-4" /> Edit
+                            </button>
+                          )}
                           <button onClick={() => onDelete(row)} className="btn btn-sm text-danger hover:bg-danger/10">
                             <TrashIcon className="h-4 w-4" /> Delete
                           </button>
@@ -215,6 +219,7 @@ export default function AllData() {
   const collapseAll = () => setExpanded(new Set());
 
   const totalRecords = data.reduce((sum, c) => sum + (c.count || 0), 0);
+  const emptyCollections = data.filter((c) => !c.count).length;
 
   const refresh = async () => {
     setRefreshing(true);
@@ -279,6 +284,7 @@ export default function AllData() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <StatCard icon={ServerStackIcon} label="Collections" value={data.length} color="ink" />
           <StatCard icon={ServerStackIcon} label="Total Records" value={totalRecords} color="green" />
+          <StatCard icon={ExclamationTriangleIcon} label="Empty Collections" value={emptyCollections} color={emptyCollections > 0 ? 'yellow' : 'green'} />
         </div>
       )}
 

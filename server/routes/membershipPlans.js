@@ -51,7 +51,7 @@ const withInstallmentPolicy = (plans) =>
 
 const normalizePlanPayload = (body) => {
   const {
-    name, price, duration, description, features, isActive,
+    name, price, duration, description, details, features, isActive,
     trainerIncluded, trainerAllocationMode, requiredSpecialization,
     workoutPlanIncluded, paymentMode, installments
   } = body;
@@ -64,7 +64,7 @@ const normalizePlanPayload = (body) => {
   const installmentCount = paymentModeValue === 'INSTALLMENT' ? Number(installments) : 1;
 
   return {
-    name, price, duration, description, features, isActive,
+    name, price, duration, description, details, features, isActive,
     trainerIncluded: included,
     trainerAllocationMode: allocationMode,
     requiredSpecialization,
@@ -125,6 +125,7 @@ router.post('/', auth, authorize('admin'), [
       price: payload.price,
       duration: payload.duration,
       description: payload.description,
+      details: payload.details,
       features: payload.features || [],
       isActive: payload.isActive !== undefined ? coerceBool(payload.isActive) : true,
       trainerIncluded: payload.trainerIncluded,
@@ -157,6 +158,7 @@ router.put('/:id', auth, authorize('admin'), async (req, res) => {
     if (req.body.price !== undefined) update.price = req.body.price;
     if (req.body.duration !== undefined) update.duration = req.body.duration;
     if (req.body.description !== undefined) update.description = req.body.description;
+    if (req.body.details !== undefined) update.details = req.body.details;
     if (req.body.features !== undefined) update.features = req.body.features;
     if (req.body.isActive !== undefined) update.isActive = coerceBool(req.body.isActive);
     if (req.body.trainerIncluded !== undefined || req.body.trainerAllocationMode !== undefined || req.body.requiredSpecialization !== undefined) {

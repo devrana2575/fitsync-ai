@@ -4,6 +4,8 @@ import {
   CalendarDaysIcon,
   CheckCircleIcon,
   MapPinIcon,
+  MagnifyingGlassIcon,
+  ClockIcon,
 } from '@heroicons/react/24/outline';
 import api from '../../services/api';
 import EmptyState from '../../components/common/EmptyState';
@@ -13,7 +15,7 @@ import DataTable from '../../components/common/DataTable';
 import StatCard from '../../components/common/StatCard';
 import Avatar from '../../components/common/Avatar';
 import { SkeletonRow } from '../../components/common/Skeleton';
-import { fmtDate, fmtTime, formatDuration } from '../../utils/format';
+import { fmtDate, fmtTime, formatDuration, todayKey } from '../../utils/format';
 import { useToast } from '../../context/ToastContext';
 
 export default function Attendance() {
@@ -23,27 +25,44 @@ export default function Attendance() {
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(todayKey());
   const [selectedMember, setSelectedMember] = useState('');
   const [memberSearch, setMemberSearch] = useState('');
+  const [recordSearch, setRecordSearch] = useState('');
+  const [showIneligible, setShowIneligible] = useState(false);
   const [checkInLoading, setCheckInLoading] = useState(false);
   const [checkOutId, setCheckOutId] = useState('');
   const [todayStats, setTodayStats] = useState(null);
+
+  const fetchAllMembers = async () => {
+    const collected = [];
+    let page = 1;
+    let pages = 1;
+    do {
+      const res = await api.get('/members', { params: { page, limit: 100 } });
+      collected.push(...(res.data.data || res.data.members || []));
+      pages = res.data.pages || 1;
+      page += 1;
+    } while (page <= pages);
+    return collected;
+  };
 
   const fetchAll = async () => {
     setLoading(true);
     setError(null);
     try {
-      const [todayRes, dateRes, memRes] = await Promise.all([
+      const [todayRes, dateRes, memberList] = await Promise.all([
         api.get('/attendance/today'),
         api.get('/attendance', { params: { date } }),
-        api.get('/members', { params: { limit: 200 } }),
+        fetchAllMembers(),
       ]);
       const todayData = todayRes.data.records || todayRes.data.data || todayRes.data.attendance || todayRes.data || [];
       setTodayRecords(Array.isArray(todayData) ? todayData : todayData.attendance || []);
       setRecords(dateRes.data.records || dateRes.data.data || dateRes.data.attendance || []);
-      setMembers(memRes.data.data || memRes.data.members || []);
-      setTodayStats({ count: Array.isArray(todayData) ? todayData.length : 0 });
+      setMembers(memberList);
+      setTodayStats({
+        count: todayRes.data.count ?? (Array.isArray(todayData) ? todayData.length : 0),
+      });
     } catch (err) {
       setError(err.message || 'Failed to load attendance');
     } finally {
@@ -58,7 +77,9 @@ export default function Attendance() {
     if (!selectedMember) return;
     setCheckInLoading(true);
     try {
+      const memberName = members.find((m) => String(m._id) === String(selectedMember))?.name || 'Member';
       await api.post('/attendance/checkin', { userId: selectedMember, memberId: selectedMember });
+      toast.success('Checked in', `${memberName} is now checked in.`);
       setSelectedMember('');
       fetchAll();
     } catch (err) {
@@ -81,16 +102,39 @@ export default function Attendance() {
   };
 
   const checkedTodayIds = new Set(todayRecords.map((r) => String(r.user?._id || r.member?._id || '')));
-  const availableMembers = members.filter((m) => !checkedTodayIds.has(String(m._id)));
-  const filteredMembers = memberSearch
-    ? availableMembers.filter((m) =>
-        `${m.name || ''} ${m.email || ''} ${m.phone || ''}`.toLowerCase().includes(memberSearch.toLowerCase())
-      )
-    : [];
+
+  const hasActiveMembership = (m) => {
+    const membership = m.membership;
+    if (!membership || String(membership.status).toUpperCase() !== 'ACTIVE') return false;
+    return !membership.endDate || new Date(membership.endDate) >= new Date();
+  };
+
+  const checkInCandidates = members
+    .filter((m) => m.isActive !== false && !checkedTodayIds.has(String(m._id)))
+    .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  const eligibleMembers = checkInCandidates.filter(hasActiveMembership);
+  const availableMembers = showIneligible ? checkInCandidates : eligibleMembers;
+
+  const memberSearchTerm = memberSearch.trim().toLowerCase();
+  const filteredMembers = availableMembers.filter((m) => {
+    if (!memberSearchTerm) return true;
+    const phone = m.phone || m.profile?.phone || '';
+    return `${m.name || ''} ${m.email || ''} ${phone}`.toLowerCase().includes(memberSearchTerm);
+  });
+
+  const selectedMemberObj = members.find((m) => String(m._id) === String(selectedMember)) || null;
+
+  const recordSearchTerm = recordSearch.trim().toLowerCase();
+  const filteredRecords = records.filter((r) => {
+    if (!recordSearchTerm) return true;
+    const name = r.user?.name || r.member?.name || '';
+    const email = r.user?.email || '';
+    return `${name} ${email}`.toLowerCase().includes(recordSearchTerm);
+  });
 
   const handleMemberSelect = (m) => {
+    if (!hasActiveMembership(m)) return;
     setSelectedMember(m._id);
-    setMemberSearch('');
   };
 
   return (
@@ -101,56 +145,134 @@ export default function Attendance() {
         icon={ClipboardDocumentCheckIcon}
       />
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard icon={ClipboardDocumentCheckIcon} label="Today's Count" value={todayStats?.count || todayRecords.length} color="brand" />
+        <StatCard icon={CheckCircleIcon} label="Checked Out" value={todayRecords.filter((r) => r.checkOutTime).length} color="green" />
+        <StatCard icon={ClockIcon} label="Still in Gym" value={todayRecords.filter((r) => !r.checkOutTime).length} color="yellow" />
         <StatCard icon={CalendarDaysIcon} label="Date" value={fmtDate(date)} color="blue" />
-        <StatCard icon={CheckCircleIcon} label="Checked Out" value={todayRecords.filter(r => r.checkOutTime).length} color="green" />
       </div>
 
       <div className="card p-5">
-        <h2 className="card-title mb-4">Manual Check-In</h2>
-        <form onSubmit={handleCheckIn} className="flex items-end gap-4">
-          <div className="flex-1">
-            <label className="label">Select Member</label>
-            <div className="relative">
-              {selectedMember ? (
-                <div className="flex items-center gap-2 px-3 py-2 border border-slate-300 rounded-lg bg-surface">
-                  <span className="flex-1 text-sm text-slate-900">
-                    {availableMembers.find((m) => String(m._id) === String(selectedMember))?.name || 'Member selected'}
-                  </span>
-                  <button type="button" onClick={() => setSelectedMember('')} className="text-slate-500 hover:text-slate-600 text-lg leading-none">&times;</button>
-                </div>
-              ) : (
-                <input
-                  value={memberSearch}
-                  onChange={(e) => setMemberSearch(e.target.value)}
-                  placeholder="Search member (name, email or phone)..."
-                  className="input"
-                />
-              )}
-              {memberSearch && !selectedMember && filteredMembers.length > 0 && (
-                <ul className="absolute z-10 mt-1 w-full bg-surface-elevated border border-border rounded-lg shadow-pop max-h-48 overflow-y-auto">
-                  {filteredMembers.slice(0, 20).map((m) => (
-                    <li key={m._id} onClick={() => handleMemberSelect(m)} className="px-3 py-2 text-sm hover:bg-brand-500/12 cursor-pointer">
-                      {m.name} <span className="text-slate-500">({m.email})</span>
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div>
+            <h2 className="card-title">Manual Check-In</h2>
+            <p className="mt-0.5 text-xs text-slate-500">Choose a member from the list or search by name, email or phone.</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <label className="flex items-center gap-2 text-xs text-slate-500">
+              <input
+                type="checkbox"
+                checked={showIneligible}
+                onChange={(e) => setShowIneligible(e.target.checked)}
+                className="h-3.5 w-3.5 rounded border-slate-300 text-brand-600 focus:ring-brand-500 focus:ring-offset-0"
+              />
+              Show members without an active plan
+            </label>
+            <span className="text-xs text-slate-500">
+              {eligibleMembers.length} eligible · {checkInCandidates.length} not checked in
+            </span>
+          </div>
+        </div>
+
+        <form onSubmit={handleCheckIn} className="mt-4 space-y-3">
+          <div className="relative">
+            <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+            <input
+              value={memberSearch}
+              onChange={(e) => setMemberSearch(e.target.value)}
+              placeholder="Search members by name, email or phone..."
+              className="input pl-9 pr-9"
+            />
+            {memberSearch && (
+              <button
+                type="button"
+                onClick={() => setMemberSearch('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-lg leading-none text-slate-400 hover:text-slate-600"
+                aria-label="Clear search"
+              >
+                &times;
+              </button>
+            )}
+          </div>
+
+          <div className="overflow-hidden rounded-lg border border-border bg-surface/50">
+            {availableMembers.length === 0 ? (
+              <p className="px-3 py-6 text-center text-sm text-slate-500">
+                {checkInCandidates.length === 0
+                  ? 'All eligible members have already checked in today.'
+                  : 'No members with an active membership are available. Tick the option above to show everyone.'}
+              </p>
+            ) : filteredMembers.length === 0 ? (
+              <p className="px-3 py-6 text-center text-sm text-slate-500">No members match "{memberSearch}".</p>
+            ) : (
+              <ul className="max-h-64 divide-y divide-border overflow-y-auto">
+                {filteredMembers.map((m) => {
+                  const active = hasActiveMembership(m);
+                  const isSelected = String(selectedMember) === String(m._id);
+                  return (
+                    <li key={m._id}>
+                      <button
+                        type="button"
+                        onClick={() => handleMemberSelect(m)}
+                        disabled={!active}
+                        title={active ? `Check in ${m.name}` : 'This member needs an active membership before check-in'}
+                        className={`flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors ${
+                          isSelected ? 'bg-brand-50' : active ? 'hover:bg-surface-hover' : 'cursor-not-allowed opacity-60'
+                        }`}
+                      >
+                        <Avatar name={m.name} src={m.avatar} size="sm" />
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-medium text-slate-900">{m.name}</span>
+                          <span className="block truncate text-xs text-slate-500">{m.email}</span>
+                        </span>
+                        <span className="flex shrink-0 flex-col items-end gap-1">
+                          {active ? (
+                            <span className="badge badge-success">{m.membership?.plan?.name || 'Active'}</span>
+                          ) : (
+                            <span className="badge badge-warning">No active plan</span>
+                          )}
+                          {isSelected && <span className="text-[11px] font-medium text-brand-700">Selected</span>}
+                        </span>
+                      </button>
                     </li>
-                  ))}
-                </ul>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-xs text-slate-500">
+              {filteredMembers.length} of {availableMembers.length} shown
+            </p>
+            <div className="flex flex-wrap items-center gap-3">
+              {selectedMemberObj && (
+                <p className="text-sm text-slate-600">
+                  Selected: <span className="font-medium text-slate-900">{selectedMemberObj.name}</span>
+                </p>
               )}
-              {memberSearch && !selectedMember && filteredMembers.length === 0 && (
-                <div className="absolute z-10 mt-1 w-full bg-surface-elevated border border-border rounded-lg shadow-pop px-3 py-2 text-sm text-slate-500">No matching member found</div>
-              )}
+              <button type="submit" disabled={checkInLoading || !selectedMember} className="btn btn-md btn-primary whitespace-nowrap">
+                {checkInLoading ? 'Checking in...' : 'Check In'}
+              </button>
             </div>
           </div>
-          <button type="submit" disabled={checkInLoading || !selectedMember} className="btn btn-md btn-primary whitespace-nowrap">
-            {checkInLoading ? 'Checking in...' : 'Check In'}
-          </button>
         </form>
       </div>
 
-      <div className="flex items-center gap-4">
-        <label className="label mb-0">Filter by Date:</label>
-        <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="input w-auto" />
+      <div className="flex flex-wrap items-center gap-4">
+        <div className="flex items-center gap-2">
+          <label className="label mb-0">Filter by Date:</label>
+          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="input w-auto" />
+        </div>
+        <div className="relative min-w-[240px] flex-1 sm:max-w-sm">
+          <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+          <input
+            value={recordSearch}
+            onChange={(e) => setRecordSearch(e.target.value)}
+            placeholder="Search records by member..."
+            className="input pl-9"
+          />
+        </div>
       </div>
 
       {error ? (
@@ -159,11 +281,15 @@ export default function Attendance() {
         </div>
       ) : loading ? (
         <SkeletonRow rows={8} />
-      ) : records.length === 0 ? (
-        <EmptyState icon={MapPinIcon} message={`No attendance records for ${date}`} />
+      ) : filteredRecords.length === 0 ? (
+        <EmptyState
+          icon={MapPinIcon}
+          message={records.length === 0 ? `No attendance records for ${date}` : 'No records match your search'}
+          description={records.length > 0 ? 'Try another name or clear the search.' : undefined}
+        />
       ) : (
         <DataTable headers={['Member', 'Check-in', 'Check-out', 'Duration', 'Method', 'Date']}>
-          {records.map((r) => (
+          {filteredRecords.map((r) => (
             <tr key={r._id} className="odd:bg-transparent even:bg-surface/60">
               <td className="px-4 py-3 text-sm">
                 <div className="flex items-center gap-2">
@@ -174,12 +300,14 @@ export default function Attendance() {
               <td className="px-4 py-3 text-sm text-slate-600">{fmtTime(r.checkInTime)}</td>
               <td className="px-4 py-3 text-sm text-slate-600">
                 {r.checkOutTime ? fmtTime(r.checkOutTime) : (
-                  <button onClick={() => handleCheckOut(r._id)} disabled={checkOutId === r._id} className="btn btn-sm btn-primary">
+                  <button onClick={() => handleCheckOut(r._id)} disabled={checkOutId === r._id} className="btn btn-sm btn-outline">
                     {checkOutId === r._id ? 'Checking out...' : 'Check Out'}
                   </button>
                 )}
               </td>
-              <td className="px-4 py-3 text-sm text-slate-600">{formatDuration(new Date(r.checkOutTime) - new Date(r.checkInTime))}</td>
+              <td className="px-4 py-3 text-sm text-slate-600">
+                {r.checkOutTime ? formatDuration(new Date(r.checkOutTime) - new Date(r.checkInTime)) : <span className="text-slate-400">—</span>}
+              </td>
               <td className="px-4 py-3 text-sm text-slate-600 capitalize">{r.method || 'manual'}</td>
               <td className="px-4 py-3 text-sm text-slate-600">{fmtDate(r.checkInTime)}</td>
             </tr>

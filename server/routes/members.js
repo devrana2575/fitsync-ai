@@ -61,8 +61,16 @@ router.get('/', auth, authorize('admin', 'trainer'), async (req, res) => {
         { email: { $regex: escaped, $options: 'i' } }
       ];
     }
-    if (status === 'active') filter.isActive = true;
-    if (status === 'inactive') filter.isActive = false;
+
+    // "Active" / "Inactive" in the members directory is about the membership,
+    // not the login flag, so the list matches what the dashboard cards count.
+    // Active = has at least one ACTIVE membership; inactive = none.
+    const membershipStatus = status === 'active' || status === 'inactive' ? status : null;
+    const activeMemberIds = membershipStatus
+      ? await Membership.distinct('user', { status: 'ACTIVE' })
+      : [];
+    if (membershipStatus === 'active') filter._id = { $in: activeMemberIds };
+    if (membershipStatus === 'inactive') filter._id = { $nin: activeMemberIds };
 
     let total = await User.countDocuments(filter);
     let members = await User.find(filter)
@@ -90,32 +98,46 @@ router.get('/', auth, authorize('admin', 'trainer'), async (req, res) => {
       const sharedUserIds = sharedPlanIds.length > 0
         ? await Membership.find({ status: 'ACTIVE', plan: { $in: sharedPlanIds } }).distinct('user')
         : [];
-      total = new Set([...assignedIds.map(String), ...sharedUserIds.map(String)]).size;
+      let trainerMemberIds = new Set([...assignedIds.map(String), ...sharedUserIds.map(String)]);
+      if (membershipStatus) {
+        const activeSet = new Set(activeMemberIds.map(String));
+        trainerMemberIds = membershipStatus === 'active'
+          ? new Set([...trainerMemberIds].filter((id) => activeSet.has(id)))
+          : new Set([...trainerMemberIds].filter((id) => !activeSet.has(id)));
+      }
+      total = trainerMemberIds.size;
     }
 
     const memberIds = members.map((m) => m._id);
-    const [profiles, activeMemberships] = await Promise.all([
+    const [profiles, memberships] = await Promise.all([
       memberIds.length > 0
         ? MemberProfile.find({ user: { $in: memberIds } }).populate('assignedTrainer', 'name').lean()
         : [],
       memberIds.length > 0
-        ? Membership.find({ user: { $in: memberIds }, status: 'ACTIVE' })
+        ? Membership.find({ user: { $in: memberIds } })
             .populate('plan', 'name')
-            .sort({ endDate: -1 })
+            .sort({ endDate: -1, createdAt: -1 })
             .lean()
         : []
     ]);
     const profileMap = new Map(profiles.map((p) => [p.user.toString(), p]));
 
-    const membershipMap = new Map();
-    for (const m of activeMemberships) {
+    const activeMembershipMap = new Map();
+    const latestMembershipMap = new Map();
+    for (const m of memberships) {
       const key = m.user.toString();
-      if (!membershipMap.has(key)) membershipMap.set(key, m);
+      if (m.status === 'ACTIVE' && !activeMembershipMap.has(key)) activeMembershipMap.set(key, m);
+      // First row per user after sorting is the most recent record.
+      if (!latestMembershipMap.has(key)) latestMembershipMap.set(key, m);
     }
 
     const membersWithProfiles = members.map((m) => {
-      const profile = profileMap.get(m._id.toString()) || null;
-      const membership = membershipMap.get(m._id.toString()) || null;
+      const key = m._id.toString();
+      const profile = profileMap.get(key) || null;
+      // Surface the ACTIVE membership when there is one; otherwise show the
+      // latest known membership (expired/pending/cancelled) so the directory
+      // explains the real state instead of an ambiguous "No Plan".
+      const membership = activeMembershipMap.get(key) || latestMembershipMap.get(key) || null;
       // Medical fields never leave the server on roster lists - even to
       // entitled trainers (they get them on the member detail instead).
       return { ...m, profile: sanitizeMemberProfileForViewer(profile, req.user.role), membership };

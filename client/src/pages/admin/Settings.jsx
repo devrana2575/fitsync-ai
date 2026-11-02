@@ -69,6 +69,11 @@ export default function Settings() {
 
   useEffect(() => { fetchSettings(); }, []);
 
+  const updateField = (key, value) => {
+    setSaved(false);
+    setForm((prev) => ({ ...prev, [key]: value }));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
@@ -93,6 +98,21 @@ export default function Settings() {
         </div>
         <SkeletonCard />
         <SkeletonCard />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="page-wrap space-y-6">
+        <PageHeader
+          title="Gym Settings"
+          subtitle="Configure your gym's identity, timezone and payments"
+          icon={GlobeAltIcon}
+        />
+        <div className="card overflow-hidden">
+          <ErrorState message="We couldn't load your settings. Please try again." onRetry={fetchSettings} />
+        </div>
       </div>
     );
   }
@@ -145,12 +165,6 @@ export default function Settings() {
         </div>
       </div>
 
-      {error && (
-        <div className="card overflow-hidden">
-          <ErrorState message="We couldn't load your settings. Please try again." onRetry={fetchSettings} />
-        </div>
-      )}
-
       {payment && payment.method === 'unconfigured' && (
         <div className="bg-warning/10 border border-warning/25 text-warning rounded-xl px-4 py-3 text-sm">
           Online payments are not configured, so members cannot complete Razorpay/UPI/Stripe checkout online.
@@ -164,26 +178,26 @@ export default function Settings() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <div>
               <label className="label">Gym Name</label>
-              <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="input" placeholder="e.g. Powerhouse Gym" />
+              <input value={form.name} onChange={(e) => updateField('name', e.target.value)} className="input" placeholder="e.g. Powerhouse Gym" />
             </div>
             <div>
               <label className="label">Phone</label>
-              <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="input" />
+              <input value={form.phone} onChange={(e) => updateField('phone', e.target.value)} className="input" />
             </div>
             <div>
               <label className="label">Email</label>
-              <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="input" />
+              <input type="email" value={form.email} onChange={(e) => updateField('email', e.target.value)} className="input" />
             </div>
             <div>
               <label className="label">Currency</label>
-              <input maxLength={3} value={form.currency} onChange={(e) => setForm({ ...form, currency: e.target.value.toUpperCase() })} className="input" />
+              <input maxLength={3} value={form.currency} onChange={(e) => updateField('currency', e.target.value.toUpperCase())} className="input" />
             </div>
             <div>
               <label className="label">Timezone</label>
               <input
                 list="timezone-options"
                 value={form.timezone}
-                onChange={(e) => setForm({ ...form, timezone: e.target.value })}
+                onChange={(e) => updateField('timezone', e.target.value)}
                 className="input"
               />
               <datalist id="timezone-options">
@@ -193,12 +207,12 @@ export default function Settings() {
             </div>
             <div>
               <label className="label">Operating Hours</label>
-              <input value={form.operatingHours} onChange={(e) => setForm({ ...form, operatingHours: e.target.value })} className="input" placeholder="e.g. Mon–Sat 6:00 AM – 10:00 PM" />
+              <input value={form.operatingHours} onChange={(e) => updateField('operatingHours', e.target.value)} className="input" placeholder="e.g. Mon–Sat 6:00 AM – 10:00 PM" />
             </div>
           </div>
           <div>
             <label className="label">Address</label>
-            <textarea value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} rows={2} className="input" />
+            <textarea value={form.address} onChange={(e) => updateField('address', e.target.value)} rows={2} className="input" />
           </div>
 
           <div className="flex items-center justify-end gap-3 pt-2">

@@ -16,6 +16,7 @@ import LoadingSpinner from '../../components/common/LoadingSpinner';
 import EmptyState from '../../components/common/EmptyState';
 import ErrorState from '../../components/common/ErrorState';
 import Modal from '../../components/common/Modal';
+import PlanDetailModal from '../../components/common/PlanDetailModal';
 import PageHeader from '../../components/common/PageHeader';
 import StatusBadge from '../../components/common/StatusBadge';
 import ProgressBar from '../../components/common/ProgressBar';
@@ -63,6 +64,7 @@ export default function Membership() {
   const [paymentMethod, setPaymentMethod] = useState(null);
   const [myProfile, setMyProfile] = useState(null);
   const [selectedMembershipId, setSelectedMembershipId] = useState(null);
+  const [viewingPlan, setViewingPlan] = useState(null);
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -511,7 +513,9 @@ export default function Membership() {
               return (
                 <div key={plan._id} className="card flex flex-col p-5">
                   <div className="flex items-start justify-between gap-2">
-                    <h3 className="font-semibold text-slate-900">{plan.name}</h3>
+                    <button type="button" onClick={() => setViewingPlan(plan)} className="group text-left">
+                      <h3 className="font-semibold text-slate-900 group-hover:text-brand-700 group-hover:underline">{plan.name}</h3>
+                    </button>
                     {isCurrent && <span className="badge badge-success">Current plan</span>}
                   </div>
                   <p className="mt-1 text-2xl font-bold text-slate-900 tabular-nums">{toINR(plan.price)}</p>
@@ -541,6 +545,14 @@ export default function Membership() {
                   </div>
 
                   <p className="mt-3 flex-1 text-sm text-slate-500">{plan.description}</p>
+
+                  <button
+                    type="button"
+                    onClick={() => setViewingPlan(plan)}
+                    className="mt-2 self-start text-xs font-medium text-brand-600 hover:text-brand-700 hover:underline"
+                  >
+                    View full details
+                  </button>
 
                   {isCurrent ? (
                     <div className="mt-4 w-full">
@@ -712,6 +724,12 @@ export default function Membership() {
           </div>
         ) : null}
       </Modal>
+
+      <PlanDetailModal
+        plan={viewingPlan}
+        isOpen={Boolean(viewingPlan)}
+        onClose={() => setViewingPlan(null)}
+      />
     </div>
   );
 }

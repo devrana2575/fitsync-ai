@@ -21,6 +21,13 @@ const membershipPlanSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  // Long-form plan details shown to admins and members when they open a plan.
+  // Free text covering inclusions, access rules and who the plan suits. Keep
+  // the content consistent with the price and the entitlement flags below.
+  details: {
+    type: String,
+    trim: true
+  },
   // Included services as free text, e.g. ["Gym access", "Assigned trainer",
   // "Workout plan"]. Shown to members when comparing plans.
   features: [{

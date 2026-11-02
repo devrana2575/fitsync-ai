@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { UserIcon } from '@heroicons/react/24/outline';
 import api from '../../services/api';
 import useDebounce from '../../hooks/useDebounce';
@@ -22,6 +22,16 @@ const split = (val) => (typeof val === 'string' ? val.split(',').map((s) => s.tr
 
 const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const ACTIVITY_LEVELS = ['sedentary', 'light', 'moderate', 'active', 'very_active'];
+
+const MEMBERSHIP_STATUS_CLASS = {
+  ACTIVE: 'bg-success/10 text-success',
+  PENDING: 'bg-warning/10 text-warning',
+  EXPIRED: 'bg-danger/10 text-danger',
+  CANCELLED: 'bg-danger/10 text-danger',
+  SUSPENDED: 'bg-warning/10 text-warning',
+};
+
+const titleCase = (value) => (value ? value.charAt(0) + value.slice(1).toLowerCase() : '');
 
 const toForm = (m) => {
   const p = m.profile || {};
@@ -50,6 +60,8 @@ const toForm = (m) => {
 export default function Members() {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const status = searchParams.get('status') || 'all';
   const { toast } = useToast();
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -67,7 +79,14 @@ export default function Members() {
     setLoading(true);
     setError(null);
     try {
-      const res = await api.get('/members', { params: { search: debouncedSearch, page, limit: 10 } });
+      const res = await api.get('/members', {
+        params: {
+          search: debouncedSearch,
+          page,
+          limit: 10,
+          status: status === 'all' ? undefined : status,
+        },
+      });
       if (!cancelled()) {
         setMembers(res.data.data || res.data.members || []);
         setTotalPages(res.data.pages || 1);
@@ -83,7 +102,7 @@ export default function Members() {
     let cancelled = false;
     fetchMembers(() => cancelled);
     return () => { cancelled = true; };
-  }, [page, debouncedSearch]);
+  }, [page, debouncedSearch, status]);
 
   useEffect(() => {
     const handleVisibility = () => {
@@ -94,9 +113,17 @@ export default function Members() {
     document.addEventListener('visibilitychange', handleVisibility);
     return () => document.removeEventListener('visibilitychange', handleVisibility);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, debouncedSearch]);
+  }, [page, debouncedSearch, status]);
 
   const openAdd = () => { setEditing(null); setForm(initialForm); setShowModal(true); };
+
+  const changeStatus = (next) => {
+    setPage(1);
+    const params = new URLSearchParams(searchParams);
+    if (next === 'all') params.delete('status');
+    else params.set('status', next);
+    setSearchParams(params, { replace: true });
+  };
 
   useEffect(() => {
     if (location.state?.openCreate) {
@@ -194,13 +221,30 @@ export default function Members() {
         </button>
       </div>
 
-      <input
-        type="text"
-        placeholder="Search members..."
-        value={search}
-        onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-        className="w-full md:w-96 px-4 py-2 input"
-      />
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <input
+          type="text"
+          placeholder="Search members..."
+          value={search}
+          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+          className="w-full md:w-96 px-4 py-2 input"
+        />
+        <div className="inline-flex rounded-lg border border-border bg-surface p-1" role="group" aria-label="Filter members by status">
+          {[['all', 'All'], ['active', 'Active'], ['inactive', 'Inactive']].map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => changeStatus(value)}
+              aria-pressed={status === value}
+              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                status === value ? 'bg-brand-600 text-white' : 'text-slate-600 hover:bg-surface-hover'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {error ? (
         <div className="bg-surface-elevated border border-border rounded-xl">
@@ -219,31 +263,32 @@ export default function Members() {
                   {m.membership ? (
                     <div>
                       <p className="text-sm font-medium text-slate-900">{m.membership.plan?.name || 'Membership'}</p>
-                      <p className="text-xs text-slate-500">Until {m.membership.endDate ? new Date(m.membership.endDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '—'}</p>
+                      <p className="text-xs text-slate-500">
+                        {m.membership.status === 'PENDING'
+                          ? 'Awaiting activation'
+                          : m.membership.endDate
+                            ? `${m.membership.status === 'ACTIVE' ? 'Until' : 'Ended'} ${new Date(m.membership.endDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}`
+                            : '—'}
+                      </p>
                     </div>
                   ) : (
-                    <span className="text-slate-500">No active plan</span>
+                    <span className="text-slate-500">No membership yet</span>
                   )}
                 </td>
                 <td className="px-6 py-4">
                   <div className="flex flex-col gap-1">
                     {m.membership ? (
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium w-fit ${
-                        m.membership.status === 'ACTIVE' ? 'bg-success/10 text-success' :
-                        m.membership.status === 'EXPIRED' ? 'bg-warning/10 text-warning' :
-                        m.membership.status === 'CANCELLED' ? 'bg-danger/10 text-danger' :
-                        'bg-slate-100 text-slate-600'
-                      }`}>
-                        {m.membership.status.charAt(0)}{m.membership.status.slice(1).toLowerCase()}
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium w-fit ${MEMBERSHIP_STATUS_CLASS[m.membership.status] || 'bg-slate-100 text-slate-600'}`}>
+                        {titleCase(m.membership.status)}
                       </span>
                     ) : (
                       <span className="px-2 py-0.5 rounded-full text-xs font-medium w-fit bg-slate-100 text-slate-500">
-                        No Plan
+                        No Membership
                       </span>
                     )}
                     {!m.isActive && (
                       <span className="px-2 py-0.5 rounded-full text-xs font-medium w-fit bg-danger/10 text-danger">
-                        Deactivated
+                        Account deactivated
                       </span>
                     )}
                   </div>

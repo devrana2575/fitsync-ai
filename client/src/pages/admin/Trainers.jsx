@@ -9,6 +9,7 @@ import EmptyState from '../../components/common/EmptyState';
 import ErrorState from '../../components/common/ErrorState';
 import Modal from '../../components/common/Modal';
 import DataTable from '../../components/common/DataTable';
+import LoadingSpinner from '../../components/common/LoadingSpinner';
 import { SkeletonRow } from '../../components/common/Skeleton';
 import { useToast } from '../../context/ToastContext';
 
@@ -25,6 +26,7 @@ export default function Trainers() {
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(initialForm);
   const [saving, setSaving] = useState(false);
+  const [membersModal, setMembersModal] = useState({ open: false, trainer: null, members: [], loading: false, error: null });
 
   const fetchTrainers = async () => {
     setLoading(true);
@@ -60,6 +62,18 @@ export default function Trainers() {
     });
     setShowModal(true);
   };
+
+  const openMembers = async (t) => {
+    setMembersModal({ open: true, trainer: t, members: [], loading: true, error: null });
+    try {
+      const res = await api.get(`/trainers/${t._id}`);
+      setMembersModal({ open: true, trainer: t, members: res.data.members || [], loading: false, error: null });
+    } catch (err) {
+      setMembersModal({ open: true, trainer: t, members: [], loading: false, error: err.message || 'Failed to load assigned members' });
+    }
+  };
+
+  const closeMembers = () => setMembersModal((prev) => ({ ...prev, open: false }));
 
   const toggleAvailability = async (t) => {
     const available = t.profile?.isAvailable !== false;
@@ -142,10 +156,15 @@ export default function Trainers() {
           {trainers.map((t, i) => (
             <tr key={t._id} className={i % 2 === 0 ? 'bg-transparent' : 'bg-surface/60'}>
               <td className="px-6 py-4">
-                <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => openMembers(t)}
+                  title={`View members assigned to ${t.name}`}
+                  className="group flex items-center gap-3 text-left"
+                >
                   <Avatar name={t.name} src={t.avatar} size="sm" />
-                  <span className="font-medium text-slate-900">{t.name}</span>
-                </div>
+                  <span className="font-medium text-slate-900 group-hover:text-brand-700 group-hover:underline">{t.name}</span>
+                </button>
               </td>
               <td className="px-6 py-4 text-slate-600">{t.email}</td>
               <td className="px-6 py-4">
@@ -156,7 +175,17 @@ export default function Trainers() {
                 </div>
               </td>
               <td className="px-6 py-4 text-slate-600">{t.profile?.experience ? `${t.profile.experience} yrs` : '—'}</td>
-              <td className="px-6 py-4 text-slate-600">{t.memberCount ?? t.assignedMembers?.length ?? '—'} <span className="text-xs text-slate-500">/ {t.profile?.maxMembers ?? '—'}</span></td>
+              <td className="px-6 py-4">
+                <button
+                  type="button"
+                  onClick={() => openMembers(t)}
+                  className="font-medium text-sm text-brand-600 hover:text-brand-700"
+                  title={`View members assigned to ${t.name}`}
+                >
+                  {t.memberCount ?? t.assignedMembers?.length ?? 0}
+                  <span className="text-xs text-slate-500"> / {t.profile?.maxMembers ?? '—'}</span>
+                </button>
+              </td>
               <td className="px-6 py-4">
                 <StatusBadge value={t.profile?.isAvailable !== false} tone={t.profile?.isAvailable !== false ? 'success' : 'warning'} label={t.profile?.isAvailable !== false ? 'Available' : 'Away'} />
                 {t.profile?.isAvailable === false && t.profile?.absenceReason && (
@@ -167,12 +196,13 @@ export default function Trainers() {
                 <StatusBadge value={t.isActive !== false} tone={t.isActive !== false ? 'success' : 'danger'} label={t.isActive !== false ? 'Active' : 'Inactive'} />
               </td>
               <td className="px-6 py-4">
-                <div className="flex flex-col items-start gap-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <button onClick={() => openMembers(t)} className="btn btn-sm btn-outline">Members</button>
                   <button onClick={() => openEdit(t)} className="btn btn-sm btn-outline">Edit</button>
                   <button onClick={() => toggleAvailability(t)} className={`btn btn-sm btn-ghost ${t.profile?.isAvailable !== false ? 'text-warning hover:text-warning hover:bg-warning/10' : 'text-success hover:text-success hover:bg-success/10'}`}>
                     {t.profile?.isAvailable !== false ? 'Mark Unavailable' : 'Back Available'}
                   </button>
-                  <button onClick={() => toggleDeactivate(t)} className={t.isActive !== false ? 'btn btn-sm btn-danger' : 'btn btn-sm btn-ghost text-success hover:text-success hover:bg-success/10'}>
+                  <button onClick={() => toggleDeactivate(t)} className={t.isActive !== false ? 'btn btn-sm btn-ghost text-slate-500 hover:text-danger hover:bg-danger/10' : 'btn btn-sm btn-ghost text-success hover:text-success hover:bg-success/10'}>
                     {t.isActive !== false ? 'Deactivate' : 'Activate'}
                   </button>
                 </div>
@@ -218,6 +248,55 @@ export default function Trainers() {
             </button>
           </div>
         </form>
+      </Modal>
+
+      <Modal
+        isOpen={membersModal.open}
+        onClose={closeMembers}
+        title={membersModal.trainer ? `Members assigned to ${membersModal.trainer.name}` : 'Assigned members'}
+      >
+        {membersModal.loading ? (
+          <div className="py-10"><LoadingSpinner size="lg" /></div>
+        ) : membersModal.error ? (
+          <ErrorState message={membersModal.error} onRetry={() => membersModal.trainer && openMembers(membersModal.trainer)} />
+        ) : membersModal.members.length === 0 ? (
+          <EmptyState
+            icon={UserGroupIcon}
+            message="No members assigned"
+            description="Assign members to this trainer from the Members section."
+          />
+        ) : (
+          <ul className="divide-y divide-border">
+            {membersModal.members.map((m) => {
+              const memberUser = m.user || {};
+              const active = memberUser.isActive !== false;
+              return (
+                <li key={m._id}>
+                  <button
+                    type="button"
+                    onClick={() => memberUser._id && navigate(`/admin/members/${memberUser._id}`)}
+                    className="w-full flex items-center justify-between gap-3 py-3 px-2 text-left rounded-lg hover:bg-surface transition-colors"
+                  >
+                    <span className="flex items-center gap-3 min-w-0">
+                      <Avatar name={memberUser.name || 'Member'} src={memberUser.avatar} size="sm" />
+                      <span className="min-w-0">
+                        <span className="block text-sm font-medium text-slate-900 truncate">
+                          {memberUser.name || 'Unknown member'}
+                        </span>
+                        <span className="block text-xs text-slate-500 truncate">{memberUser.email || '—'}</span>
+                      </span>
+                    </span>
+                    <StatusBadge
+                      value={active}
+                      tone={active ? 'success' : 'danger'}
+                      label={active ? 'Active' : 'Inactive'}
+                    />
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </Modal>
     </div>
   );

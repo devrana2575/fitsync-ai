@@ -82,14 +82,19 @@ export default function Dashboard() {
 
     if (memResult.status === 'fulfilled') {
       const rawDist = memResult.value.data.distribution || memResult.value.data.data || memResult.value.data || [];
-      setMembershipDist(rawDist.map((d) => ({ plan: d._id || '', count: d.count || 0 })));
+      setMembershipDist(rawDist
+        .filter((d) => d && d._id)
+        .map((d) => ({ status: String(d._id), count: d.count || 0 })));
     } else {
       newErrors.membershipDist = memResult.reason?.message;
     }
 
     if (peakResult.status === 'fulfilled') {
       const rawPeak = peakResult.value.data.peakHours || peakResult.value.data.data || peakResult.value.data || [];
-      setPeakHours(rawPeak.map((p) => ({ hour: `${p._id ?? ''}:00`, count: p.count || 0 })));
+      setPeakHours(rawPeak
+        .filter((p) => p && p._id !== null && p._id !== undefined)
+        .map((p) => ({ hour: `${String(p._id).padStart(2, '0')}:00`, count: p.count || 0, sortKey: Number(p._id) }))
+        .sort((a, b) => a.sortKey - b.sortKey));
     } else {
       newErrors.peakHours = peakResult.reason?.message;
     }
@@ -139,14 +144,70 @@ export default function Dashboard() {
         <ErrorState message="Failed to load dashboard stats" onRetry={handleRefresh} />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard icon={UsersIcon} label="Total Members" value={fmt(stats?.totalMembers)} color="brand" />
-          <StatCard icon={CheckCircleIcon} label="Active Members" value={fmt(stats?.activeMembers)} color="green" />
-          <StatCard icon={UserGroupIcon} label="Total Trainers" value={fmt(stats?.totalTrainers)} color="blue" />
-          <StatCard icon={CreditCardIcon} label="Active Memberships" value={fmt(stats?.activeMemberships)} color="cyan" />
-          <StatCard icon={ClockIcon} label="Expiring Soon" value={fmt(stats?.expiringSoon)} color="yellow" />
-          <StatCard icon={BanknotesIcon} label="Total Revenue" value={toINR(stats?.totalRevenue)} color="ink" />
-          <StatCard icon={ClipboardDocumentCheckIcon} label="Today's Attendance" value={fmt(stats?.todayAttendance)} color="green" />
-          <StatCard icon={ChartBarIcon} label="Monthly Attendance" value={fmt(stats?.monthlyAttendance)} color="red" />
+          <StatCard
+            icon={UsersIcon}
+            label="Total Members"
+            value={fmt(stats?.totalMembers)}
+            color="brand"
+            onClick={() => navigate('/admin/members')}
+            ariaLabel="View all members"
+          />
+          <StatCard
+            icon={CheckCircleIcon}
+            label="Active Members"
+            value={fmt(stats?.activeMembers)}
+            color="green"
+            onClick={() => navigate('/admin/members?status=active')}
+            ariaLabel="View active members"
+          />
+          <StatCard
+            icon={UserGroupIcon}
+            label="Total Trainers"
+            value={fmt(stats?.totalTrainers)}
+            color="blue"
+            onClick={() => navigate('/admin/trainers')}
+            ariaLabel="View all trainers"
+          />
+          <StatCard
+            icon={CreditCardIcon}
+            label="Active Memberships"
+            value={fmt(stats?.activeMemberships)}
+            color="cyan"
+            onClick={() => navigate('/admin/memberships')}
+            ariaLabel="View memberships"
+          />
+          <StatCard
+            icon={ClockIcon}
+            label="Expiring Soon"
+            value={fmt(stats?.expiringSoon)}
+            color="yellow"
+            onClick={() => navigate('/admin/memberships')}
+            ariaLabel="View memberships expiring soon"
+          />
+          <StatCard
+            icon={BanknotesIcon}
+            label="Total Revenue"
+            value={toINR(stats?.totalRevenue)}
+            color="ink"
+            onClick={() => navigate('/admin/payments')}
+            ariaLabel="View payments and revenue"
+          />
+          <StatCard
+            icon={ClipboardDocumentCheckIcon}
+            label="Today's Attendance"
+            value={fmt(stats?.todayAttendance)}
+            color="green"
+            onClick={() => navigate('/admin/attendance')}
+            ariaLabel="View today's attendance"
+          />
+          <StatCard
+            icon={ChartBarIcon}
+            label="Monthly Attendance"
+            value={fmt(stats?.monthlyAttendance)}
+            color="red"
+            onClick={() => navigate('/admin/attendance')}
+            ariaLabel="View attendance records"
+          />
         </div>
       )}
 
@@ -282,15 +343,23 @@ export default function Dashboard() {
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Attendance Trend" loading={loading} error={errors.attendance && 'Failed to load attendance data'} onRetry={handleRefresh} hasData={attendance.length > 0}>
+        <ChartCard title="Attendance Trend (last 90 days)" loading={loading} error={errors.attendance && 'Failed to load attendance data'} onRetry={handleRefresh} hasData={attendance.length > 0}>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={attendance}>
               <CartesianGrid strokeDasharray="3 3" stroke={AXIS.grid} />
-              <XAxis dataKey="day" tickLine={false} axisLine={{ stroke: AXIS.axis }} tick={{ fontSize: 12, fill: AXIS.tick }} />
-              <YAxis tickLine={false} axisLine={{ stroke: AXIS.axis }} tick={{ fontSize: 12, fill: AXIS.tick }} />
+              <XAxis
+                dataKey="day"
+                tickLine={false}
+                axisLine={{ stroke: AXIS.axis }}
+                tick={{ fontSize: 12, fill: AXIS.tick }}
+                tickFormatter={(value) => (value ? String(value).slice(5) : '')}
+                minTickGap={16}
+                interval="preserveStartEnd"
+              />
+              <YAxis allowDecimals={false} tickLine={false} axisLine={{ stroke: AXIS.axis }} tick={{ fontSize: 12, fill: AXIS.tick }} />
               <Tooltip contentStyle={TOOLTIP_STYLE} labelStyle={TOOLTIP_LABEL_STYLE} itemStyle={TOOLTIP_ITEM_STYLE} />
               <Legend wrapperStyle={LEGEND_STYLE} />
-              <Bar dataKey="count" fill={CHART_COLORS.brand} radius={[4, 4, 0, 0]} />
+              <Bar dataKey="count" name="Check-ins" fill={CHART_COLORS.brand} radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>
@@ -304,8 +373,8 @@ export default function Dashboard() {
                 cy="50%"
                 outerRadius={100}
                 dataKey="count"
-                nameKey="plan"
-                label={({ plan, percent }) => `${plan} (${(percent * 100).toFixed(0)}%)`}
+                nameKey="status"
+                label={({ status, percent }) => `${status} (${((percent || 0) * 100).toFixed(0)}%)`}
               >
                 {membershipDist.map((_, i) => (
                   <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
@@ -317,15 +386,15 @@ export default function Dashboard() {
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Peak Hours" loading={loading} error={errors.peakHours && 'Failed to load peak hours data'} onRetry={handleRefresh} hasData={peakHours.length > 0}>
+        <ChartCard title="Peak Hours (last 90 days)" loading={loading} error={errors.peakHours && 'Failed to load peak hours data'} onRetry={handleRefresh} hasData={peakHours.length > 0}>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={peakHours}>
               <CartesianGrid strokeDasharray="3 3" stroke={AXIS.grid} />
-              <XAxis dataKey="hour" tickLine={false} axisLine={{ stroke: AXIS.axis }} tick={{ fontSize: 12, fill: AXIS.tick }} />
-              <YAxis tickLine={false} axisLine={{ stroke: AXIS.axis }} tick={{ fontSize: 12, fill: AXIS.tick }} />
+              <XAxis dataKey="hour" tickLine={false} axisLine={{ stroke: AXIS.axis }} tick={{ fontSize: 12, fill: AXIS.tick }} interval={1} />
+              <YAxis allowDecimals={false} tickLine={false} axisLine={{ stroke: AXIS.axis }} tick={{ fontSize: 12, fill: AXIS.tick }} />
               <Tooltip contentStyle={TOOLTIP_STYLE} labelStyle={TOOLTIP_LABEL_STYLE} itemStyle={TOOLTIP_ITEM_STYLE} />
               <Legend wrapperStyle={LEGEND_STYLE} />
-              <Bar dataKey="count" fill={CHART_COLORS.info} radius={[4, 4, 0, 0]} />
+              <Bar dataKey="count" name="Check-ins" fill={CHART_COLORS.info} radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>

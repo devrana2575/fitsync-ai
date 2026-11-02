@@ -22,10 +22,27 @@ const Notification = require('../models/Notification');
 const DietLog = require('../models/DietLog');
 const WorkoutTemplate = require('../models/WorkoutTemplate');
 const Announcement = require('../models/Announcement');
+const ProgressPhoto = require('../models/ProgressPhoto');
+const TrainerSickLeave = require('../models/TrainerSickLeave');
 const GymSetting = require('../models/GymSetting');
 const { buildPlanSnapshot } = require('./planSnapshot');
+const { getGymDateKey, getGymDayStart } = require('./gymTime');
 
-const DAYS_AGO = (n) => new Date(Date.now() - n * 24 * 60 * 60 * 1000);
+const DAY_MS = 24 * 60 * 60 * 1000;
+const DAYS_AGO = (n) => new Date(Date.now() - n * DAY_MS);
+const gymDay = (offset) => {
+  const date = DAYS_AGO(offset);
+  date.setMilliseconds(0);
+  return getGymDayStart(date);
+};
+const seededValue = (key) => {
+  let hash = 2166136261;
+  for (let i = 0; i < key.length; i++) {
+    hash ^= key.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0) / 4294967295;
+};
 const MONTHS_AGO = (n) => {
   const d = new Date();
   d.setMonth(d.getMonth() - n);
@@ -162,11 +179,41 @@ const seedDatabase = async () => {
     // MEMBERSHIP PLANS
     // ============================================================
     const membershipPlanDefs = [
-      { name: 'Basic', price: 999, duration: 30, description: 'Basic gym access', features: ['Gym Access', 'Locker Room'] },
-      { name: 'Standard', price: 1999, duration: 30, description: 'Standard plan with trainer', features: ['Gym Access', 'Locker Room', '1 Trainer Session/week', 'Basic Diet Plan'] },
-      { name: 'Premium', price: 3499, duration: 30, description: 'Premium with personal trainer', features: ['Gym Access', 'Locker Room', '3 Trainer Sessions/week', 'Custom Diet Plan', 'Sauna Access'] },
-      { name: 'Annual Basic', price: 9999, duration: 365, description: 'Annual basic membership', features: ['Gym Access', 'Locker Room', 'Free T-shirt'] },
-      { name: 'Annual Premium', price: 29999, duration: 365, description: 'Annual premium membership', features: ['All Premium Features', 'Guest Passes', 'Priority Booking'] },
+      {
+        name: 'Basic', price: 999, duration: 30,
+        description: 'Basic gym access',
+        details: 'Full gym-floor and locker-room access for self-guided training. This entry-level plan does not include a personal trainer, a custom workout plan or a diet plan - it is best for members who already follow their own routine.',
+        features: ['Gym Access', 'Locker Room'],
+        trainerIncluded: false, trainerAllocationMode: 'NONE', workoutPlanIncluded: false, paymentMode: 'FULL'
+      },
+      {
+        name: 'Standard', price: 1999, duration: 30,
+        description: 'Standard plan with trainer',
+        details: 'Gym and locker-room access plus one trainer session per week from our shared floor roster and a basic diet plan. Best for members who want periodic guidance while training mostly on their own.',
+        features: ['Gym Access', 'Locker Room', '1 Trainer Session/week', 'Basic Diet Plan'],
+        trainerIncluded: true, trainerAllocationMode: 'SHARED', workoutPlanIncluded: false, paymentMode: 'FULL'
+      },
+      {
+        name: 'Premium', price: 3499, duration: 30,
+        description: 'Premium with personal trainer',
+        details: 'Premium gym, sauna and locker-room access with an assigned personal trainer, three coached sessions per week, a custom diet plan and a personalised workout plan. Best for members who want close coaching and premium recovery amenities.',
+        features: ['Gym Access', 'Locker Room', '3 Trainer Sessions/week', 'Custom Diet Plan', 'Sauna Access'],
+        trainerIncluded: true, trainerAllocationMode: 'ASSIGNED', workoutPlanIncluded: true, paymentMode: 'FULL'
+      },
+      {
+        name: 'Annual Basic', price: 9999, duration: 365,
+        description: 'Annual basic membership',
+        details: 'A full year of gym-floor and locker-room access plus a free gym T-shirt - the lowest effective monthly rate for self-guided training. No trainer sessions, custom workout plan or diet plan are included; ideal for consistent members who follow their own routine.',
+        features: ['Gym Access', 'Locker Room', 'Free T-shirt'],
+        trainerIncluded: false, trainerAllocationMode: 'NONE', workoutPlanIncluded: false, paymentMode: 'FULL'
+      },
+      {
+        name: 'Annual Premium', price: 29999, duration: 365,
+        description: 'Annual premium membership',
+        details: 'A full year of all Premium benefits: an assigned personal trainer, three coached sessions per week, custom diet and workout plans, sauna access, guest passes and priority booking. Best value for committed members who want premium coaching across the year.',
+        features: ['All Premium Features', 'Guest Passes', 'Priority Booking'],
+        trainerIncluded: true, trainerAllocationMode: 'ASSIGNED', workoutPlanIncluded: true, paymentMode: 'FULL'
+      },
     ];
 
     const plans = [];
@@ -174,6 +221,17 @@ const seedDatabase = async () => {
       let plan = await MembershipPlan.findOne({ name: pd.name });
       if (!plan) {
         plan = await MembershipPlan.create(pd);
+      } else {
+        const terms = ['price', 'duration', 'description', 'details', 'features', 'trainerIncluded',
+          'trainerAllocationMode', 'requiredSpecialization', 'workoutPlanIncluded', 'paymentMode', 'installments'];
+        let changed = false;
+        for (const key of terms) {
+          if (JSON.stringify(plan[key]) !== JSON.stringify(pd[key])) {
+            plan[key] = pd[key];
+            changed = true;
+          }
+        }
+        if (changed) await plan.save();
       }
       plans.push(plan);
     }
@@ -238,28 +296,38 @@ const seedDatabase = async () => {
     const attendanceSeeds = [0.7, 0.85, 0.6, 0.75, 0.45, 0.55, 0.3, 0.65, 0.8, 0.5, 0.25, 0.7, 0.6];
     for (let i = 0; i < members.length; i++) {
       const baseProb = attendanceSeeds[i % attendanceSeeds.length];
-      const existingCount = await Attendance.countDocuments({ user: members[i]._id });
-      if (existingCount > 30) continue;
+      const existingAttendance = await Attendance.find({ user: members[i]._id }).select('dayKey date').lean();
+      const seenDays = new Set(existingAttendance.map((a) => a.dayKey || getGymDateKey(a.date)));
 
       for (let d = 0; d < 90; d++) {
         const date = DAYS_AGO(d);
+        const dayKey = getGymDateKey(date);
+        if (seenDays.has(dayKey)) continue;
+
         const dayOfWeek = date.getDay();
         let prob = baseProb;
         if (dayOfWeek === 0) prob *= 0.3;
         if (dayOfWeek === 6) prob *= 0.6;
 
-        if (Math.random() < prob) {
-          const existing = await Attendance.findOne({ user: members[i]._id, date: { $gte: new Date(date.toDateString()), $lt: new Date(date.getTime() + 86400000) } });
-          if (existing) continue;
-
-          const hour = 6 + Math.floor(Math.random() * 16);
-          const minute = Math.floor(Math.random() * 60);
+        const seedKey = `${members[i]._id}-${dayKey}`;
+        if (seededValue(`${seedKey}-attendance`) < prob) {
+          const hour = 6 + Math.floor(seededValue(`${seedKey}-hour`) * 16);
+          const minute = Math.floor(seededValue(`${seedKey}-minute`) * 60);
           const checkIn = new Date(date);
           checkIn.setHours(hour, minute, 0, 0);
-          const duration = 45 + Math.floor(Math.random() * 75);
+          const duration = 45 + Math.floor(seededValue(`${seedKey}-duration`) * 75);
           const checkOut = new Date(checkIn.getTime() + duration * 60000);
 
-          await Attendance.create({ user: members[i]._id, date, checkInTime: checkIn, checkOutTime: checkOut, method: Math.random() > 0.2 ? 'manual' : 'qr', duration });
+          await Attendance.create({
+            user: members[i]._id,
+            date,
+            dayKey,
+            checkInTime: checkIn,
+            checkOutTime: checkOut,
+            method: seededValue(`${seedKey}-method`) > 0.2 ? 'manual' : 'qr',
+            duration
+          });
+          seenDays.add(dayKey);
           attendanceCount++;
         }
       }
@@ -536,23 +604,30 @@ const seedDatabase = async () => {
     // ============================================================
     const { DIET_TYPES } = DietLog;
     const dietKeys = Object.keys(DIET_TYPES);
-    const existingDietLogCount = await DietLog.countDocuments();
-    if (existingDietLogCount < 30) {
-      let dietLogCount = 0;
-      for (const member of members) {
-        for (let d = 0; d < 14; d++) {
-          if (Math.random() < 0.5) {
-            const date = DAYS_AGO(d);
-            date.setHours(0, 0, 0, 0);
-            const completedDiets = dietKeys.filter(() => Math.random() < 0.4);
-            await DietLog.create({ user: member._id, date, completedDiets });
-            dietLogCount++;
-          }
+    const dietOps = [];
+    for (const member of members) {
+      for (let d = 0; d < 21; d++) {
+        const date = DAYS_AGO(d);
+        date.setHours(0, 0, 0, 0);
+        const dayKey = getGymDateKey(date);
+        const seedKey = `${member._id}-${dayKey}`;
+        if (seededValue(`${seedKey}-diet`) < 0.5) {
+          const completedDiets = dietKeys.filter((diet) => seededValue(`${seedKey}-${diet}`) < 0.4);
+          dietOps.push({
+            updateOne: {
+              filter: { user: member._id, date },
+              update: { $setOnInsert: { user: member._id, date, completedDiets } },
+              upsert: true
+            }
+          });
         }
       }
-      console.log(`Diet logs: ${dietLogCount} created`);
+    }
+    if (dietOps.length > 0) {
+      const dietResult = await DietLog.bulkWrite(dietOps);
+      console.log(`Diet logs: ${dietResult.upsertedCount} created`);
     } else {
-      console.log(`Diet logs: ${existingDietLogCount} already exist, skipping`);
+      console.log('Diet logs: no new records needed');
     }
 
     // ============================================================
@@ -637,7 +712,7 @@ const seedDatabase = async () => {
     if (annCount === 0) {
       const annDefs = [
         { title: 'Welcome to the New Season!', message: 'We have upgraded the gym with new equipment. Check out the new machines in the strength area!', priority: 'info', pinned: true },
-        { title: 'Holiday Schedule Update', message: 'The gym will close early at 6 PM on national holidays this month.', priority: 'warning', pinned: false },
+        { title: 'Holiday Schedule Update', message: 'The gym will close early at 6 PM on national holidays this month.', priority: 'warning', pinned: false, expiresAt: DAYS_AGO(2) },
         { title: 'Annual Memberships Available', message: 'Grab our Annual Premium plan today and save big. Limited time offer!', priority: 'warning', pinned: false },
         { title: 'Maintenance Notice', message: 'The cardio zone will be under maintenance this Saturday from 9-11 AM.', priority: 'critical', pinned: false },
       ];
@@ -648,6 +723,93 @@ const seedDatabase = async () => {
     } else {
       console.log(`Announcements: ${annCount} already exist, skipping`);
     }
+
+    // ============================================================
+    // PROGRESS PHOTOS
+    // ============================================================
+    const progressPhotoCount = await ProgressPhoto.countDocuments();
+    if (progressPhotoCount === 0) {
+      const photoUrls = [
+        'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?auto=format&fit=crop&w=640&q=80',
+        'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?auto=format&fit=crop&w=640&q=80',
+        'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?auto=format&fit=crop&w=640&q=80',
+        'https://images.unsplash.com/photo-1599058917212-d750089bc07e?auto=format&fit=crop&w=640&q=80',
+        'https://images.unsplash.com/photo-1574680096145-d05b474e2155?auto=format&fit=crop&w=640&q=80',
+        'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=640&q=80',
+      ];
+      const angles = ['front', 'side', 'back'];
+      let photoCount = 0;
+      for (let i = 0; i < Math.min(6, members.length); i++) {
+        await ProgressPhoto.create({
+          user: members[i]._id,
+          url: photoUrls[i],
+          caption: `Progress check-in - month ${i + 1}`,
+          angle: angles[i % angles.length],
+          date: DAYS_AGO(20 + i * 10)
+        });
+        photoCount++;
+      }
+      console.log(`Progress photos: ${photoCount} created`);
+    } else {
+      console.log(`Progress photos: ${progressPhotoCount} already exist, skipping`);
+    }
+
+    // ============================================================
+    // TRAINER SICK LEAVES
+    // ============================================================
+    const leaveDefs = [
+      {
+        trainerIdx: 4,
+        startDate: gymDay(-3),
+        endDate: gymDay(-6),
+        reason: 'Knee pain - physiotherapy recommended by doctor.',
+        status: 'PENDING',
+        submittedAt: DAYS_AGO(1)
+      },
+      {
+        trainerIdx: 2,
+        startDate: gymDay(18),
+        endDate: gymDay(16),
+        reason: 'Viral fever and rest advised.',
+        status: 'REJECTED',
+        submittedAt: DAYS_AGO(19),
+        reviewedBy: admins[0]._id,
+        reviewedAt: DAYS_AGO(17),
+        reviewNote: 'Medical certificate was not readable. Please resubmit a clear copy.'
+      },
+      {
+        trainerIdx: 3,
+        startDate: gymDay(6),
+        endDate: gymDay(4),
+        reason: 'Personal medical appointment.',
+        status: 'CANCELLED',
+        submittedAt: DAYS_AGO(7),
+        cancelledAt: DAYS_AGO(6)
+      }
+    ];
+    let leaveCount = 0;
+    for (const ld of leaveDefs) {
+      const trainer = trainers[ld.trainerIdx];
+      const existing = await TrainerSickLeave.findOne({
+        trainer: trainer._id,
+        startDate: { $gte: ld.startDate, $lt: new Date(ld.startDate.getTime() + DAY_MS) }
+      });
+      if (existing) continue;
+      await TrainerSickLeave.create({
+        trainer: trainer._id,
+        startDate: ld.startDate,
+        endDate: ld.endDate,
+        reason: ld.reason,
+        status: ld.status,
+        submittedAt: ld.submittedAt || new Date(),
+        reviewedBy: ld.reviewedBy || null,
+        reviewedAt: ld.reviewedAt || null,
+        reviewNote: ld.reviewNote || '',
+        cancelledAt: ld.cancelledAt || null
+      });
+      leaveCount++;
+    }
+    console.log(`Trainer sick leaves: ${leaveCount} created`);
 
     // ============================================================
     // SUMMARY

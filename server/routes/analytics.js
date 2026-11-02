@@ -16,6 +16,15 @@ const {
 } = require('../utils/gymTime');
 const MemberProfile = require('../models/MemberProfile');
 
+// Attendance windows are configurable so the dashboards keep showing the most
+// recent activity instead of going blank once the newest record falls outside
+// a hardcoded 30-day range. Defaults to 90 days (matches the seeded dataset).
+const parseDays = (value, fallback = 90) => {
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.min(365, Math.max(1, parsed));
+};
+
 const MemberProfileForDashboard = (userId) =>
   MemberProfile.findOne({ user: userId })
     .populate('assignedTrainer', 'name email avatar')
@@ -62,7 +71,10 @@ router.get('/admin/dashboard', auth, authorize('admin'), async (req, res) => {
       expiringMembers, totalRevenue, pendingPayments, todayAttendance, monthlyAttendance, newMembers]
       = await Promise.all([
         User.countDocuments({ role: 'member' }),
-        User.countDocuments({ role: 'member', isActive: true }),
+        // "Active members" = members that currently hold at least one ACTIVE
+        // membership (not merely enabled login accounts), so the dashboard
+        // count matches the Active filter in the members directory.
+        Membership.distinct('user', { status: 'ACTIVE' }).then((ids) => ids.length),
         User.countDocuments({ role: 'trainer', isActive: true }),
         Membership.countDocuments({ status: 'ACTIVE' }),
         Membership.countDocuments(expiringFilter),
@@ -124,13 +136,14 @@ router.get('/admin/revenue-trend', auth, authorize('admin'), async (req, res) =>
 router.get('/admin/attendance-trend', auth, authorize('admin'), async (req, res) => {
   try {
     const tz = getGymTimezone();
-    const thirtyDaysAgo = getGymDayStart(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000));
+    const days = parseDays(req.query.days);
+    const start = getGymDayStart(new Date(Date.now() - (days - 1) * 24 * 60 * 60 * 1000));
     const trend = await Attendance.aggregate([
-      { $match: { date: { $gte: thirtyDaysAgo } } },
+      { $match: { date: { $gte: start } } },
       { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$date', timezone: tz } }, count: { $sum: 1 } } },
       { $sort: { _id: 1 } }
     ]);
-    res.json({ trend });
+    res.json({ trend, days });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }
@@ -150,13 +163,94 @@ router.get('/admin/membership-distribution', auth, authorize('admin'), async (re
 router.get('/admin/peak-hours', auth, authorize('admin'), async (req, res) => {
   try {
     const tz = getGymTimezone();
-    const start = getGymDayStart(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000));
-    const peakHours = await Attendance.aggregate([
+    const days = parseDays(req.query.days);
+    const start = getGymDayStart(new Date(Date.now() - (days - 1) * 24 * 60 * 60 * 1000));
+    const rows = await Attendance.aggregate([
       { $match: { date: { $gte: start } } },
       { $group: { _id: { $hour: { date: '$checkInTime', timezone: tz } }, count: { $sum: 1 } } },
-      { $sort: { count: -1 } }
+      { $sort: { _id: 1 } }
     ]);
-    res.json({ peakHours });
+    const counts = new Map(
+      rows
+        .filter((row) => row._id !== null && row._id !== undefined)
+        .map((row) => [Number(row._id), row.count])
+    );
+    // Fill every hour of the day when there is activity so the chart keeps a
+    // stable, chronological 00:00 -> 23:00 axis. Keep an empty array when the
+    // window truly has no check-ins so the UI can show its "no data" state.
+    const peakHours = counts.size > 0
+      ? Array.from({ length: 24 }, (_, hour) => ({ _id: hour, count: counts.get(hour) || 0 }))
+      : [];
+    res.json({ peakHours, days });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.get('/admin/attendance-weekday', auth, authorize('admin'), async (req, res) => {
+  try {
+    const tz = getGymTimezone();
+    const days = parseDays(req.query.days);
+    const start = getGymDayStart(new Date(Date.now() - (days - 1) * 24 * 60 * 60 * 1000));
+    const rows = await Attendance.aggregate([
+      { $match: { date: { $gte: start } } },
+      { $group: { _id: { $dayOfWeek: { date: '$date', timezone: tz } }, count: { $sum: 1 } } },
+      { $sort: { _id: 1 } }
+    ]);
+    const labels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const counts = new Map(rows.map((row) => [Number(row._id), row.count]));
+    const weekday = labels.map((day, index) => ({ day, count: counts.get(index + 1) || 0 }));
+    res.json({ weekday, days });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.get('/admin/plan-popularity', auth, authorize('admin'), async (req, res) => {
+  try {
+    const plans = await Membership.aggregate([
+      { $match: { status: 'ACTIVE' } },
+      { $group: { _id: '$plan', count: { $sum: 1 } } },
+      {
+        $lookup: {
+          from: 'membershipplans',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'plan'
+        }
+      },
+      { $unwind: { path: '$plan', preserveNullAndEmptyArrays: true } },
+      {
+        $project: {
+          _id: 0,
+          planId: '$_id',
+          plan: { $ifNull: ['$plan.name', 'Unassigned'] },
+          price: { $ifNull: ['$plan.price', 0] },
+          count: 1
+        }
+      },
+      { $sort: { count: -1, plan: 1 } }
+    ]);
+    res.json({ plans });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.get('/admin/payment-methods', auth, authorize('admin'), async (req, res) => {
+  try {
+    const methods = await Payment.aggregate([
+      { $match: { status: 'COMPLETED' } },
+      {
+        $group: {
+          _id: '$method',
+          total: { $sum: '$amount' },
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { total: -1 } }
+    ]);
+    res.json({ methods });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }
