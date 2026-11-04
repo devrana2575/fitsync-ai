@@ -273,7 +273,7 @@ export default function Announcements() {
                   <button
                     type="button"
                     onClick={() => setViewTarget(a)}
-                    className="text-left font-medium text-slate-900 hover:text-brand-600"
+                    className="text-left font-medium text-slate-900 hover:text-brand-500"
                   >
                     {a.title}
                   </button>
@@ -339,7 +339,7 @@ export default function Announcements() {
             <input type="date" value={form.expiresAt} onChange={(e) => setForm({ ...form, expiresAt: e.target.value })} className="input" />
           </div>
           <div className="flex items-center gap-2">
-            <input id="pinned" type="checkbox" checked={form.pinned} onChange={(e) => setForm({ ...form, pinned: e.target.checked })} className="h-4 w-4 text-brand-600 border-slate-300 rounded focus:ring-brand-500 focus:ring-offset-0" />
+            <input id="pinned" type="checkbox" checked={form.pinned} onChange={(e) => setForm({ ...form, pinned: e.target.checked })} className="h-4 w-4 text-brand-500 border-border-control rounded focus:ring-brand-500 focus:ring-offset-0" />
             <label htmlFor="pinned" className="text-sm font-medium text-slate-700">Pinned</label>
           </div>
           <div className="flex justify-end gap-3 pt-2">

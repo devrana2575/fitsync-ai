@@ -289,7 +289,7 @@ export default function Templates() {
           <div>
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-semibold text-slate-700">Exercises *</h3>
-              <button type="button" onClick={addExercise} className="btn btn-sm btn-outline text-brand-600 border-brand-200 hover:bg-brand-50">
+              <button type="button" onClick={addExercise} className="btn btn-sm btn-outline text-brand-500 border-brand-200 hover:bg-brand-50">
                 <PlusIcon className="h-4 w-4" aria-hidden="true" />
                 Add Exercise
               </button>

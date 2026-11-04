@@ -78,6 +78,7 @@ const createApp = () => {
   app.use('/api/equipment', require('./routes/equipment'));
   app.use('/api/notifications', require('./routes/notifications'));
   app.use('/api/analytics', require('./routes/analytics'));
+  app.use('/api/retention', require('./routes/retention'));
   app.use('/api/reports', require('./routes/reports'));
   app.use('/api/settings', require('./routes/settings'));
   app.use('/api/diet', require('./routes/diet'));

@@ -236,7 +236,7 @@ export default function AdminTrainerLeaves() {
                       <button
                         type="button"
                         onClick={() => setDetailLeave(leave)}
-                        className="text-left hover:text-brand-600"
+                        className="text-left hover:text-brand-500"
                       >
                         {leave.trainer?.name || '—'}
                       </button>

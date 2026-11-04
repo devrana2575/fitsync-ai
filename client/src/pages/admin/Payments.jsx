@@ -282,7 +282,7 @@ export default function Payments() {
               <td className="px-4 py-3 text-sm">
                 {p.gateway ? (
                   <div>
-                    <span className="inline-flex items-center gap-1 text-xs font-medium text-brand-300">
+                    <span className="inline-flex items-center gap-1 text-xs font-medium text-brand-500">
                       {p.gateway === 'razorpay' ? 'Razorpay' : p.gateway}
                     </span>
                     {p.gatewayOrderId && (
@@ -324,7 +324,7 @@ export default function Payments() {
           <div className="relative">
             <label className="label">Select Member</label>
             {selectedMember ? (
-              <div className="flex items-center gap-2 px-3 py-2 border border-slate-300 rounded-lg bg-surface">
+              <div className="flex items-center gap-2 px-3 py-2 border border-border-control rounded-lg bg-surface">
                 <span className="flex-1 text-sm text-slate-900">{selectedMember.name} ({selectedMember.email})</span>
                 <button type="button" onClick={handleSubmittedMemberChange} className="text-slate-500 hover:text-slate-600 text-lg leading-none">&times;</button>
               </div>
@@ -353,7 +353,7 @@ export default function Payments() {
             ) : loadingMemberships ? (
               <input disabled placeholder="Loading memberships..." className="input bg-surface text-slate-500" />
             ) : memberMemberships.length === 0 ? (
-              <div className="px-3 py-2 border border-slate-300 rounded-lg bg-surface text-sm text-slate-500">No memberships found for this member</div>
+              <div className="px-3 py-2 border border-border-control rounded-lg bg-surface text-sm text-slate-500">No memberships found for this member</div>
             ) : (
               <select value={form.membershipId} onChange={(e) => setForm({ ...form, membershipId: e.target.value, planId: '' })} className="input">
                 <option value="">None</option>

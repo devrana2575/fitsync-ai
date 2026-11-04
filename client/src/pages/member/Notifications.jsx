@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   BellIcon,
   InformationCircleIcon,
@@ -34,7 +35,7 @@ const typeIcons = {
 };
 
 const typeTones = {
-  membership_expiry: 'text-brand-600',
+  membership_expiry: 'text-brand-500',
   payment_due: 'text-warning',
   low_attendance: 'text-info',
   high_risk: 'text-danger',
@@ -57,6 +58,7 @@ function timeAgo(dateStr) {
 }
 
 export default function Notifications() {
+  const navigate = useNavigate();
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -155,7 +157,7 @@ export default function Notifications() {
               type="checkbox"
               checked={unreadOnly}
               onChange={(e) => setUnreadOnly(e.target.checked)}
-              className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+              className="h-4 w-4 rounded border-border-control text-brand-500 focus:ring-brand-500"
             />
             Unread only
           </label>
@@ -216,7 +218,7 @@ export default function Notifications() {
             <button
               type="button"
               onClick={() => setToggle('emailNotifications')}
-              className={`relative inline-flex h-5 w-10 shrink-0 rounded-full transition-colors ${preferences.emailNotifications ? 'bg-brand-500' : 'bg-surface-elevated'}`}
+              className={`relative inline-flex h-5 w-10 shrink-0 rounded-full transition-colors ${preferences.emailNotifications ? 'bg-brand-600' : 'bg-slate-300'}`}
             >
               <span
                 className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${preferences.emailNotifications ? 'translate-x-4' : 'translate-x-0'}`}
@@ -232,7 +234,7 @@ export default function Notifications() {
             <button
               type="button"
               onClick={() => setToggle('smsNotifications')}
-              className={`relative inline-flex h-5 w-10 shrink-0 rounded-full transition-colors ${preferences.smsNotifications ? 'bg-brand-500' : 'bg-surface-elevated'}`}
+              className={`relative inline-flex h-5 w-10 shrink-0 rounded-full transition-colors ${preferences.smsNotifications ? 'bg-brand-600' : 'bg-slate-300'}`}
             >
               <span
                 className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${preferences.smsNotifications ? 'translate-x-4' : 'translate-x-0'}`}
@@ -282,7 +284,10 @@ export default function Notifications() {
             return (
               <button
                 key={n._id}
-                onClick={() => { if (unread) handleMarkRead(n._id); }}
+                onClick={() => {
+                  if (unread) handleMarkRead(n._id);
+                  if (n.link) navigate(n.link);
+                }}
                 className={`card w-full p-5 text-left transition-colors hover:bg-surface/60 ${unread ? 'border-l-4 border-l-brand-500' : ''}`}
               >
                 <div className="flex items-start gap-3">

@@ -30,6 +30,14 @@ const QUICK_ACTIONS = [
   { label: 'Check Member Progress', hint: 'Review attendance and progress', path: '/trainer/members', icon: ChartBarIcon },
 ];
 
+const ALERT_TONES = {
+  at_risk: 'badge-danger',
+  attendance_declining: 'badge-warning',
+  membership_expiring: 'badge-warning',
+  progress_review: 'badge-info',
+  low_attendance: 'badge-info',
+};
+
 const memberName = (m) => m.user?.name || m.name || 'Member';
 const memberId = (m) => m.user?._id || m._id || m.id;
 
@@ -103,7 +111,7 @@ export default function TrainerDashboard() {
   const totalAssigned = data?.totalAssigned ?? members.length;
   const maxMembers = data?.maxMembers;
   const capacityPct = maxMembers ? Math.round((totalAssigned / maxMembers) * 100) : null;
-  const needsAttention = members.filter((m) => Array.isArray(m.attention) && m.attention.length > 0);
+  const needsAttention = data?.retentionAlerts?.members || [];
 
   return (
     <div className="page-wrap space-y-6">
@@ -126,7 +134,7 @@ export default function TrainerDashboard() {
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <div className="card p-5">
           <div className="flex items-center gap-4">
-            <span className="shrink-0 p-3 rounded-lg ring-1 bg-brand-50 text-brand-700 ring-brand-200">
+            <span className="shrink-0 p-3 rounded-lg ring-1 bg-brand-50 text-brand-500 ring-brand-200">
               <UserGroupIcon className="h-5 w-5" aria-hidden="true" />
             </span>
             <div className="min-w-0 flex-1">
@@ -168,25 +176,30 @@ export default function TrainerDashboard() {
             ) : (
               <ul className="divide-y divide-slate-100">
                 {needsAttention.map((m) => (
-                  <li key={memberId(m)}>
+                  <li key={m.memberId}>
                     <button
-                      onClick={() => navigate(`/trainer/members/${memberId(m)}`)}
+                      onClick={() => navigate(`/trainer/members/${m.memberId}`)}
                       className="w-full flex items-center gap-3 px-5 py-3.5 text-left hover:bg-surface/60 transition-colors"
                     >
-                      <Avatar name={memberName(m)} src={m.user?.avatar} size="md" />
+                      <Avatar name={m.name} src={m.avatar} size="md" />
                       <span className="min-w-0 flex-1">
-                        <span className="block text-sm font-medium text-slate-900 truncate">{memberName(m)}</span>
+                        <span className="block text-sm font-medium text-slate-900 truncate">{m.name}</span>
                         <span className="block text-xs text-slate-500 mt-0.5">
-                          {m.lastVisit ? `Last visit ${fmtDate(m.lastVisit)}` : 'No visits yet'}
+                          {m.lastAttendanceAt ? `Last visit ${fmtDate(m.lastAttendanceAt)}` : 'No visits yet'}
+                          {m.daysSinceAttendance !== null && m.daysSinceAttendance !== undefined
+                            ? ` · ${m.daysSinceAttendance} day${m.daysSinceAttendance === 1 ? '' : 's'} ago`
+                            : ''}
                         </span>
+                        {m.recommendedAction && (
+                          <span className="block text-xs text-slate-500 mt-1">{m.recommendedAction}</span>
+                        )}
                       </span>
-                      <span className="shrink-0 flex flex-wrap justify-end gap-1.5">
-                        {m.attention.includes('no_recent_attendance') && (
-                          <span className="badge badge-warning">No visit in 7+ days</span>
-                        )}
-                        {m.attention.includes('membership_expiring') && (
-                          <span className="badge bg-warning/15 text-warning">Membership expiring</span>
-                        )}
+                      <span className="shrink-0 flex max-w-[45%] flex-wrap justify-end gap-1.5">
+                        {(m.alerts || []).map((alert) => (
+                          <span key={alert.code} className={ALERT_TONES[alert.code] || 'badge-muted'}>
+                            {alert.label}
+                          </span>
+                        ))}
                       </span>
                       <ArrowRightIcon className="h-4 w-4 text-slate-500 shrink-0" aria-hidden="true" />
                     </button>
@@ -257,9 +270,9 @@ export default function TrainerDashboard() {
                 <button
                   key={action.label}
                   onClick={() => navigate(action.path)}
-                  className="flex w-full items-center gap-3 rounded-xl border border-slate-200 px-4 py-3 text-left hover:bg-surface hover:border-slate-300 transition-colors"
+                  className="flex w-full items-center gap-3 rounded-xl border border-border-control px-4 py-3 text-left hover:bg-surface hover:border-border-control transition-colors"
                 >
-                  <span className="shrink-0 p-2 rounded-lg bg-brand-50 text-brand-700">
+                  <span className="shrink-0 p-2 rounded-lg bg-brand-50 text-brand-500">
                     <action.icon className="h-5 w-5" aria-hidden="true" />
                   </span>
                   <span className="flex-1 min-w-0">

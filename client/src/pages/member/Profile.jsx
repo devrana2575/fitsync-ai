@@ -326,7 +326,7 @@ export default function Profile() {
                     </div>
                   ))}
                 </div>
-                <button type="button" onClick={addPhoneRow} className="btn btn-sm btn-outline text-brand-600 border-brand-200 hover:bg-brand-50 mt-1">
+                <button type="button" onClick={addPhoneRow} className="btn btn-sm btn-outline text-brand-500 border-brand-200 hover:bg-brand-50 mt-1">
                   <PlusIcon className="h-4 w-4" aria-hidden="true" />
                   Add another number
                 </button>
@@ -500,13 +500,13 @@ export default function Profile() {
                 <h2 className="section-title mb-4">Recommendations on file</h2>
                 {doctorRecommendation && (
                   <div className="mb-2">
-                    <p className="text-xs font-medium text-brand-600">Doctor&apos;s recommendation</p>
+                    <p className="text-xs font-medium text-brand-500">Doctor&apos;s recommendation</p>
                     <p className="text-sm text-slate-700">{doctorRecommendation}</p>
                   </div>
                 )}
                 {trainerRecommendation && (
                   <div>
-                    <p className="text-xs font-medium text-brand-600">Trainer&apos;s recommendation</p>
+                    <p className="text-xs font-medium text-brand-500">Trainer&apos;s recommendation</p>
                     <p className="text-sm text-slate-700">{trainerRecommendation}</p>
                   </div>
                 )}

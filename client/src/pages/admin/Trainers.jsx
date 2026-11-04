@@ -163,7 +163,7 @@ export default function Trainers() {
                   className="group flex items-center gap-3 text-left"
                 >
                   <Avatar name={t.name} src={t.avatar} size="sm" />
-                  <span className="font-medium text-slate-900 group-hover:text-brand-700 group-hover:underline">{t.name}</span>
+                  <span className="font-medium text-slate-900 group-hover:text-brand-500 group-hover:underline">{t.name}</span>
                 </button>
               </td>
               <td className="px-6 py-4 text-slate-600">{t.email}</td>
@@ -179,7 +179,7 @@ export default function Trainers() {
                 <button
                   type="button"
                   onClick={() => openMembers(t)}
-                  className="font-medium text-sm text-brand-600 hover:text-brand-700"
+                  className="font-medium text-sm text-brand-500 hover:text-brand-500"
                   title={`View members assigned to ${t.name}`}
                 >
                   {t.memberCount ?? t.assignedMembers?.length ?? 0}

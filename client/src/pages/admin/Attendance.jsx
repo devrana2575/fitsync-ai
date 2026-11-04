@@ -164,7 +164,7 @@ export default function Attendance() {
                 type="checkbox"
                 checked={showIneligible}
                 onChange={(e) => setShowIneligible(e.target.checked)}
-                className="h-3.5 w-3.5 rounded border-slate-300 text-brand-600 focus:ring-brand-500 focus:ring-offset-0"
+                className="h-3.5 w-3.5 rounded border-border-control text-brand-500 focus:ring-brand-500 focus:ring-offset-0"
               />
               Show members without an active plan
             </label>
@@ -231,7 +231,7 @@ export default function Attendance() {
                           ) : (
                             <span className="badge badge-warning">No active plan</span>
                           )}
-                          {isSelected && <span className="text-[11px] font-medium text-brand-700">Selected</span>}
+                          {isSelected && <span className="text-[11px] font-medium text-brand-500">Selected</span>}
                         </span>
                       </button>
                     </li>

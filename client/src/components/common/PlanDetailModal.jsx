@@ -66,7 +66,7 @@ export default function PlanDetailModal({ plan, isOpen, onClose, onEdit }) {
             <ul className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
               {inclusions.map((item) => (
                 <li key={item} className="flex items-start gap-2 text-sm text-slate-600">
-                  <CheckCircleIcon className="mt-0.5 h-4 w-4 shrink-0 text-brand-600" aria-hidden="true" />
+                  <CheckCircleIcon className="mt-0.5 h-4 w-4 shrink-0 text-brand-500" aria-hidden="true" />
                   <span>{item}</span>
                 </li>
               ))}

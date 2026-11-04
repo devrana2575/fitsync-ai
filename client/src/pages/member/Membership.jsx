@@ -159,7 +159,7 @@ export default function Membership() {
       },
       // Keep the hosted checkout on brand so the member never leaves a
       // different-looking payment page mid-flow.
-      theme: { color: '#2554d8' },
+      theme: { color: '#356b9a' },
       modal: {
         ondismiss: () => {
           setProcessing(false);
@@ -407,9 +407,9 @@ export default function Membership() {
         <>
           <div className="card relative overflow-hidden rounded-xl p-6 sm:p-7">
             <div
-              className="absolute inset-0 opacity-50"
+              className="absolute inset-0 opacity-10"
               style={{
-                backgroundImage: 'linear-gradient(#dbe4f0 1px, transparent 1px), linear-gradient(90deg, #dbe4f0 1px, transparent 1px)',
+                backgroundImage: 'linear-gradient(#78a6d0 1px, transparent 1px), linear-gradient(90deg, #78a6d0 1px, transparent 1px)',
                 backgroundSize: '32px 32px',
               }}
               aria-hidden="true"
@@ -429,7 +429,7 @@ export default function Membership() {
                 {currentPlanPrice && (
                   <div className="text-right">
                     <p className="text-sm text-slate-500">Plan value</p>
-                    <p className="text-2xl font-bold text-brand-600 tabular-nums">{currentPlanPrice}</p>
+                    <p className="text-2xl font-bold text-brand-500 tabular-nums">{currentPlanPrice}</p>
                   </div>
                 )}
               </div>
@@ -443,7 +443,7 @@ export default function Membership() {
                 </div>
                 <div className="rounded-lg bg-slate-50 border border-border p-4">
                   <p className="text-xs text-slate-500">Days remaining</p>
-                  <p className="mt-1 text-2xl font-bold text-brand-600 tabular-nums">
+                  <p className="mt-1 text-2xl font-bold text-brand-500 tabular-nums">
                     {daysRemaining === null ? '—' : `${daysRemaining} DAY${daysRemaining === 1 ? '' : 'S'}`}
                   </p>
                 </div>
@@ -478,7 +478,7 @@ export default function Membership() {
                     .filter(Boolean)
                     .map((item, idx) => (
                       <li key={idx} className="flex items-start gap-2 text-sm text-slate-500">
-                        <CheckCircleIcon className="mt-0.5 h-4 w-4 shrink-0 text-brand-600" aria-hidden="true" />
+                        <CheckCircleIcon className="mt-0.5 h-4 w-4 shrink-0 text-brand-500" aria-hidden="true" />
                         <span>{item}</span>
                       </li>
                     ))}
@@ -489,7 +489,7 @@ export default function Membership() {
 
           <div className="card p-5">
             <div className="mb-4 flex items-center gap-2">
-              <AcademicCapIcon className="h-5 w-5 text-brand-600" aria-hidden="true" />
+              <AcademicCapIcon className="h-5 w-5 text-brand-500" aria-hidden="true" />
               <h2 className="card-title">Your Trainer</h2>
             </div>
             {renderTrainerSection()}
@@ -514,7 +514,7 @@ export default function Membership() {
                 <div key={plan._id} className="card flex flex-col p-5">
                   <div className="flex items-start justify-between gap-2">
                     <button type="button" onClick={() => setViewingPlan(plan)} className="group text-left">
-                      <h3 className="font-semibold text-slate-900 group-hover:text-brand-700 group-hover:underline">{plan.name}</h3>
+                      <h3 className="font-semibold text-slate-900 group-hover:text-brand-500 group-hover:underline">{plan.name}</h3>
                     </button>
                     {isCurrent && <span className="badge badge-success">Current plan</span>}
                   </div>
@@ -549,7 +549,7 @@ export default function Membership() {
                   <button
                     type="button"
                     onClick={() => setViewingPlan(plan)}
-                    className="mt-2 self-start text-xs font-medium text-brand-600 hover:text-brand-700 hover:underline"
+                    className="mt-2 self-start text-xs font-medium text-brand-500 hover:text-brand-500 hover:underline"
                   >
                     View full details
                   </button>
@@ -584,7 +584,7 @@ export default function Membership() {
       {current && (
         <div className="card p-5">
           <div className="mb-4 flex items-center gap-2">
-            <BanknotesIcon className="h-5 w-5 text-brand-600" aria-hidden="true" />
+            <BanknotesIcon className="h-5 w-5 text-brand-500" aria-hidden="true" />
             <h2 className="card-title">Payment Summary</h2>
           </div>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">

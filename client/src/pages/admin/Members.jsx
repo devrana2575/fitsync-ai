@@ -298,7 +298,7 @@ export default function Members() {
                 <td className="px-6 py-4">
                   <div className="flex gap-3">
                     <button onClick={() => navigate(`/admin/members/${m._id}`)} className="text-slate-600 hover:text-slate-900 font-medium text-sm">View</button>
-                    <button onClick={() => openEdit(m)} className="text-brand-600 hover:text-brand-700 font-medium text-sm">Edit</button>
+                    <button onClick={() => openEdit(m)} className="text-brand-500 hover:text-brand-500 font-medium text-sm">Edit</button>
                     <button onClick={() => toggleDeactivate(m)} className={`font-medium text-sm ${m.isActive ? 'text-danger hover:text-danger' : 'text-success hover:text-success'}`}>
                       {m.isActive ? 'Deactivate' : 'Activate'}
                     </button>
@@ -365,7 +365,7 @@ export default function Members() {
                   </div>
                 ))}
               </div>
-              <button type="button" onClick={addPhoneRow} className="mt-1 text-sm text-brand-600 hover:text-brand-700 font-medium">+ Add another number</button>
+              <button type="button" onClick={addPhoneRow} className="mt-1 text-sm text-brand-500 hover:text-brand-500 font-medium">+ Add another number</button>
             </div>
           )}
           <div className="grid grid-cols-2 gap-4">
@@ -466,7 +466,7 @@ export default function Members() {
             </div>
           </div>
           <div className="flex justify-end gap-3 pt-2">
-            <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-surface font-medium">Cancel</button>
+            <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 rounded-lg border border-border-control text-slate-700 hover:bg-surface font-medium">Cancel</button>
             <button type="submit" disabled={saving} className="btn btn-md btn-primary w-full disabled:opacity-50">
               {saving ? 'Saving...' : editing ? 'Update' : 'Create'}
             </button>

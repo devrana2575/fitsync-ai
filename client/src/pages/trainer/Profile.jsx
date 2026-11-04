@@ -319,7 +319,7 @@ export default function TrainerProfile() {
                       </button>
                     </div>
                   ))}
-                  <button type="button" onClick={addLanguage} className="btn btn-sm btn-outline text-brand-600 border-brand-200 hover:bg-brand-50">
+                  <button type="button" onClick={addLanguage} className="btn btn-sm btn-outline text-brand-500 border-brand-200 hover:bg-brand-50">
                     <PlusIcon className="h-4 w-4" aria-hidden="true" />
                     Add language
                   </button>
@@ -343,7 +343,7 @@ export default function TrainerProfile() {
                     </button>
                   </div>
                 ))}
-                <button type="button" onClick={addSpecialization} className="btn btn-sm btn-outline text-brand-600 border-brand-200 hover:bg-brand-50">
+                <button type="button" onClick={addSpecialization} className="btn btn-sm btn-outline text-brand-500 border-brand-200 hover:bg-brand-50">
                   <PlusIcon className="h-4 w-4" aria-hidden="true" />
                   Add specialization
                 </button>
@@ -380,7 +380,7 @@ export default function TrainerProfile() {
                     </button>
                   </div>
                 ))}
-                <button type="button" onClick={addCertification} className="btn btn-sm btn-outline text-brand-600 border-brand-200 hover:bg-brand-50">
+                <button type="button" onClick={addCertification} className="btn btn-sm btn-outline text-brand-500 border-brand-200 hover:bg-brand-50">
                   <PlusIcon className="h-4 w-4" aria-hidden="true" />
                   Add certification
                 </button>

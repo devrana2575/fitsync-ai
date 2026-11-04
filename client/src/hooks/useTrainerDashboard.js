@@ -6,6 +6,18 @@ let cache = null;
 let cacheAt = 0;
 let inflight = null;
 
+const loadDashboard = async () => {
+  const [dashboard, alerts] = await Promise.allSettled([
+    api.get('/analytics/trainer/dashboard'),
+    api.get('/retention/trainer/alerts'),
+  ]);
+  if (dashboard.status === 'rejected') throw dashboard.reason;
+  return {
+    ...dashboard.value.data,
+    retentionAlerts: alerts.status === 'fulfilled' ? alerts.value.data : { members: [] },
+  };
+};
+
 export default function useTrainerDashboard({ forceRefresh = false } = {}) {
   const [data, setData] = useState(cache);
   const [loading, setLoading] = useState(cache === null);
@@ -14,8 +26,7 @@ export default function useTrainerDashboard({ forceRefresh = false } = {}) {
   const reload = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await api.get('/analytics/trainer/dashboard');
-      cache = res.data;
+      cache = await loadDashboard();
       cacheAt = Date.now();
       setData(cache);
       setError(null);
@@ -31,12 +42,12 @@ export default function useTrainerDashboard({ forceRefresh = false } = {}) {
     if (!forceRefresh && !stale) return undefined;
 
     if (!inflight) {
-      inflight = api.get('/analytics/trainer/dashboard');
+      inflight = loadDashboard();
     }
     let active = true;
     inflight
-      .then((res) => {
-        cache = res.data;
+      .then((result) => {
+        cache = result;
         cacheAt = Date.now();
         if (active) {
           setData(cache);

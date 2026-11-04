@@ -119,7 +119,7 @@ export default function Attendance() {
             <label className="label">Select Assigned Member</label>
             <div className="relative">
               {selectedMember ? (
-                <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-200 bg-surface">
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border-control bg-surface">
                   <span className="flex-1 text-sm text-slate-900">
                     {availableMembers.find((m) => String(m._id) === String(selectedMember))?.name || 'Member selected'}
                   </span>

@@ -205,15 +205,15 @@ export default function MemberDashboard() {
         <>
           <div className="card relative overflow-hidden rounded-xl p-6 sm:p-8">
             <div
-              className="absolute inset-0 opacity-50"
+              className="absolute inset-0 opacity-10"
               style={{
-                backgroundImage: 'linear-gradient(#dbe4f0 1px, transparent 1px), linear-gradient(90deg, #dbe4f0 1px, transparent 1px)',
+                backgroundImage: 'linear-gradient(#78a6d0 1px, transparent 1px), linear-gradient(90deg, #78a6d0 1px, transparent 1px)',
                 backgroundSize: '32px 32px',
               }}
               aria-hidden="true"
             />
             <div className="relative">
-              <div className="flex flex-wrap items-center gap-2 text-brand-600">
+              <div className="flex flex-wrap items-center gap-2 text-brand-500">
                 <CalendarDaysIcon className="h-5 w-5" aria-hidden="true" />
                 <p className="text-sm font-medium">{todayDate}</p>
               </div>
@@ -270,7 +270,7 @@ export default function MemberDashboard() {
             <div className="lg:col-span-2 space-y-4">
               <div className="card p-5">
                 <div className="mb-4 flex items-center gap-2">
-                  <BoltIcon className="h-5 w-5 text-brand-600" aria-hidden="true" />
+                  <BoltIcon className="h-5 w-5 text-brand-500" aria-hidden="true" />
                   <h2 className="card-title">Today&apos;s Workout</h2>
                   <span className="badge badge-info ml-auto">{todayName()}</span>
                 </div>
@@ -313,7 +313,7 @@ export default function MemberDashboard() {
                 ) : (
                   <div className="flex flex-col items-center py-8 text-center">
                     <div className="mb-3 rounded-full bg-brand-500/15 p-3">
-                      <CheckCircleIcon className="h-6 w-6 text-brand-600" aria-hidden="true" />
+                      <CheckCircleIcon className="h-6 w-6 text-brand-500" aria-hidden="true" />
                     </div>
                     <p className="text-sm font-medium text-slate-700">Rest day — no workout scheduled.</p>
                     <p className="mt-1 text-xs text-slate-500">Check your plans or log a workout and keep the momentum going.</p>
@@ -326,7 +326,7 @@ export default function MemberDashboard() {
 
               <div className="card p-5">
                 <div className="mb-4 flex items-center gap-2">
-                  <BuildingOffice2Icon className="h-5 w-5 text-brand-600" aria-hidden="true" />
+                  <BuildingOffice2Icon className="h-5 w-5 text-brand-500" aria-hidden="true" />
                   <h2 className="card-title">Membership</h2>
                 </div>
                 {membership.planName ? (
@@ -377,7 +377,7 @@ export default function MemberDashboard() {
 
             <div className="card p-5 self-start">
               <div className="mb-4 flex items-center gap-2">
-                <AcademicCapIcon className="h-5 w-5 text-brand-600" aria-hidden="true" />
+                <AcademicCapIcon className="h-5 w-5 text-brand-500" aria-hidden="true" />
                 <h2 className="card-title">Your Trainer</h2>
               </div>
               {trainer && trainer.name ? (
@@ -415,7 +415,7 @@ export default function MemberDashboard() {
           <div className="card p-5">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2">
-                <ChartBarIcon className="h-5 w-5 text-brand-600" aria-hidden="true" />
+                <ChartBarIcon className="h-5 w-5 text-brand-500" aria-hidden="true" />
                 <h2 className="card-title">Weight Trend</h2>
               </div>
               {weightData.length > 0 && <span className="text-xs text-slate-500">{weightData.length} measurement{weightData.length === 1 ? '' : 's'}</span>}

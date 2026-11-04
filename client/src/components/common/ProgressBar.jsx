@@ -23,7 +23,7 @@ export default function ProgressBar({ value = 0, tone = 'brand', className = '',
         aria-valuemin={0}
         aria-valuemax={100}
         aria-label={label || 'Progress'}
-        className="h-2 w-full overflow-hidden rounded-full bg-surface-elevated"
+        className="h-2 w-full overflow-hidden rounded-full bg-slate-100"
       >
         <div
           className={`h-full rounded-full transition-all duration-500 ease-out ${toneClasses[tone] || toneClasses.brand}`}

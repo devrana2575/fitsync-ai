@@ -126,12 +126,12 @@ export default function Diet() {
                           checked={isChecked}
                           disabled={saving}
                           onChange={(e) => handleToggle(d.value, e.target.checked)}
-                          className="h-5 w-5 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+                          className="h-5 w-5 rounded border-border-control text-brand-500 focus:ring-brand-500"
                         />
-                        <span className={`text-sm font-medium flex-1 ${isChecked ? 'text-brand-600' : 'text-slate-700'}`}>
+                        <span className={`text-sm font-medium flex-1 ${isChecked ? 'text-brand-500' : 'text-slate-700'}`}>
                           {d.label}
                         </span>
-                        {isChecked && <CheckIcon className="h-5 w-5 text-brand-600 shrink-0" aria-hidden="true" />}
+                        {isChecked && <CheckIcon className="h-5 w-5 text-brand-500 shrink-0" aria-hidden="true" />}
                       </label>
                     );
                   })}

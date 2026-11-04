@@ -20,7 +20,7 @@ import PageHeader from '../../components/common/PageHeader';
 import StatCard from '../../components/common/StatCard';
 import ErrorState from '../../components/common/ErrorState';
 import Skeleton, { SkeletonCard } from '../../components/common/Skeleton';
-import { toINR, fmtDateShort, daysUntil } from '../../utils/format';
+import { fmtDate, toINR, fmtDateShort, daysUntil } from '../../utils/format';
 import {
   AXIS,
   CHART_COLORS,
@@ -33,6 +33,15 @@ import {
 
 const PIE_COLORS = SERIES_COLORS;
 
+const RETENTION_TONES = {
+  at_risk: 'badge-danger',
+  attendance_declining: 'badge-warning',
+  membership_expiring: 'badge-warning',
+  payment_pending: 'badge-warning',
+  progress_review: 'badge-info',
+  low_attendance: 'badge-info',
+};
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const [stats, setStats] = useState(null);
@@ -40,6 +49,7 @@ export default function Dashboard() {
   const [attendance, setAttendance] = useState([]);
   const [membershipDist, setMembershipDist] = useState([]);
   const [peakHours, setPeakHours] = useState([]);
+  const [retention, setRetention] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [errors, setErrors] = useState({});
@@ -47,12 +57,13 @@ export default function Dashboard() {
   const fetchAll = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
 
-    const [dashResult, revResult, attResult, memResult, peakResult] = await Promise.allSettled([
+    const [dashResult, revResult, attResult, memResult, peakResult, retentionResult] = await Promise.allSettled([
       api.get('/analytics/admin/dashboard'),
       api.get('/analytics/admin/revenue-trend'),
       api.get('/analytics/admin/attendance-trend'),
       api.get('/analytics/admin/membership-distribution'),
       api.get('/analytics/admin/peak-hours'),
+      api.get('/retention/admin/at-risk'),
     ]);
 
     const newErrors = {};
@@ -97,6 +108,12 @@ export default function Dashboard() {
         .sort((a, b) => a.sortKey - b.sortKey));
     } else {
       newErrors.peakHours = peakResult.reason?.message;
+    }
+
+    if (retentionResult.status === 'fulfilled') {
+      setRetention(retentionResult.value.data);
+    } else {
+      newErrors.retention = retentionResult.reason?.message;
     }
 
     setErrors(newErrors);
@@ -252,13 +269,80 @@ export default function Dashboard() {
         </div>
       </div>
 
+      <div className="card overflow-hidden">
+        <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 border-b border-slate-100">
+          <div>
+            <h2 className="card-title">At-Risk Members</h2>
+            <p className="text-sm text-slate-500 mt-0.5">Follow up on attendance, renewals, payments and progress reviews.</p>
+          </div>
+          {!loading && !errors.retention && (
+            <span className="badge badge-warning">{retention?.count || 0} flagged</span>
+          )}
+        </div>
+        {loading ? (
+          <div className="p-5"><SkeletonCard /></div>
+        ) : errors.retention ? (
+          <div className="p-5"><ErrorState message="Failed to load at-risk members" onRetry={handleRefresh} /></div>
+        ) : (retention?.members || []).length === 0 ? (
+          <div className="px-5 py-10 text-center text-sm text-slate-500">
+            No members need follow-up right now.
+          </div>
+        ) : (
+          <ul className="divide-y divide-slate-100 max-h-[30rem] overflow-y-auto">
+            {retention.members.map((m) => {
+              const lastAttendance = m.lastAttendanceAt
+                ? `${fmtDate(m.lastAttendanceAt)}${m.daysSinceAttendance !== null && m.daysSinceAttendance !== undefined ? ` (${m.daysSinceAttendance}d ago)` : ''}`
+                : 'No attendance yet';
+              return (
+                <li key={m.memberId}>
+                  <button
+                    onClick={() => navigate(`/admin/members/${m.memberId}`)}
+                    className="w-full px-5 py-4 text-left hover:bg-surface/60 transition-colors"
+                  >
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-slate-900 truncate">{m.name}</p>
+                        <p className="text-xs text-slate-500 truncate">{m.email || '—'}</p>
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {(m.alerts || []).map((alert) => (
+                            <span key={alert.code} className={RETENTION_TONES[alert.code] || 'badge-muted'}>
+                              {alert.label}
+                            </span>
+                          ))}
+                        </div>
+                        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
+                          <span>Membership: <span className="font-medium text-slate-700">{m.membershipStatus || '—'}</span></span>
+                          <span>Last attendance: <span className="font-medium text-slate-700">{lastAttendance}</span></span>
+                          <span>Expires: <span className="font-medium text-slate-700">{m.membershipEndDate ? fmtDateShort(m.membershipEndDate) : '—'}</span></span>
+                          {m.pendingPayment && (
+                            <span>Pending payment: <span className="font-medium text-warning">{toINR(m.pendingPaymentAmount)}</span></span>
+                          )}
+                          {m.progressReviewNeeded && (
+                            <span className="font-medium text-info">Progress review needed</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="sm:max-w-[16rem] sm:text-right">
+                        <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Recommended action</p>
+                        <p className="text-xs text-slate-700 mt-1">{m.recommendedAction || 'Review member follow-up'}</p>
+                      </div>
+                      <ArrowRightIcon className="hidden sm:block h-4 w-4 text-slate-500 shrink-0 mt-1" aria-hidden="true" />
+                    </div>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="card p-5">
           <div className="flex items-center justify-between mb-4">
             <h2 className="card-title">Expiring Soon</h2>
             <button
               onClick={() => navigate('/admin/memberships')}
-              className="btn btn-ghost btn-sm text-brand-600 hover:bg-brand-50"
+              className="btn btn-ghost btn-sm text-brand-500 hover:bg-brand-50"
             >
               View all
               <ArrowRightIcon className="h-4 w-4" aria-hidden="true" />
@@ -359,7 +443,7 @@ export default function Dashboard() {
               <YAxis allowDecimals={false} tickLine={false} axisLine={{ stroke: AXIS.axis }} tick={{ fontSize: 12, fill: AXIS.tick }} />
               <Tooltip contentStyle={TOOLTIP_STYLE} labelStyle={TOOLTIP_LABEL_STYLE} itemStyle={TOOLTIP_ITEM_STYLE} />
               <Legend wrapperStyle={LEGEND_STYLE} />
-              <Bar dataKey="count" name="Check-ins" fill={CHART_COLORS.brand} radius={[4, 4, 0, 0]} />
+              <Bar dataKey="count" name="Check-ins" fill={CHART_COLORS.teal} radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>
@@ -394,7 +478,7 @@ export default function Dashboard() {
               <YAxis allowDecimals={false} tickLine={false} axisLine={{ stroke: AXIS.axis }} tick={{ fontSize: 12, fill: AXIS.tick }} />
               <Tooltip contentStyle={TOOLTIP_STYLE} labelStyle={TOOLTIP_LABEL_STYLE} itemStyle={TOOLTIP_ITEM_STYLE} />
               <Legend wrapperStyle={LEGEND_STYLE} />
-              <Bar dataKey="count" name="Check-ins" fill={CHART_COLORS.info} radius={[4, 4, 0, 0]} />
+              <Bar dataKey="count" name="Check-ins" fill={CHART_COLORS.warning} radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>

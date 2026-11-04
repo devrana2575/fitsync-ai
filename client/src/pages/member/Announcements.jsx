@@ -8,9 +8,9 @@ import { SkeletonRow } from '../../components/common/Skeleton';
 import { fmtDate } from '../../utils/format';
 
 const priorityStyles = {
-  info: { border: 'border-l-sky-500', badge: 'badge-info', label: 'Info' },
-  warning: { border: 'border-l-amber-500', badge: 'badge-warning', label: 'Warning' },
-  critical: { border: 'border-l-red-500', badge: 'badge-danger', label: 'Critical' },
+  info: { border: 'border-l-info', badge: 'badge-info', label: 'Info' },
+  warning: { border: 'border-l-warning', badge: 'badge-warning', label: 'Warning' },
+  critical: { border: 'border-l-danger', badge: 'badge-danger', label: 'Critical' },
 };
 
 export default function Announcements() {

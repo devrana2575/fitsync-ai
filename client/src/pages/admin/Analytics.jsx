@@ -342,8 +342,8 @@ export default function Analytics() {
                   aria-pressed={days === range.days}
                   className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${
                     days === range.days
-                      ? 'bg-white text-brand-700 shadow-sm'
-                      : 'text-slate-500 hover:text-slate-700'
+                      ? 'bg-surface-raised text-slate-900 shadow-sm'
+                      : 'text-slate-500 hover:text-slate-900'
                   }`}
                 >
                   {range.label}
@@ -445,7 +445,7 @@ export default function Analytics() {
             <AreaChart data={revenue} margin={{ top: 10, right: 12, left: 0, bottom: 0 }}>
               <defs>
                 <linearGradient id="revenueFill" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={CHART_COLORS.brand} stopOpacity={0.24} />
+                  <stop offset="5%" stopColor={CHART_COLORS.brand} stopOpacity={0.35} />
                   <stop offset="95%" stopColor={CHART_COLORS.brand} stopOpacity={0} />
                 </linearGradient>
               </defs>
@@ -521,7 +521,7 @@ export default function Analytics() {
                 key={entry.status}
                 type="button"
                 onClick={() => navigate(`/admin/memberships?status=${entry.status}`)}
-                className="inline-flex items-center gap-1.5 rounded-full border border-border bg-white px-2.5 py-1 text-xs font-medium text-slate-600 transition-colors hover:border-brand-300 hover:text-brand-700"
+                className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-2.5 py-1 text-xs font-medium text-slate-600 transition-colors hover:border-brand-300 hover:text-brand-500"
               >
                 <span className="h-2 w-2 rounded-full" style={{ backgroundColor: SERIES_COLORS[index % SERIES_COLORS.length] }} />
                 {STATUS_LABELS[entry.status] || titleize(entry.status)}
@@ -571,7 +571,7 @@ export default function Analytics() {
                 itemStyle={TOOLTIP_ITEM_STYLE}
               />
               <Legend wrapperStyle={LEGEND_STYLE} />
-              <Bar dataKey="count" name="Daily check-ins" fill={CHART_COLORS.brand} radius={[4, 4, 0, 0]} maxBarSize={18} />
+              <Bar dataKey="count" name="Daily check-ins" fill={CHART_COLORS.teal} radius={[4, 4, 0, 0]} maxBarSize={18} />
               {showAverage && <Line type="monotone" dataKey="average" name="7-day average" stroke={CHART_COLORS.warning} strokeWidth={2} dot={false} activeDot={{ r: 4 }} />}
             </ComposedChart>
           </ResponsiveContainer>
@@ -637,7 +637,7 @@ export default function Analytics() {
             {selectedHourRow ? (
               <span>
                 Selected <strong className="text-slate-900">{hourRange(selectedHourRow.hour)} · {fmt(selectedHourRow.count)} check-ins</strong>
-                <button type="button" onClick={() => setSelectedHour(null)} className="ml-2 font-medium text-brand-600 hover:underline">Clear</button>
+                <button type="button" onClick={() => setSelectedHour(null)} className="ml-2 font-medium text-brand-500 hover:underline">Clear</button>
               </span>
             ) : (
               <span className="text-slate-500">Click a bar to inspect an hour</span>

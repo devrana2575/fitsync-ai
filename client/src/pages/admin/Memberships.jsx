@@ -292,10 +292,10 @@ export default function Memberships() {
       )}
 
       <div className="flex gap-1 border-b border-slate-200">
-        <button onClick={() => setTab('plans')} className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${tab === 'plans' ? 'border-brand-600 text-brand-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
+        <button onClick={() => setTab('plans')} className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${tab === 'plans' ? 'border-brand-600 text-brand-500' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
           Plans
         </button>
-        <button onClick={() => setTab('memberships')} className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${tab === 'memberships' ? 'border-brand-600 text-brand-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
+        <button onClick={() => setTab('memberships')} className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${tab === 'memberships' ? 'border-brand-600 text-brand-500' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
           Memberships
         </button>
       </div>
@@ -305,7 +305,7 @@ export default function Memberships() {
           <span className="text-slate-500">Showing</span>
           <span className="badge badge-brand">{activeFilterLabel}</span>
           <span className="text-slate-500">({visibleMemberships.length})</span>
-          <button type="button" onClick={() => setStatusFilter('ALL')} className="text-xs font-medium text-brand-600 hover:text-brand-700 hover:underline">
+          <button type="button" onClick={() => setStatusFilter('ALL')} className="text-xs font-medium text-brand-500 hover:text-brand-500 hover:underline">
             Clear filter
           </button>
         </div>
@@ -340,10 +340,10 @@ export default function Memberships() {
                     />
                     <div className="relative z-10 pointer-events-none">
                       <div className="flex items-start justify-between gap-3 mb-3">
-                        <h3 className="text-lg font-semibold text-slate-900 group-hover:text-brand-700">{p.name}</h3>
+                        <h3 className="text-lg font-semibold text-slate-900 group-hover:text-brand-500">{p.name}</h3>
                         <button onClick={() => openEditPlan(p)} className="btn btn-sm btn-outline pointer-events-auto">Edit</button>
                       </div>
-                      <p className="text-2xl font-semibold tabular-nums text-brand-600 mb-1">{toINR(p.price)}</p>
+                      <p className="text-2xl font-semibold tabular-nums text-brand-500 mb-1">{toINR(p.price)}</p>
                       <p className="text-sm font-semibold uppercase tracking-wide text-slate-500 mb-2">{p.duration} DAYS</p>
                       <div className="flex flex-wrap gap-1.5 mb-3">
                         {p.paymentMode === 'INSTALLMENT' && (
@@ -373,7 +373,7 @@ export default function Memberships() {
                           ))}
                         </ul>
                       )}
-                      <p className="mt-3 text-xs font-medium text-brand-600 group-hover:text-brand-700">View full details</p>
+                      <p className="mt-3 text-xs font-medium text-brand-500 group-hover:text-brand-500">View full details</p>
                     </div>
                   </div>
                 ))}
@@ -488,7 +488,7 @@ export default function Memberships() {
           )}
 
           <div className="flex items-center gap-2">
-            <input id="plan-trainer" type="checkbox" checked={planForm.trainerIncluded} onChange={(e) => setPlanForm({ ...planForm, trainerIncluded: e.target.checked })} className="h-4 w-4 text-brand-600 border-slate-300 rounded focus:ring-brand-500 focus:ring-offset-0" />
+            <input id="plan-trainer" type="checkbox" checked={planForm.trainerIncluded} onChange={(e) => setPlanForm({ ...planForm, trainerIncluded: e.target.checked })} className="h-4 w-4 text-brand-500 border-border-control rounded focus:ring-brand-500 focus:ring-offset-0" />
             <label htmlFor="plan-trainer" className="text-sm font-medium text-slate-700">Includes personal trainer</label>
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -510,7 +510,7 @@ export default function Memberships() {
           </p>
 
           <div className="flex items-center gap-2">
-            <input id="plan-workouts" type="checkbox" checked={planForm.workoutPlanIncluded} onChange={(e) => setPlanForm({ ...planForm, workoutPlanIncluded: e.target.checked })} className="h-4 w-4 text-brand-600 border-slate-300 rounded focus:ring-brand-500 focus:ring-offset-0" />
+            <input id="plan-workouts" type="checkbox" checked={planForm.workoutPlanIncluded} onChange={(e) => setPlanForm({ ...planForm, workoutPlanIncluded: e.target.checked })} className="h-4 w-4 text-brand-500 border-border-control rounded focus:ring-brand-500 focus:ring-offset-0" />
             <label htmlFor="plan-workouts" className="text-sm font-medium text-slate-700">Includes workout plans</label>
           </div>
           <div className="flex justify-end gap-3 pt-2">
@@ -532,7 +532,7 @@ export default function Memberships() {
 
             {assignForm.selectedMember && (
               <div className="mb-2 flex items-center gap-2 rounded-lg border border-brand-200 bg-brand-50 px-3 py-2">
-                <CheckCircleIcon className="h-4 w-4 shrink-0 text-brand-600" aria-hidden="true" />
+                <CheckCircleIcon className="h-4 w-4 shrink-0 text-brand-500" aria-hidden="true" />
                 <span className="min-w-0 flex-1 truncate text-sm text-slate-900">
                   {assignForm.selectedMember.name} <span className="text-slate-500">({assignForm.selectedMember.email})</span>
                 </span>
@@ -591,7 +591,7 @@ export default function Memberships() {
                           {m.membership && (
                             <span className="badge badge-muted">{m.membership.plan?.name || m.membership.status}</span>
                           )}
-                          {selected && <CheckCircleIcon className="h-4 w-4 shrink-0 text-brand-600" aria-hidden="true" />}
+                          {selected && <CheckCircleIcon className="h-4 w-4 shrink-0 text-brand-500" aria-hidden="true" />}
                         </button>
                       </li>
                     );
@@ -617,7 +617,7 @@ export default function Memberships() {
             <input type="date" value={assignForm.startDate} onChange={(e) => setAssignForm({ ...assignForm, startDate: e.target.value })} className="input" />
           </div>
           <div className="flex items-center gap-2">
-            <input id="complimentary" type="checkbox" checked={assignForm.complimentary} onChange={(e) => setAssignForm({ ...assignForm, complimentary: e.target.checked })} className="h-4 w-4 text-brand-600 border-slate-300 rounded focus:ring-brand-500 focus:ring-offset-0" />
+            <input id="complimentary" type="checkbox" checked={assignForm.complimentary} onChange={(e) => setAssignForm({ ...assignForm, complimentary: e.target.checked })} className="h-4 w-4 text-brand-500 border-border-control rounded focus:ring-brand-500 focus:ring-offset-0" />
             <label htmlFor="complimentary" className="text-sm font-medium text-slate-700">Complementary / free grant (activate immediately)</label>
           </div>
           <div className={`rounded-lg px-3 py-2 text-xs ${assignForm.complimentary ? 'bg-warning/10 text-warning border border-warning/25' : 'bg-surface text-slate-500 border border-slate-200'}`}>

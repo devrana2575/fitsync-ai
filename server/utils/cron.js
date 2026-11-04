@@ -1,12 +1,11 @@
 const cron = require('node-cron');
 const Membership = require('../models/Membership');
-const Attendance = require('../models/Attendance');
 const Notification = require('../models/Notification');
-const User = require('../models/User');
 const { bulkCreateNotifications } = require('./notify');
 const { logAudit } = require('./audit');
 const { getGymTimezone, gymWallTimeToUtc, setGymTimezone } = require('./gymTime');
 const { reconcileSickLeaves } = require('./sickLeaveCoverage');
+const { generateRetentionNotifications } = require('./retention');
 
 // Translate the intended gym-local trigger wall-clocks to UTC cron
 // expressions so the host's wall clock never matters. Returns one entry per
@@ -27,70 +26,15 @@ const buildCronExpressions = (gymTimezone) => {
   ];
 };
 
-const generateNotifications = async () => {
+const generateNotifications = async (now = new Date()) => {
   try {
-    console.log('[Cron] Running notification generation...');
-
-    const now = new Date();
-    const thirtyDaysFromNow = new Date(now);
-    thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
-
-    const expiringMemberships = await Membership.find({
-      status: 'ACTIVE',
-      endDate: { $lte: thirtyDaysFromNow, $gte: now }
-    }).populate('user', 'name email').populate('plan', 'name');
-
-    const notifiedLastDay = await Notification.find({
-      user: { $in: expiringMemberships.map((m) => m.user?._id).filter(Boolean) },
-      type: 'membership_expiry',
-      createdAt: { $gte: new Date(now.getTime() - 24 * 60 * 60 * 1000) }
-    }).select('user').lean();
-    const alreadyNotified = new Set(notifiedLastDay.map((n) => String(n.user)));
-
-    const expiryNotifications = expiringMemberships
-      .filter((m) => m.user && !alreadyNotified.has(String(m.user._id)))
-      .map((m) => ({
-        user: m.user._id,
-        title: 'Membership Expiring Soon',
-        message: `Your ${m.plan?.name || ''} membership expires in ${Math.ceil((m.endDate - now) / (1000 * 60 * 60 * 24))} days.`,
-        type: 'membership_expiry'
-      }));
-
-    const sevenDaysAgo = new Date(now);
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
-    const sevenDaysAgoNotif = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const members = await User.find({ role: 'member', isActive: true }).select('_id').lean();
-    const attendedUserIds = await Attendance.distinct('user', { date: { $gte: sevenDaysAgo } });
-    const attendedSet = new Set(attendedUserIds.map(String));
-    const lowAttendanceMembers = members.filter((m) => !attendedSet.has(String(m._id)));
-
-    const lowAttendanceNotified = await Notification.find({
-      user: { $in: lowAttendanceMembers.map((m) => m._id) },
-      type: 'low_attendance',
-      createdAt: { $gte: sevenDaysAgoNotif }
-    }).select('user').lean();
-    const lowAlreadyNotified = new Set(lowAttendanceNotified.map((n) => String(n.user)));
-
-    const lowNotifications = lowAttendanceMembers
-      .filter((m) => !lowAlreadyNotified.has(String(m._id)))
-      .map((m) => ({
-        user: m._id,
-        title: 'Low Attendance Alert',
-        message: 'You haven\'t visited the gym in the last 7 days. Keep up your fitness routine!',
-        type: 'low_attendance'
-      }));
-
-    if (expiryNotifications.length > 0) {
-      await bulkCreateNotifications(expiryNotifications);
-    }
-    if (lowNotifications.length > 0) {
-      await bulkCreateNotifications(lowNotifications);
-    }
-
-    console.log(`[Cron] Notification generation complete (${expiryNotifications.length} expiry, ${lowNotifications.length} low-attendance)`);
+    console.log('[Cron] Running retention notification generation...');
+    const result = await generateRetentionNotifications(now);
+    console.log(`[Cron] Retention notifications complete (${result.created} created, ${result.skipped} deduplicated, ${result.members} at-risk members)`);
+    return result;
   } catch (error) {
     console.error('[Cron] Error:', error.message);
+    return null;
   }
 };
 

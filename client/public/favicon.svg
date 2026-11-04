@@ -1,10 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="FitSync AI">
-  <defs>
-    <linearGradient id="fs" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#356cf0"/>
-      <stop offset="1" stop-color="#1f43ae"/>
-    </linearGradient>
-  </defs>
-  <rect width="64" height="64" rx="15" fill="url(#fs)"/>
-  <path fill="#ffffff" d="M35.6 8 18.4 35.1c-.7 1.1.1 2.6 1.4 2.6h9.2l-2.4 15.7c-.3 1.9 2.2 2.8 3.2 1.1L45.6 28.9c.7-1.1-.1-2.6-1.4-2.6h-9.2l2.4-15.7c.3-1.9-2.2-2.8-3.2-1.1z"/>
+  <rect width="64" height="64" rx="15" fill="#1e2631"/>
+  <rect x="0.5" y="0.5" width="63" height="63" rx="14.5" fill="none" stroke="#394554"/>
+  <path fill="#78a6d0" d="M35.6 8 18.4 35.1c-.7 1.1.1 2.6 1.4 2.6h9.2l-2.4 15.7c-.3 1.9 2.2 2.8 3.2 1.1L45.6 28.9c.7-1.1-.1-2.6-1.4-2.6h-9.2l2.4-15.7c.3-1.9-2.2-2.8-3.2-1.1z"/>
 </svg>

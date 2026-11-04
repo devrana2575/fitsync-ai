@@ -267,7 +267,7 @@ export default function Workouts() {
                 <button
                   type="button"
                   onClick={addExercise}
-                  className="btn btn-sm btn-outline text-brand-600 border-brand-200 hover:bg-brand-50"
+                  className="btn btn-sm btn-outline text-brand-500 border-brand-200 hover:bg-brand-50"
                 >
                   <PlusIcon className="h-4 w-4" aria-hidden="true" />
                   Add Exercise

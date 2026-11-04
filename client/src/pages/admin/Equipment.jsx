@@ -327,7 +327,7 @@ export default function Equipment() {
                 <button
                   type="button"
                   onClick={() => setViewTarget(eq)}
-                  className="text-left font-medium text-slate-900 hover:text-brand-600"
+                  className="text-left font-medium text-slate-900 hover:text-brand-500"
                 >
                   {eq.name}
                 </button>

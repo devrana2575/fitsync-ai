@@ -11,9 +11,9 @@ export default function ProfileCompletionCard({ completion, member = true }) {
   return (
     <div className="rounded-xl border border-brand-200 bg-brand-50/70 p-5 overflow-hidden relative">
       <div
-        className="absolute inset-0 opacity-40"
+        className="absolute inset-0 opacity-10"
         style={{
-          backgroundImage: 'linear-gradient(#c7d7f5 1px, transparent 1px), linear-gradient(90deg, #c7d7f5 1px, transparent 1px)',
+          backgroundImage: 'linear-gradient(#78a6d0 1px, transparent 1px), linear-gradient(90deg, #78a6d0 1px, transparent 1px)',
           backgroundSize: '32px 32px',
         }}
         aria-hidden="true"
@@ -22,11 +22,11 @@ export default function ProfileCompletionCard({ completion, member = true }) {
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <div className="flex items-center gap-2 mb-1">
-              <CheckCircleIcon className="h-5 w-5 text-brand-600 shrink-0" aria-hidden="true" />
+              <CheckCircleIcon className="h-5 w-5 text-brand-500 shrink-0" aria-hidden="true" />
               <h2 className="text-sm font-semibold text-slate-900">Profile Completion</h2>
             </div>
             {missing.length === 0 ? (
-              <p className="text-sm text-brand-700 font-medium">Your profile is complete. Great job!</p>
+              <p className="text-sm text-brand-500 font-medium">Your profile is complete. Great job!</p>
             ) : (
               <p className="text-xs text-slate-500 mt-0.5">
                 Add {missing.slice(0, 3).join(', ')}
@@ -35,7 +35,7 @@ export default function ProfileCompletionCard({ completion, member = true }) {
             )}
           </div>
           <div className="shrink-0 text-right">
-            <span className="text-2xl font-bold text-brand-600 tabular-nums">{percent}%</span>
+            <span className="text-2xl font-bold text-brand-500 tabular-nums">{percent}%</span>
           </div>
         </div>
         <div className="mt-3">

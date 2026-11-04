@@ -39,6 +39,7 @@ const notificationSchema = new mongoose.Schema({
 
 notificationSchema.index({ user: 1, isRead: 1 });
 notificationSchema.index({ user: 1, createdAt: -1 });
+notificationSchema.index({ 'data.retentionKey': 1 }, { sparse: true });
 
 notificationSchema.post('save', function (doc) {
   try {

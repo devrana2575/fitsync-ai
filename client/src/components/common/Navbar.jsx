@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   BellIcon,
   ChevronDownIcon,
@@ -18,7 +19,7 @@ import api from '../../services/api';
 import Avatar from './Avatar';
 
 const roleStyles = {
-  admin: 'bg-brand-50 text-brand-700 ring-1 ring-inset ring-brand-200',
+  admin: 'bg-brand-50 text-brand-500 ring-1 ring-inset ring-brand-200',
   trainer: 'bg-info/12 text-info ring-1 ring-inset ring-info/25',
   member: 'bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-200',
 };
@@ -37,7 +38,7 @@ const typeTones = {
   warning: 'text-warning',
   success: 'text-success',
   error: 'text-danger',
-  membership: 'text-brand-600',
+  membership: 'text-brand-500',
   attendance: 'text-slate-500',
 };
 
@@ -57,6 +58,7 @@ export default function Navbar({ onMenuClick }) {
   const { user, logout } = useAuth();
   const socket = useSocket();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [showDropdown, setShowDropdown] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -156,7 +158,7 @@ export default function Navbar({ onMenuClick }) {
   };
 
   return (
-    <header className="h-16 bg-base/85 backdrop-blur border-b border-border flex items-center justify-between px-4 sm:px-6 sticky top-0 z-20">
+    <header className="h-16 bg-surface/95 backdrop-blur border-b border-border flex items-center justify-between px-4 sm:px-6 sticky top-0 z-20">
       <button
         onClick={onMenuClick}
         className="lg:hidden p-2 text-slate-500 hover:text-slate-900 hover:bg-surface-hover rounded-lg transition-colors"
@@ -186,7 +188,7 @@ export default function Navbar({ onMenuClick }) {
           >
             <BellIcon className="h-5 w-5" aria-hidden="true" />
             {unreadCount > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 min-w-[1.125rem] h-[1.125rem] bg-danger text-white text-[10px] font-semibold rounded-full flex items-center justify-center leading-none px-1 ring-2 ring-base">
+              <span className="absolute -top-0.5 -right-0.5 min-w-[1.125rem] h-[1.125rem] bg-danger-strong text-white text-[10px] font-semibold rounded-full flex items-center justify-center leading-none px-1 ring-2 ring-base">
                 {unreadCount > 99 ? '99+' : unreadCount}
               </span>
             )}
@@ -198,7 +200,7 @@ export default function Navbar({ onMenuClick }) {
                 <div className="flex items-center justify-between px-4 py-3 border-b border-border">
                   <h3 className="text-sm font-semibold text-slate-900">Notifications</h3>
                   {unreadCount > 0 && (
-                    <button onClick={handleMarkAllRead} className="text-xs text-brand-600 hover:text-brand-500 font-medium">
+                    <button onClick={handleMarkAllRead} className="text-xs text-brand-500 hover:text-brand-400 font-medium">
                       Mark all read
                     </button>
                   )}
@@ -222,6 +224,10 @@ export default function Navbar({ onMenuClick }) {
                         key={n._id}
                         onClick={() => {
                           if (!n.isRead) handleMarkRead(n._id);
+                          if (n.link) {
+                            setShowNotifications(false);
+                            navigate(n.link);
+                          }
                         }}
                         className={`w-full text-left px-4 py-3 hover:bg-surface-hover transition-colors ${
                           !n.isRead ? 'bg-brand-50' : ''
@@ -274,7 +280,7 @@ export default function Navbar({ onMenuClick }) {
           >
             <Avatar name={user?.name} src={user?.avatar} size="sm" />
             <div className="text-left hidden md:block">
-              <p className="text-sm font-medium text-slate-500 leading-tight">
+              <p className="text-sm font-medium text-slate-700 leading-tight">
                 {user?.name || 'User'}
               </p>
               <span
@@ -288,7 +294,7 @@ export default function Navbar({ onMenuClick }) {
           {showDropdown && (
             <div className="absolute right-0 mt-2 w-56 bg-surface-elevated rounded-xl shadow-pop border border-border py-1 z-50 anim-pop" role="menu">
               <div className="px-4 py-2.5 border-b border-border">
-                <p className="text-sm font-medium text-slate-500 truncate">{user?.name}</p>
+                <p className="text-sm font-medium text-slate-700 truncate">{user?.name}</p>
                 <p className="text-xs text-slate-500 truncate">{user?.email}</p>
               </div>
               <div className="px-4 py-2.5 border-b border-border flex items-center gap-2">

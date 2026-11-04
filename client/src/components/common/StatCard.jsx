@@ -1,14 +1,14 @@
 import { ChevronRightIcon } from '@heroicons/react/24/outline';
 
 const toneMap = {
-  brand: 'bg-brand-50 text-brand-700 ring-brand-200',
-  ink: 'bg-brand-50 text-brand-700 ring-brand-200',
+  brand: 'bg-brand-50 text-brand-500 ring-brand-200',
+  ink: 'bg-brand-50 text-brand-500 ring-brand-200',
   indigo: 'bg-info/12 text-info ring-info/25',
   blue: 'bg-info/12 text-info ring-info/25',
   green: 'bg-success/12 text-success ring-success/25',
   yellow: 'bg-warning/12 text-warning ring-warning/25',
   red: 'bg-danger/12 text-danger ring-danger/25',
-  purple: 'bg-brand-50 text-brand-700 ring-brand-200',
+  purple: 'bg-brand-50 text-brand-500 ring-brand-200',
   cyan: 'bg-info/12 text-info ring-info/25',
   orange: 'bg-warning/12 text-warning ring-warning/25',
 };

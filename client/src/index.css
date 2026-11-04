@@ -6,48 +6,72 @@
   --font-display: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
     Roboto, "Helvetica Neue", Arial, sans-serif;
 
-  /* ---- Professional light neutral scale (classic slate) ---- */
-  --color-slate-50: #f8fafc;
-  --color-slate-100: #f1f5f9;
-  --color-slate-200: #e2e8f0;
-  --color-slate-300: #cbd5e1;
-  --color-slate-400: #94a3b8;
-  --color-slate-500: #64748b;
-  --color-slate-600: #475569;
-  --color-slate-700: #334155;
-  --color-slate-800: #1e293b;
-  --color-slate-900: #0f172a;
-  --color-slate-950: #020617;
+  /* Dark graphite surface system.
+     The slate scale is intentionally remapped to foreground/background roles
+     so all existing utility usage inherits the dark theme consistently:
+     slate-50 = deepest inset, slate-900 = primary heading, slate-500 = muted. */
+  --color-slate-50: #171c24;
+  --color-slate-100: #303b48;
+  --color-slate-200: #394554;
+  --color-slate-300: #455365;
+  --color-slate-400: #8e9baa;
+  --color-slate-500: #aab5c2;
+  --color-slate-600: #d0d7e0;
+  --color-slate-700: #dce2ea;
+  --color-slate-800: #e9edf2;
+  --color-slate-900: #f3f5f7;
+  --color-slate-950: #ffffff;
 
-  /* Explicit surface tokens (clean white workspace) */
-  --color-base: #f4f6f8;
-  --color-surface: #ffffff;
-  --color-surface-elevated: #ffffff;
-  --color-surface-hover: #f1f5f9;
-  --color-border: #e4e8ee;
-  --color-border-strong: #cfd6df;
+  /* Explicit surface tokens */
+  --color-base: #171c24;
+  --color-surface: #1e2631;
+  --color-surface-elevated: #252f3b;
+  --color-surface-raised: #303b48;
+  --color-surface-hover: #303e4d;
+  --color-nav-active: #303e4d;
 
-  /* Corporate indigo brand accent */
-  --color-brand-50: #eff4ff;
-  --color-brand-100: #dbe6fe;
-  --color-brand-200: #bfd4fe;
-  --color-brand-300: #8fb0f7;
-  --color-brand-400: #4b76e8;
-  --color-brand-500: #356cf0;
-  --color-brand-600: #2554d8;
-  --color-brand-700: #1f43ae;
-  --color-brand-800: #1e3a8a;
-  --color-brand-900: #1e3274;
+  /* Border and divider tokens */
+  --color-border: #394554;
+  --color-border-subtle: #303b48;
+  --color-border-strong: #455365;
+  --color-border-control: #75879d;
 
-  /* Semantic status colors (accessible on light backgrounds) */
-  --color-success: #15803d;
-  --color-warning: #b45309;
-  --color-danger: #dc2626;
-  --color-info: #1d6fd6;
+  /* Steel blue brand accent */
+  --color-brand-50: #1a2836;
+  --color-brand-100: #223647;
+  --color-brand-200: #2c475f;
+  --color-brand-300: #3f6282;
+  --color-brand-400: #5e8cb5;
+  --color-brand-500: #78a6d0;
+  --color-brand-600: #356b9a;
+  --color-brand-700: #28577d;
+  --color-brand-800: #244c6d;
+  --color-brand-900: #1e3f5a;
+
+  --color-primary: #356b9a;
+  --color-primary-hover: #28577d;
+  --color-primary-active: #244c6d;
+
+  /* Semantic status colors (lightened slightly for AA text on dark surfaces) */
+  --color-success: #74bc92;
+  --color-success-soft: #1f3329;
+  --color-success-strong: #3e7a5a;
+  --color-success-strong-hover: #356b4e;
+
+  --color-warning: #e0b15e;
+  --color-warning-soft: #342c1d;
+
+  --color-danger: #e68c8c;
+  --color-danger-soft: #372427;
+  --color-danger-strong: #a84b4b;
+  --color-danger-strong-hover: #8f3e3e;
+
+  --color-info: #8ab4db;
+  --color-info-soft: #1f2d3b;
 
   --radius-card: 0.75rem;
-  --shadow-card: 0 1px 2px rgb(15 23 42 / 0.04), 0 1px 3px rgb(15 23 42 / 0.06);
-  --shadow-pop: 0 20px 40px -16px rgb(15 23 42 / 0.18);
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.35), 0 1px 3px rgb(0 0 0 / 0.28);
+  --shadow-pop: 0 20px 40px -16px rgb(0 0 0 / 0.65);
 }
 
 :root {
@@ -55,13 +79,18 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
-  color-scheme: light;
+  color-scheme: dark;
 }
 
 html,
 body {
   background-color: var(--color-base);
   color: var(--color-slate-900);
+}
+
+::selection {
+  background-color: var(--color-brand-600);
+  color: #ffffff;
 }
 
 ::-webkit-scrollbar {
@@ -72,7 +101,7 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--color-slate-300);
+  background: var(--color-border-strong);
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
@@ -80,7 +109,7 @@ body {
 }
 * {
   scrollbar-width: thin;
-  scrollbar-color: var(--color-slate-300) transparent;
+  scrollbar-color: var(--color-border-strong) transparent;
 }
 
 @layer base {
@@ -88,9 +117,33 @@ body {
   select,
   textarea {
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    color-scheme: dark;
+  }
+  input[type="checkbox"],
+  input[type="radio"] {
+    accent-color: var(--color-primary);
+  }
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(0.72);
+    opacity: 0.85;
   }
   select {
     background-color: var(--color-surface);
+  }
+  select option {
+    background-color: var(--color-surface);
+    color: var(--color-slate-900);
+  }
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  textarea:-webkit-autofill,
+  select:-webkit-autofill {
+    -webkit-text-fill-color: var(--color-slate-900);
+    -webkit-box-shadow: 0 0 0 1000px var(--color-surface) inset;
+    box-shadow: 0 0 0 1000px var(--color-surface) inset;
+    caret-color: var(--color-brand-500);
+    transition: background-color 9999s ease-in-out 0s;
   }
   button {
     cursor: pointer;
@@ -110,6 +163,22 @@ body {
       animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
     }
+  }
+
+  /* Recharts dark-theme text defaults (series colors are set in chartTheme.js) */
+  .recharts-legend-item-text {
+    color: var(--color-slate-500) !important;
+  }
+  .recharts-default-tooltip {
+    background-color: var(--color-surface-raised) !important;
+    border-color: var(--color-border-strong) !important;
+    color: var(--color-slate-900) !important;
+  }
+  .recharts-pie-label-text {
+    fill: var(--color-slate-600);
+  }
+  .recharts-pie-label-line {
+    stroke: var(--color-border-strong);
   }
 }
 
@@ -207,32 +276,32 @@ body {
     @apply px-5 py-3 text-base;
   }
   .btn-primary {
-    @apply bg-brand-600 text-white font-semibold hover:bg-brand-500 shadow-sm;
+    @apply bg-primary text-white font-semibold hover:bg-primary-hover active:bg-primary-active shadow-sm;
   }
   .btn-dark {
-    @apply bg-slate-900 text-white hover:bg-slate-800 border border-slate-900;
+    @apply bg-surface-raised text-slate-900 border border-border-control hover:bg-slate-200 active:bg-slate-300;
   }
   .btn-outline {
-    @apply bg-surface text-slate-700 border border-border-strong hover:bg-slate-50;
+    @apply bg-surface text-slate-700 border border-border-control hover:bg-surface-raised hover:text-slate-900 active:bg-slate-200;
   }
   .btn-outline-dark {
-    @apply bg-surface text-slate-700 border border-slate-300 hover:bg-slate-50;
+    @apply bg-surface text-slate-700 border border-border-control hover:bg-surface-raised hover:text-slate-900 active:bg-slate-200;
   }
   .btn-ghost {
-    @apply bg-transparent text-slate-500 hover:bg-slate-100 hover:text-slate-900;
+    @apply bg-transparent text-slate-500 hover:bg-surface-raised hover:text-slate-900;
   }
   .btn-danger {
-    @apply bg-danger text-white hover:bg-danger/90 border border-danger shadow-sm;
+    @apply bg-danger-strong text-white hover:bg-danger-strong-hover active:bg-danger-strong-hover border border-danger-strong shadow-sm;
   }
   .btn-success {
-    @apply bg-success text-white hover:bg-success/90 border border-success shadow-sm;
+    @apply bg-success-strong text-white hover:bg-success-strong-hover active:bg-success-strong-hover border border-success-strong shadow-sm;
   }
 
   /* Inputs */
   .input {
-    @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900
-      placeholder:text-slate-400 transition-colors focus:border-brand-500
-      focus:outline-none focus:ring-2 focus:ring-brand-500/15 disabled:bg-slate-50 disabled:text-slate-400;
+    @apply w-full rounded-lg border border-border-control bg-surface px-3 py-2 text-sm text-slate-900
+      caret-brand-500 placeholder:text-slate-400 transition-colors focus:border-brand-500
+      focus:outline-none focus:ring-2 focus:ring-brand-500/20 disabled:bg-slate-50 disabled:text-slate-400;
   }
   .label {
     @apply block text-xs font-medium text-slate-600 mb-1.5;
@@ -246,25 +315,25 @@ body {
     @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium;
   }
   .badge-success {
-    @apply bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200 inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium;
+    @apply bg-success-soft text-success ring-1 ring-inset ring-success/30 inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium;
   }
   .badge-warning {
-    @apply bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200 inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium;
+    @apply bg-warning-soft text-warning ring-1 ring-inset ring-warning/30 inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium;
   }
   .badge-danger {
-    @apply bg-red-50 text-red-700 ring-1 ring-inset ring-red-200 inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium;
+    @apply bg-danger-soft text-danger ring-1 ring-inset ring-danger/30 inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium;
   }
   .badge-info {
-    @apply bg-sky-50 text-sky-700 ring-1 ring-inset ring-sky-200 inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium;
+    @apply bg-info-soft text-info ring-1 ring-inset ring-info/30 inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium;
   }
   .badge-brand {
-    @apply bg-brand-50 text-brand-700 ring-1 ring-inset ring-brand-200 inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium;
+    @apply bg-brand-50 text-brand-500 ring-1 ring-inset ring-brand-200 inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium;
   }
   .badge-muted {
-    @apply bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-200 inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium;
+    @apply bg-slate-100 text-slate-500 ring-1 ring-inset ring-slate-200 inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium;
   }
   .badge-dark {
-    @apply bg-slate-800 text-white ring-1 ring-inset ring-slate-700 inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium;
+    @apply bg-surface-raised text-slate-900 ring-1 ring-inset ring-border-strong inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium;
   }
 
   /* Status banners */
@@ -272,20 +341,20 @@ body {
     @apply flex items-start gap-2.5 rounded-lg border px-3.5 py-3 text-sm;
   }
   .banner-success {
-    @apply border-emerald-200 bg-emerald-50 text-emerald-800 flex items-start gap-2.5 rounded-lg px-3.5 py-3 text-sm;
+    @apply border-success/30 bg-success-soft text-success flex items-start gap-2.5 rounded-lg px-3.5 py-3 text-sm;
   }
   .banner-warning {
-    @apply border-amber-200 bg-amber-50 text-amber-800 flex items-start gap-2.5 rounded-lg px-3.5 py-3 text-sm;
+    @apply border-warning/30 bg-warning-soft text-warning flex items-start gap-2.5 rounded-lg px-3.5 py-3 text-sm;
   }
   .banner-danger {
-    @apply border-red-200 bg-red-50 text-red-800 flex items-start gap-2.5 rounded-lg px-3.5 py-3 text-sm;
+    @apply border-danger/30 bg-danger-soft text-danger flex items-start gap-2.5 rounded-lg px-3.5 py-3 text-sm;
   }
   .banner-info {
-    @apply border-sky-200 bg-sky-50 text-sky-800 flex items-start gap-2.5 rounded-lg px-3.5 py-3 text-sm;
+    @apply border-info/30 bg-info-soft text-info flex items-start gap-2.5 rounded-lg px-3.5 py-3 text-sm;
   }
 
   .chip {
-    @apply inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-600 ring-1 ring-inset ring-slate-200;
+    @apply inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-500 ring-1 ring-inset ring-slate-200;
   }
 }
 
@@ -296,7 +365,7 @@ body {
   }
   .skeleton::after {
     content: "";
-    @apply absolute inset-0 -translate-x-full animate-pulse bg-gradient-to-r from-transparent via-white/70 to-transparent;
+    @apply absolute inset-0 -translate-x-full animate-pulse bg-gradient-to-r from-transparent via-slate-500/10 to-transparent;
     animation: shimmer 1.6s infinite;
   }
   @keyframes shimmer {
@@ -310,6 +379,6 @@ body {
   }
 
   .text-link {
-    @apply text-brand-600 hover:text-brand-500 font-medium;
+    @apply text-brand-500 hover:text-brand-400 font-medium;
   }
 }

@@ -50,7 +50,7 @@ export default function Register() {
         </span>
         <p className="text-xs text-slate-600">
           You're signing up as{' '}
-          <span className="font-semibold text-brand-700">Member</span>
+          <span className="font-semibold text-brand-500">Member</span>
         </p>
       </div>
       {error && (
