@@ -118,7 +118,7 @@ export default function Diet() {
                       <label
                         key={d.value}
                         className={`flex items-center gap-3 px-4 py-3 rounded-xl border cursor-pointer transition-colors ${
-                          isChecked ? 'border-brand-500/40 bg-brand-500/10' : 'border-border bg-surface hover:bg-surface-hover'
+                          isChecked ? 'border-brand-500 bg-brand-50' : 'border-border bg-surface hover:bg-surface-hover'
                         }`}
                       >
                         <input

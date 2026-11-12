@@ -139,7 +139,7 @@ export default function Attendance() {
                     <li
                       key={m._id}
                       onClick={() => handleMemberSelect(m)}
-                      className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-brand-500/12 cursor-pointer"
+                      className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-brand-50 cursor-pointer"
                     >
                       <Avatar name={m.name} size="sm" />
                       <span className="font-medium text-slate-800">{m.name}</span>

@@ -151,7 +151,7 @@ export default function Attendance() {
             </div>
           ) : (
             <div className="flex items-center gap-3">
-              <div className="rounded-full bg-brand-500/15 p-2.5">
+              <div className="rounded-full bg-brand-50 p-2.5">
                 <MapPinIcon className="h-6 w-6 text-brand-500" aria-hidden="true" />
               </div>
               <div>

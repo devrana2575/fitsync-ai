@@ -17,13 +17,13 @@ export default function AuthShell({ title, subtitle, children, footer }) {
           className="absolute inset-0 opacity-[0.06]"
           style={{
             backgroundImage:
-              'linear-gradient(#78a6d0 1px, transparent 1px), linear-gradient(90deg, #78a6d0 1px, transparent 1px)',
+              'linear-gradient(#3c73a8 1px, transparent 1px), linear-gradient(90deg, #3c73a8 1px, transparent 1px)',
             backgroundSize: '42px 42px',
           }}
           aria-hidden="true"
         />
         <div
-          className="absolute -top-32 -right-24 h-96 w-96 rounded-full bg-brand-600/20 blur-3xl"
+          className="absolute -top-32 -right-24 h-96 w-96 rounded-full bg-brand-600/10 blur-3xl"
           aria-hidden="true"
         />
         <div className="relative flex items-center gap-3">
@@ -32,7 +32,7 @@ export default function AuthShell({ title, subtitle, children, footer }) {
           </div>
           <div>
             <h1 className="text-lg font-bold text-slate-900 tracking-tight leading-none">FitSync</h1>
-            <p className="text-xs text-slate-400 mt-1 leading-none">Gym Management System</p>
+            <p className="text-xs text-slate-500 mt-1 leading-none">Gym Management System</p>
           </div>
         </div>
 
@@ -63,7 +63,7 @@ export default function AuthShell({ title, subtitle, children, footer }) {
           </div>
         </div>
 
-        <p className="relative text-xs text-slate-400">FitSync &middot; Gym Management Platform</p>
+        <p className="relative text-xs text-slate-500">FitSync &middot; Gym Management Platform</p>
       </div>
 
       {/* Form panel */}
@@ -95,7 +95,7 @@ export function AuthFooter({ text, linkText, to }) {
   return (
     <>
       <span className="text-sm text-slate-500">{text} </span>
-      <Link to={to} className="text-sm font-semibold text-brand-500 hover:text-brand-400">
+      <Link to={to} className="text-sm font-semibold text-brand-600 hover:text-brand-800">
         {linkText}
       </Link>
     </>

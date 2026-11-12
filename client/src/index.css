@@ -6,72 +6,74 @@
   --font-display: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
     Roboto, "Helvetica Neue", Arial, sans-serif;
 
-  /* Dark graphite surface system.
+  /* Light surface system.
      The slate scale is intentionally remapped to foreground/background roles
-     so all existing utility usage inherits the dark theme consistently:
-     slate-50 = deepest inset, slate-900 = primary heading, slate-500 = muted. */
-  --color-slate-50: #171c24;
-  --color-slate-100: #303b48;
-  --color-slate-200: #394554;
-  --color-slate-300: #455365;
-  --color-slate-400: #8e9baa;
-  --color-slate-500: #aab5c2;
-  --color-slate-600: #d0d7e0;
-  --color-slate-700: #dce2ea;
-  --color-slate-800: #e9edf2;
-  --color-slate-900: #f3f5f7;
+     so all existing utility usage inherits the light theme consistently:
+     slate-50 = lightest inset, slate-900 = primary heading, slate-500 = muted.
+     Do not invert this ramp: components rely on the role ordering, not on the
+     literal Tailwind lightness. */
+  --color-slate-50: #f7f9fc;
+  --color-slate-100: #eef2f7;
+  --color-slate-200: #e2e8f0;
+  --color-slate-300: #cbd5e1;
+  --color-slate-400: #94a3b8;
+  --color-slate-500: #5b6879;
+  --color-slate-600: #475569;
+  --color-slate-700: #334155;
+  --color-slate-800: #1e293b;
+  --color-slate-900: #0f172a;
   --color-slate-950: #ffffff;
 
   /* Explicit surface tokens */
-  --color-base: #171c24;
-  --color-surface: #1e2631;
-  --color-surface-elevated: #252f3b;
-  --color-surface-raised: #303b48;
-  --color-surface-hover: #303e4d;
-  --color-nav-active: #303e4d;
+  --color-base: #f4f7fb;
+  --color-surface: #ffffff;
+  --color-surface-elevated: #ffffff;
+  --color-surface-raised: #f1f5f9;
+  --color-surface-hover: #eef2f7;
+  --color-nav-active: #e8f0f9;
 
   /* Border and divider tokens */
-  --color-border: #394554;
-  --color-border-subtle: #303b48;
-  --color-border-strong: #455365;
-  --color-border-control: #75879d;
+  --color-border: #e2e8f0;
+  --color-border-subtle: #edf1f7;
+  --color-border-strong: #cbd5e1;
+  --color-border-control: #cbd5e1;
 
-  /* Steel blue brand accent */
-  --color-brand-50: #1a2836;
-  --color-brand-100: #223647;
-  --color-brand-200: #2c475f;
-  --color-brand-300: #3f6282;
-  --color-brand-400: #5e8cb5;
-  --color-brand-500: #78a6d0;
-  --color-brand-600: #356b9a;
-  --color-brand-700: #28577d;
-  --color-brand-800: #244c6d;
-  --color-brand-900: #1e3f5a;
+  /* Steel blue brand accent (AA-safe on white) */
+  --color-brand-50: #eff5fb;
+  --color-brand-100: #dce9f6;
+  --color-brand-200: #bdd4ea;
+  --color-brand-300: #94b8db;
+  --color-brand-400: #6b96c4;
+  --color-brand-500: #3c73a8;
+  --color-brand-600: #2f6294;
+  --color-brand-700: #275279;
+  --color-brand-800: #224565;
+  --color-brand-900: #1d3a55;
 
   --color-primary: #356b9a;
-  --color-primary-hover: #28577d;
+  --color-primary-hover: #2b5a83;
   --color-primary-active: #244c6d;
 
-  /* Semantic status colors (lightened slightly for AA text on dark surfaces) */
-  --color-success: #74bc92;
-  --color-success-soft: #1f3329;
-  --color-success-strong: #3e7a5a;
-  --color-success-strong-hover: #356b4e;
+  /* Semantic status colors (darkened for AA text on light surfaces) */
+  --color-success: #15803d;
+  --color-success-soft: #ecfdf3;
+  --color-success-strong: #15803d;
+  --color-success-strong-hover: #166534;
 
-  --color-warning: #e0b15e;
-  --color-warning-soft: #342c1d;
+  --color-warning: #b45309;
+  --color-warning-soft: #fffbeb;
 
-  --color-danger: #e68c8c;
-  --color-danger-soft: #372427;
-  --color-danger-strong: #a84b4b;
-  --color-danger-strong-hover: #8f3e3e;
+  --color-danger: #c81e1e;
+  --color-danger-soft: #fef2f2;
+  --color-danger-strong: #dc2626;
+  --color-danger-strong-hover: #b91c1c;
 
-  --color-info: #8ab4db;
-  --color-info-soft: #1f2d3b;
+  --color-info: #1d6fb8;
+  --color-info-soft: #eff6ff;
 
   --radius-card: 0.75rem;
-  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.35), 0 1px 3px rgb(0 0 0 / 0.28);
-  --shadow-pop: 0 20px 40px -16px rgb(0 0 0 / 0.65);
+  --shadow-card: 0 1px 2px rgb(15 23 42 / 0.06), 0 1px 3px rgb(15 23 42 / 0.08);
+  --shadow-pop: 0 20px 40px -16px rgb(15 23 42 / 0.25);
 }
 
 :root {
@@ -79,7 +81,7 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 html,
@@ -117,15 +119,14 @@ body {
   select,
   textarea {
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
-    color-scheme: dark;
+    color-scheme: light;
   }
   input[type="checkbox"],
   input[type="radio"] {
     accent-color: var(--color-primary);
   }
   input[type="date"]::-webkit-calendar-picker-indicator {
-    filter: invert(0.72);
-    opacity: 0.85;
+    opacity: 0.6;
   }
   select {
     background-color: var(--color-surface);
@@ -165,13 +166,13 @@ body {
     }
   }
 
-  /* Recharts dark-theme text defaults (series colors are set in chartTheme.js) */
+  /* Recharts light-theme text defaults (series colors are set in chartTheme.js) */
   .recharts-legend-item-text {
     color: var(--color-slate-500) !important;
   }
   .recharts-default-tooltip {
-    background-color: var(--color-surface-raised) !important;
-    border-color: var(--color-border-strong) !important;
+    background-color: var(--color-surface-elevated) !important;
+    border-color: var(--color-border) !important;
     color: var(--color-slate-900) !important;
   }
   .recharts-pie-label-text {
@@ -327,7 +328,7 @@ body {
     @apply bg-info-soft text-info ring-1 ring-inset ring-info/30 inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium;
   }
   .badge-brand {
-    @apply bg-brand-50 text-brand-500 ring-1 ring-inset ring-brand-200 inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium;
+    @apply bg-brand-50 text-brand-700 ring-1 ring-inset ring-brand-200 inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium;
   }
   .badge-muted {
     @apply bg-slate-100 text-slate-500 ring-1 ring-inset ring-slate-200 inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium;
@@ -379,6 +380,6 @@ body {
   }
 
   .text-link {
-    @apply text-brand-500 hover:text-brand-400 font-medium;
+    @apply text-brand-600 hover:text-brand-800 font-medium;
   }
 }

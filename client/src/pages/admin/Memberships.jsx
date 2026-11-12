@@ -548,7 +548,7 @@ export default function Memberships() {
             )}
 
             <div className="relative">
-              <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+              <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" aria-hidden="true" />
               <input
                 value={memberSearch}
                 onChange={(e) => setMemberSearch(e.target.value)}
@@ -559,7 +559,7 @@ export default function Memberships() {
                 <button
                   type="button"
                   onClick={() => setMemberSearch('')}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-lg leading-none text-slate-400 hover:text-slate-600"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-lg leading-none text-slate-500 hover:text-slate-600"
                   aria-label="Clear search"
                 >
                   &times;

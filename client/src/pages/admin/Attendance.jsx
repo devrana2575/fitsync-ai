@@ -176,7 +176,7 @@ export default function Attendance() {
 
         <form onSubmit={handleCheckIn} className="mt-4 space-y-3">
           <div className="relative">
-            <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+            <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" aria-hidden="true" />
             <input
               value={memberSearch}
               onChange={(e) => setMemberSearch(e.target.value)}
@@ -187,7 +187,7 @@ export default function Attendance() {
               <button
                 type="button"
                 onClick={() => setMemberSearch('')}
-                className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-lg leading-none text-slate-400 hover:text-slate-600"
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-lg leading-none text-slate-500 hover:text-slate-600"
                 aria-label="Clear search"
               >
                 &times;
@@ -265,7 +265,7 @@ export default function Attendance() {
           <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="input w-auto" />
         </div>
         <div className="relative min-w-[240px] flex-1 sm:max-w-sm">
-          <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+          <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" aria-hidden="true" />
           <input
             value={recordSearch}
             onChange={(e) => setRecordSearch(e.target.value)}
@@ -306,7 +306,7 @@ export default function Attendance() {
                 )}
               </td>
               <td className="px-4 py-3 text-sm text-slate-600">
-                {r.checkOutTime ? formatDuration(new Date(r.checkOutTime) - new Date(r.checkInTime)) : <span className="text-slate-400">—</span>}
+                {r.checkOutTime ? formatDuration(new Date(r.checkOutTime) - new Date(r.checkInTime)) : <span className="text-slate-500">—</span>}
               </td>
               <td className="px-4 py-3 text-sm text-slate-600 capitalize">{r.method || 'manual'}</td>
               <td className="px-4 py-3 text-sm text-slate-600">{fmtDate(r.checkInTime)}</td>

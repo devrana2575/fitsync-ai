@@ -312,7 +312,7 @@ export default function MemberDashboard() {
                   </>
                 ) : (
                   <div className="flex flex-col items-center py-8 text-center">
-                    <div className="mb-3 rounded-full bg-brand-500/15 p-3">
+                    <div className="mb-3 rounded-full bg-brand-50 p-3">
                       <CheckCircleIcon className="h-6 w-6 text-brand-500" aria-hidden="true" />
                     </div>
                     <p className="text-sm font-medium text-slate-700">Rest day — no workout scheduled.</p>

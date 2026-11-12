@@ -200,7 +200,7 @@ export default function Navbar({ onMenuClick }) {
                 <div className="flex items-center justify-between px-4 py-3 border-b border-border">
                   <h3 className="text-sm font-semibold text-slate-900">Notifications</h3>
                   {unreadCount > 0 && (
-                    <button onClick={handleMarkAllRead} className="text-xs text-brand-500 hover:text-brand-400 font-medium">
+                    <button onClick={handleMarkAllRead} className="text-xs text-brand-600 hover:text-brand-800 font-medium">
                       Mark all read
                     </button>
                   )}

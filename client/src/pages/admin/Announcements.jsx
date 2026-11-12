@@ -222,7 +222,7 @@ export default function Announcements() {
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative w-full sm:max-w-sm">
-          <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+          <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" aria-hidden="true" />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -234,7 +234,7 @@ export default function Announcements() {
             <button
               type="button"
               onClick={() => setSearch('')}
-              className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-lg leading-none text-slate-400 hover:text-slate-600"
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-lg leading-none text-slate-500 hover:text-slate-600"
               aria-label="Clear search"
             >
               &times;
