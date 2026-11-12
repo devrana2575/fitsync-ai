@@ -40,7 +40,7 @@ Starting uppercase is the source of truth; lowercase input from the client is no
 ## Fix 4 — Equipment Maintenance Alerts never displayed
 
 **File:** `client/src/pages/admin/Equipment.jsx:30`
-**Root cause:** The frontend read `mtRes.data.data || mtRes.data.alerts || []`, but `GET /api/equipment/maintenance` returns `{ equipment: [...] }` (`server/routes/equipment.js`). Every shape looked up was undefined, so `maintenance` was always `[]` and the "⚠️ Maintenance Alerts" banner never rendered.
+**Root cause:** The frontend read `mtRes.data.data || mtRes.data.alerts || []`, but `GET /api/equipment/maintenance` returns `{ equipment: [...] }` (`server/routes/equipment.js`). Every shape looked up was undefined, so `maintenance` was always `[]` and the "Maintenance Alerts" banner never rendered.
 **Change made:** `setMaintenance(mtRes.data.equipment || []);`
 **Verification:** Admin `GET /api/equipment/maintenance` returns an array of 8 equipment items (correct response validated); the alert banner now renders from `data.equipment`.
 

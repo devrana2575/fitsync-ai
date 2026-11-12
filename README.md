@@ -404,7 +404,7 @@ Additional demo accounts (trainers, members) are seeded automatically. See `.env
 
 ### ML Predictions
 
-⚠️ **Not wired.** The Express API exposes **no** `/api/ml/*` endpoints and does
+**Not wired.** The Express API exposes **no** `/api/ml/*` endpoints and does
 not integrate the ML service. The recommendation feature is served locally by
 `GET /api/recommendations`. See `ml-service/` for the standalone experiments
 pipeline.
