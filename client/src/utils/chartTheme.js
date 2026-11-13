@@ -1,17 +1,17 @@
-// Shared Recharts theme for the light "slate + steel blue" design system.
+// Shared Recharts theme for the dark "charcoal + cyan" design system.
 // Keep in sync with the palette defined in src/index.css (@theme block).
 
 export const CHART_COLORS = {
-  brand: '#2f6fae', // steel blue
-  brandSoft: '#7ea7cc', // muted blue for inactive series
-  teal: '#0e8f83', // deep teal
-  silver: '#94a3b8', // cool silver
-  success: '#15803d', // green
-  warning: '#b45309', // amber
-  danger: '#dc2626', // red
-  info: '#1d6fb8', // sky blue
-  violet: '#7c6bb0', // muted violet (never neon purple)
-  purple: '#7c6bb0', // legacy alias
+  brand: '#55e6dc', // primary cyan
+  brandSoft: '#2fafa6', // muted turquoise for secondary series
+  teal: '#35cfc5', // turquoise
+  silver: '#839296', // cool grey
+  success: '#6be3a8', // refined green
+  warning: '#f0c86a', // warm amber
+  danger: '#f49a9a', // restrained coral
+  info: '#7fd3f0', // sky
+  violet: '#9c8ce0', // muted violet (never neon purple)
+  purple: '#9c8ce0', // legacy alias
 };
 
 export const SERIES_COLORS = [
@@ -25,21 +25,21 @@ export const SERIES_COLORS = [
 ];
 
 export const AXIS = {
-  grid: '#e2e8f0', // --color-border
-  axis: '#cbd5e1', // --color-border-strong
-  tick: '#5b6879', // --color-slate-500
-  label: '#475569', // --color-slate-600
+  grid: 'rgba(255,255,255,0.06)',
+  axis: 'rgba(255,255,255,0.12)',
+  tick: '#839296', // --color-slate-400
+  label: '#a4b4b8', // --color-slate-500
 };
 
 export const TOOLTIP_STYLE = {
-  backgroundColor: '#ffffff',
-  border: '1px solid #e2e8f0',
+  backgroundColor: '#10191d',
+  border: '1px solid rgba(255,255,255,0.09)',
   borderRadius: '0.75rem',
-  color: '#0f172a',
-  boxShadow: '0 10px 30px -12px rgb(15 23 42 / 0.35)',
+  color: '#f2f7f7',
+  boxShadow: '0 24px 48px -20px rgb(0 0 0 / 0.9)',
 };
 
-export const TOOLTIP_LABEL_STYLE = { color: '#64748b' };
-export const TOOLTIP_ITEM_STYLE = { color: '#0f172a' };
-export const LEGEND_STYLE = { color: '#64748b' };
-export const PIE_LABEL_STYLE = { fill: '#475569', fontSize: 12 };
+export const TOOLTIP_LABEL_STYLE = { color: '#a4b4b8' };
+export const TOOLTIP_ITEM_STYLE = { color: '#f2f7f7' };
+export const LEGEND_STYLE = { color: '#a4b4b8' };
+export const PIE_LABEL_STYLE = { fill: '#bdcbce', fontSize: 12 };

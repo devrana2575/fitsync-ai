@@ -28,16 +28,16 @@ export default function Modal({ isOpen, onClose, title, description, children, m
       aria-modal="true"
       aria-labelledby="modal-title"
     >
-      <div className="fixed inset-0 bg-black/60 anim-fade" onClick={onClose} />
-      <div className={`relative bg-surface-elevated border border-border rounded-xl shadow-pop w-full ${maxWidth} max-h-[90vh] flex flex-col anim-pop`}>
-        <div className="flex items-start justify-between gap-4 px-6 py-4 border-b border-border">
+      <div className="fixed inset-0 bg-black/70 backdrop-blur-sm anim-fade" onClick={onClose} />
+      <div className={`relative bg-surface-elevated border border-border rounded-2xl shadow-pop w-full ${maxWidth} max-h-[90vh] flex flex-col anim-pop`}>
+        <div className="flex items-start justify-between gap-4 px-6 py-4 border-b border-border bg-surface-raised/30">
           <div className="min-w-0">
-            <h3 id="modal-title" className="text-[17px] font-semibold text-slate-900 leading-snug">{title}</h3>
-            {description && <p className="mt-0.5 text-sm text-slate-500">{description}</p>}
+            <h3 id="modal-title" className="text-[17px] font-semibold text-slate-900 leading-snug font-display">{title}</h3>
+            {description && <p className="mt-1 text-sm text-slate-500">{description}</p>}
           </div>
           <button
             onClick={onClose}
-            className="shrink-0 rounded-lg p-1 text-slate-500 hover:text-slate-900 hover:bg-surface-hover text-xl leading-none"
+            className="shrink-0 rounded-lg p-1.5 text-slate-500 hover:text-slate-900 hover:bg-surface-hover text-xl leading-none transition-colors"
             aria-label="Close dialog"
           >
             &times;

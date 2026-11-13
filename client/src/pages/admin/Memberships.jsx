@@ -291,7 +291,7 @@ export default function Memberships() {
         </div>
       )}
 
-      <div className="flex gap-1 border-b border-slate-200">
+      <div className="flex gap-1 border-b border-border">
         <button onClick={() => setTab('plans')} className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${tab === 'plans' ? 'border-brand-600 text-brand-500' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
           Plans
         </button>
@@ -331,7 +331,7 @@ export default function Memberships() {
             {plans.length === 0 ? <EmptyState icon={ClipboardDocumentListIcon} message="No plans created yet" /> : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {plans.map((p) => (
-                  <div key={p._id} className="card relative p-6 group transition-shadow hover:shadow-md focus-within:ring-2 focus-within:ring-brand-500/30">
+                  <div key={p._id} className="card card-hover relative p-6 group focus-within:ring-2 focus-within:ring-brand-500/30">
                     <button
                       type="button"
                       onClick={() => setViewingPlan(p)}
@@ -620,7 +620,7 @@ export default function Memberships() {
             <input id="complimentary" type="checkbox" checked={assignForm.complimentary} onChange={(e) => setAssignForm({ ...assignForm, complimentary: e.target.checked })} className="h-4 w-4 text-brand-500 border-border-control rounded focus:ring-brand-500 focus:ring-offset-0" />
             <label htmlFor="complimentary" className="text-sm font-medium text-slate-700">Complementary / free grant (activate immediately)</label>
           </div>
-          <div className={`rounded-lg px-3 py-2 text-xs ${assignForm.complimentary ? 'bg-warning/10 text-warning border border-warning/25' : 'bg-surface text-slate-500 border border-slate-200'}`}>
+          <div className={`rounded-lg px-3 py-2 text-xs ${assignForm.complimentary ? 'bg-warning/10 text-warning border border-warning/25' : 'bg-surface text-slate-500 border border-border'}`}>
             {assignForm.complimentary
               ? 'A complimentary/offline grant activates the membership immediately — use only for free or counter-collected memberships.'
               : 'This membership is created as PENDING and does not grant access yet. Record the payment on the Payments page (Plan-based entry) to activate it.'}
@@ -692,7 +692,7 @@ export default function Memberships() {
                       <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Date</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-border">
                     {(detail.payments || []).length === 0 ? (
                       <tr><td colSpan="5" className="px-4 py-3 text-sm text-slate-500 text-center">No payments recorded for this membership</td></tr>
                     ) : detail.payments.map((p) => (

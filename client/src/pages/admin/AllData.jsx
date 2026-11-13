@@ -122,7 +122,7 @@ function CollectionCard({ collection, expanded, onToggle, onEdit, onDelete }) {
 
   return (
     <div className="card">
-      <button onClick={onToggle} className="w-full flex items-center justify-between gap-3 px-5 py-4 hover:bg-surface transition-colors rounded-t-xl">
+      <button onClick={onToggle} className="w-full flex items-center justify-between gap-3 px-5 py-4 hover:bg-surface-raised/50 transition-colors rounded-t-xl">
         <div className="flex items-center gap-3 min-w-0">
           {expanded ? <ChevronDownIcon className="h-4 w-4 text-slate-500 shrink-0" /> : <ChevronRightIcon className="h-4 w-4 text-slate-500 shrink-0" />}
           <span className="font-semibold text-slate-900 truncate">{label}</span>
@@ -133,14 +133,14 @@ function CollectionCard({ collection, expanded, onToggle, onEdit, onDelete }) {
       </button>
 
       {expanded && (
-        <div className="border-t border-slate-100">
+        <div className="border-t border-border">
           {rows.length === 0 ? (
             <p className="px-5 py-4 text-sm text-slate-500">No records.</p>
           ) : (
             <div className="max-h-96 overflow-auto">
               <table className="w-full text-sm">
                 <thead className="sticky top-0 bg-surface">
-                  <tr className="border-b border-slate-200">
+                  <tr className="border-b border-border">
                     {columns.map((c, i) => (
                       <th key={c.key} className={`${i === 0 ? 'pl-5' : 'pl-4'} pr-4 py-2.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap`}>
                         {c.key}
@@ -149,7 +149,7 @@ function CollectionCard({ collection, expanded, onToggle, onEdit, onDelete }) {
                     <th className="pl-4 pr-5 py-2.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-border">
                   {rows.map((row, ri) => (
                     <tr key={row._id || ri} className={ri % 2 === 0 ? 'bg-transparent' : 'bg-surface/60'}>
                       {columns.map((c, ci) => (

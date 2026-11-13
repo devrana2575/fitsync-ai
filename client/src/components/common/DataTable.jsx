@@ -4,9 +4,9 @@ export default function DataTable({ headers, children, className = '' }) {
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="bg-surface/60 border-b border-border">
+            <tr className="bg-surface/50 border-b border-border">
               {headers.map((header, i) => (
-                <th key={i} scope="col" className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">
+                <th key={i} scope="col" className="px-5 py-3 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-[0.12em] whitespace-nowrap">
                   {header}
                 </th>
               ))}

@@ -98,7 +98,7 @@ export default function Members() {
               <button
                 key={memberId(m)}
                 onClick={() => navigate(`/trainer/members/${memberId(m)}`)}
-                className="card p-5 text-left hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+                className="card card-hover p-5 text-left"
               >
                 <div className="flex items-start justify-between gap-3">
                   <Avatar name={memberName(m)} src={m.user?.avatar} size="lg" />

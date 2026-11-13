@@ -155,10 +155,10 @@ export default function ToastProvider({ children }) {
           aria-modal="true"
           aria-labelledby="confirm-title"
         >
-          <div className="absolute inset-0 bg-black/60 anim-fade" onClick={() => closeDialog(dialog.promptInput ? null : false)} aria-hidden="true" />
-          <div className="relative w-full max-w-md overflow-hidden rounded-xl border border-border bg-surface-elevated shadow-pop anim-pop">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm anim-fade" onClick={() => closeDialog(dialog.promptInput ? null : false)} aria-hidden="true" />
+          <div className="relative w-full max-w-md overflow-hidden rounded-2xl border border-border bg-surface-elevated shadow-pop anim-pop">
             <div className="px-5 py-4">
-              <h3 id="confirm-title" className="text-[15px] font-semibold text-slate-900">
+              <h3 id="confirm-title" className="text-[15px] font-semibold text-slate-900 font-display">
                 {dialog.title}
               </h3>
               {dialog.description && (

@@ -33,6 +33,9 @@ ml-service/*.log
 .DS_Store
 Thumbs.db
 
+# Local MongoDB data (used when the MongoDB service is unavailable)
+.mongo-data/
+
 # Logs
 *.log
 logs/

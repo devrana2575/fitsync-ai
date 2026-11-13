@@ -45,8 +45,8 @@ export default function Register() {
       footer={<AuthFooter text="Already have an account?" linkText="Sign In" to="/login" />}
     >
       <div className="mt-3 flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg bg-brand-50 border border-brand-200 mb-4">
-        <span className="h-6 w-6 rounded-full bg-brand-600 flex items-center justify-center shrink-0">
-          <UserGroupIcon className="h-3.5 w-3.5 text-white" aria-hidden="true" />
+        <span className="h-6 w-6 rounded-full bg-primary flex items-center justify-center shrink-0">
+          <UserGroupIcon className="h-3.5 w-3.5 text-primary-fg" aria-hidden="true" />
         </span>
         <p className="text-xs text-slate-600">
           You're signing up as{' '}

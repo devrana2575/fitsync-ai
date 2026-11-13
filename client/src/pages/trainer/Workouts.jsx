@@ -275,7 +275,7 @@ export default function Workouts() {
               </div>
               <div className="space-y-3">
                 {form.exercises.map((ex, idx) => (
-                  <div key={idx} className="grid grid-cols-2 md:grid-cols-6 gap-3 p-3 bg-surface/70 rounded-xl border border-slate-200">
+                  <div key={idx} className="grid grid-cols-2 md:grid-cols-6 gap-3 p-3 bg-surface/70 rounded-xl border border-border">
                     <div className="col-span-2 md:col-span-2">
                       <label className={labelCls}>Exercise</label>
                       <select
@@ -361,7 +361,7 @@ export default function Workouts() {
                   <th className="px-6 py-3">Created</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-border">
                 {plans.map((plan, i) => {
                   const firstExercise = plan.exercises?.[0]?.exercise;
                   return (
@@ -408,7 +408,7 @@ export default function Workouts() {
               </tbody>
             </table>
           </div>
-          <div className="px-6 py-3 border-t border-slate-100 flex items-center gap-1.5 text-xs text-slate-500">
+          <div className="px-6 py-3 border-t border-border flex items-center gap-1.5 text-xs text-slate-500">
             <ArrowRightIcon className="h-3.5 w-3.5" aria-hidden="true" />
             Plans are created for members assigned to you.
           </div>

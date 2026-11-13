@@ -372,7 +372,7 @@ export default function Workouts() {
             <div className="space-y-4">
               {plans.map((plan) => (
                 <div key={plan._id || plan.id} className="card overflow-hidden">
-                  <div className="px-6 py-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
+                  <div className="px-6 py-4 border-b border-border flex flex-wrap items-center justify-between gap-3">
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
                         <h3 className="text-base font-semibold text-slate-900">{plan.name}</h3>
@@ -387,7 +387,7 @@ export default function Workouts() {
                     <StatusBadge value={plan.isActive !== false ? 'ACTIVE' : 'INACTIVE'} />
                   </div>
                   {plan.exercises && plan.exercises.length > 0 ? (
-                    <div className="divide-y divide-slate-100">
+                    <div className="divide-y divide-border">
                       {plan.exercises.map((ex, idx) => {
                         const exData = ex.exercise || ex;
                         const name = exData?.name || ex.name || `Exercise ${idx + 1}`;
@@ -449,9 +449,9 @@ export default function Workouts() {
                       <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Duration</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-200">
+                  <tbody className="divide-y divide-border">
                     {history.map((log, idx) => (
-                      <tr key={log._id || log.id || idx} className="hover:bg-surface transition-colors">
+                      <tr key={log._id || log.id || idx} className="hover:bg-surface-raised/60 transition-colors">
                         <td className="px-6 py-4 text-sm text-slate-900">
                           {fmtDate(log.createdAt || log.date)}
                         </td>

@@ -131,7 +131,7 @@ export default function Settings() {
       </div>
 
       <div className="card p-5 flex items-center gap-4">
-        <div className={`shrink-0 p-3 rounded-lg ring-1 ${payment ? paymentMeta[payment.method]?.cls : 'bg-slate-100 text-slate-500 ring-slate-100'}`}>
+        <div className={`shrink-0 p-3 rounded-lg ring-1 ${payment ? paymentMeta[payment.method]?.cls : 'bg-slate-100 text-slate-500 ring-border'}`}>
           <CreditCardIcon className="h-5 w-5" aria-hidden="true" />
         </div>
         <div className="min-w-0">

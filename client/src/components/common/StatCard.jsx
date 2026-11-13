@@ -24,24 +24,29 @@ export default function StatCard({ icon: Icon, label, value, color = 'brand', su
     <Tag
       {...interactiveProps}
       aria-pressed={onClick ? active : undefined}
-      className={`card p-4 sm:p-5 transition-colors duration-200 ${
+      className={`card group p-4 sm:p-5 card-hover ${
         onClick
-          ? 'w-full text-left cursor-pointer hover:border-brand-300 hover:shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500'
-          : 'hover:border-border-strong'
-      } ${active ? 'border-brand-400 ring-2 ring-brand-500/20 bg-brand-50/40' : ''}`}
+          ? 'w-full text-left cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/60'
+          : ''
+      } ${active ? 'border-brand-400 ring-2 ring-brand-500/20' : ''}`}
     >
       <div className="flex items-center gap-3.5">
         <div className={`shrink-0 p-2.5 rounded-lg ring-1 ring-inset ${tone}`}>
           {typeof Icon === 'function' ? <Icon className="h-5 w-5" aria-hidden="true" /> : null}
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">{label}</p>
-          <p className="mt-1 text-2xl font-semibold text-slate-900 tracking-tight tabular-nums truncate">
+          <p className="text-[11px] font-medium text-slate-500 uppercase tracking-[0.12em]">{label}</p>
+          <p className="mt-1.5 text-2xl font-semibold text-slate-900 metric-value truncate">
             {value}
           </p>
-          {sub && <p className="text-xs text-slate-500 mt-0.5">{sub}</p>}
+          {sub && <p className="text-xs text-slate-500 mt-1">{sub}</p>}
         </div>
-        {onClick && <ChevronRightIcon className="h-4 w-4 shrink-0 text-slate-500" aria-hidden="true" />}
+        {onClick && (
+          <ChevronRightIcon
+            className="h-4 w-4 shrink-0 text-slate-500 transition-colors group-hover:text-brand-500"
+            aria-hidden="true"
+          />
+        )}
       </div>
     </Tag>
   );

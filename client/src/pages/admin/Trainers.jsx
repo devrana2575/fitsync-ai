@@ -275,7 +275,7 @@ export default function Trainers() {
                   <button
                     type="button"
                     onClick={() => memberUser._id && navigate(`/admin/members/${memberUser._id}`)}
-                    className="w-full flex items-center justify-between gap-3 py-3 px-2 text-left rounded-lg hover:bg-surface transition-colors"
+                    className="w-full flex items-center justify-between gap-3 py-3 px-2 text-left rounded-lg hover:bg-surface-raised/50 transition-colors"
                   >
                     <span className="flex items-center gap-3 min-w-0">
                       <Avatar name={memberUser.name || 'Member'} src={memberUser.avatar} size="sm" />

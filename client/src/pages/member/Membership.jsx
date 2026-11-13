@@ -159,7 +159,7 @@ export default function Membership() {
       },
       // Keep the hosted checkout on brand so the member never leaves a
       // different-looking payment page mid-flow.
-      theme: { color: '#356b9a' },
+      theme: { color: '#13a89e' },
       modal: {
         ondismiss: () => {
           setProcessing(false);
@@ -409,7 +409,7 @@ export default function Membership() {
             <div
               className="absolute inset-0 opacity-10"
               style={{
-                backgroundImage: 'linear-gradient(#78a6d0 1px, transparent 1px), linear-gradient(90deg, #78a6d0 1px, transparent 1px)',
+                backgroundImage: 'linear-gradient(#55e6dc 1px, transparent 1px), linear-gradient(90deg, #55e6dc 1px, transparent 1px)',
                 backgroundSize: '32px 32px',
               }}
               aria-hidden="true"

@@ -126,7 +126,7 @@ export default function Payments() {
         </div>
       ) : (
         <div className="card overflow-hidden">
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-5 py-4">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-5 py-4">
             <h2 className="card-title">Payment records</h2>
             <span className="inline-flex items-center gap-1 text-xs text-slate-500">
               <ShieldCheckIcon className="h-4 w-4 text-brand-500" aria-hidden="true" />
@@ -144,7 +144,7 @@ export default function Payments() {
                   <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Date</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200">
+              <tbody className="divide-y divide-border">
                 {payments.map((p) => (
                   <tr key={p._id} className="odd:bg-transparent even:bg-surface/60">
                     <td className="px-6 py-4 text-sm font-semibold text-slate-900 tabular-nums">{toINR(p.amount)}</td>

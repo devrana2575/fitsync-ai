@@ -426,7 +426,7 @@ export default function Progress() {
               name="photo"
               accept="image/*"
               onChange={handlePhotoChange}
-              className="input file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-brand-600 file:text-white"
+              className="input file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-primary file:text-primary-fg"
             />
           </div>
           <div className="flex justify-end">
@@ -439,7 +439,7 @@ export default function Progress() {
 
       {measurements.length > 0 && (
         <div className="card overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-100">
+          <div className="px-6 py-4 border-b border-border">
             <h2 className="section-title">Measurement History</h2>
           </div>
           <div className="overflow-x-auto">
@@ -458,11 +458,11 @@ export default function Progress() {
                   <th className="px-6 py-3">Thighs</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-border">
                 {[...measurements].reverse().map((m, idx) => {
                   const bmi = m.bmi || (m.weight && m.height ? Math.round((m.weight / ((m.height / 100) ** 2)) * 10) / 10 : null);
                   return (
-                    <tr key={m._id || m.id || idx} className="odd:bg-transparent even:bg-surface/60 hover:bg-surface/60 transition-colors">
+                    <tr key={m._id || m.id || idx} className="odd:bg-transparent even:bg-surface/60 hover:bg-surface-raised/60 transition-colors">
                       <td className="px-6 py-3 font-medium text-slate-900 whitespace-nowrap">{fmtDate(m.createdAt || m.date)}</td>
                       <td className="px-6 py-3 text-slate-600">{m.weight ? `${m.weight} kg` : '—'}</td>
                       <td className="px-6 py-3 text-slate-600">{m.height ? `${m.height} cm` : '—'}</td>

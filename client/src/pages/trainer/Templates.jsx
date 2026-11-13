@@ -209,7 +209,7 @@ export default function Templates() {
                   <th className="px-6 py-3">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-border">
                 {templates.map((tpl, i) => (
                   <tr key={tpl._id} className={i % 2 === 0 ? 'bg-transparent' : 'bg-surface/60'}>
                     <td className="px-6 py-4">
@@ -298,7 +298,7 @@ export default function Templates() {
               {form.exercises.map((ex, idx) => {
                 const selectedEx = exercises.find((e) => (e._id || e.id) === ex.exercise);
                 return (
-                  <div key={idx} className="grid grid-cols-2 md:grid-cols-7 gap-3 p-3 bg-surface/70 rounded-xl border border-slate-200">
+                  <div key={idx} className="grid grid-cols-2 md:grid-cols-7 gap-3 p-3 bg-surface/70 rounded-xl border border-border">
                     <div className="col-span-2 md:col-span-2">
                       <label className={labelCls}>Exercise</label>
                       <div className="flex items-center gap-2">

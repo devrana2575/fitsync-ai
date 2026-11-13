@@ -748,7 +748,7 @@ export default function Analytics() {
 
 function ChartSummary({ children }) {
   return (
-    <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-slate-100 pt-3 text-xs text-slate-500">
+    <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-border pt-3 text-xs text-slate-500">
       {children}
     </div>
   );

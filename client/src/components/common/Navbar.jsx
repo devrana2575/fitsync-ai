@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   BellIcon,
   ChevronDownIcon,
@@ -19,10 +19,48 @@ import api from '../../services/api';
 import Avatar from './Avatar';
 
 const roleStyles = {
-  admin: 'bg-brand-50 text-brand-500 ring-1 ring-inset ring-brand-200',
-  trainer: 'bg-info/12 text-info ring-1 ring-inset ring-info/25',
-  member: 'bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-200',
+  admin: 'bg-brand-50 text-brand-700 ring-1 ring-inset ring-brand-200',
+  trainer: 'bg-info-soft text-info ring-1 ring-inset ring-info/25',
+  member: 'bg-slate-100 text-slate-600 ring-1 ring-inset ring-border',
 };
+
+const PAGE_TITLES = [
+  ['/admin/sick-leaves', 'Trainer Sick Leaves'],
+  ['/admin/announcements', 'Announcements'],
+  ['/admin/memberships', 'Memberships'],
+  ['/admin/attendance', 'Attendance'],
+  ['/admin/analytics', 'Reports & Charts'],
+  ['/admin/settings', 'Settings'],
+  ['/admin/equipment', 'Equipment'],
+  ['/admin/payments', 'Payments'],
+  ['/admin/trainers', 'Trainers'],
+  ['/admin/members', 'Members'],
+  ['/admin/all-data', 'All Data'],
+  ['/admin', 'Overview'],
+  ['/trainer/sick-leave', 'Sick Leave'],
+  ['/trainer/attendance', 'Attendance'],
+  ['/trainer/templates', 'Templates'],
+  ['/trainer/workouts', 'Workout Plans'],
+  ['/trainer/members', 'My Members'],
+  ['/trainer/profile', 'Profile'],
+  ['/trainer', 'Overview'],
+  ['/member/membership', 'My Membership'],
+  ['/member/notifications', 'Notifications'],
+  ['/member/announcements', 'Announcements'],
+  ['/member/attendance', 'Attendance'],
+  ['/member/workouts', 'Workouts'],
+  ['/member/payments', 'Payments'],
+  ['/member/progress', 'Progress'],
+  ['/member/profile', 'Profile'],
+  ['/member/goals', 'Goals'],
+  ['/member/diet', 'Diet'],
+  ['/member', 'Overview'],
+];
+
+function pageTitle(pathname) {
+  const match = PAGE_TITLES.find(([prefix]) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+  return match ? match[1] : 'Workspace';
+}
 
 const typeIcons = {
   info: InformationCircleIcon,
@@ -59,6 +97,7 @@ export default function Navbar({ onMenuClick }) {
   const socket = useSocket();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
   const [showDropdown, setShowDropdown] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -66,6 +105,7 @@ export default function Navbar({ onMenuClick }) {
   const [notifLoading, setNotifLoading] = useState(false);
   const [notifError, setNotifError] = useState(false);
   const notifRef = useRef(null);
+  const profileRef = useRef(null);
 
   const fetchUnreadCount = useCallback(async () => {
     try {
@@ -135,6 +175,29 @@ export default function Navbar({ onMenuClick }) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showNotifications]);
 
+  useEffect(() => {
+    if (!showDropdown) return;
+    const handleClickOutside = (e) => {
+      if (profileRef.current && !profileRef.current.contains(e.target)) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showDropdown]);
+
+  useEffect(() => {
+    if (!showDropdown && !showNotifications) return undefined;
+    const handleKey = (e) => {
+      if (e.key === 'Escape') {
+        setShowDropdown(false);
+        setShowNotifications(false);
+      }
+    };
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, [showDropdown, showNotifications]);
+
   const handleMarkRead = async (id) => {
     try {
       await api.put(`/notifications/${id}/read`);
@@ -158,21 +221,25 @@ export default function Navbar({ onMenuClick }) {
   };
 
   return (
-    <header className="h-16 bg-surface/95 backdrop-blur border-b border-border flex items-center justify-between px-4 sm:px-6 sticky top-0 z-20">
-      <button
-        onClick={onMenuClick}
-        className="lg:hidden p-2 text-slate-500 hover:text-slate-900 hover:bg-surface-hover rounded-lg transition-colors"
-        aria-label="Open menu"
-      >
-        <Bars3Icon className="h-5 w-5" aria-hidden="true" />
-      </button>
+    <header className="h-16 glass border-b border-border flex items-center justify-between gap-3 px-4 sm:px-6 sticky top-0 z-20">
+      <div className="flex min-w-0 items-center gap-3">
+        <button
+          onClick={onMenuClick}
+          className="lg:hidden p-2 text-slate-500 hover:text-slate-900 hover:bg-surface-raised rounded-xl transition-colors"
+          aria-label="Open menu"
+        >
+          <Bars3Icon className="h-5 w-5" aria-hidden="true" />
+        </button>
 
-      <div className="hidden lg:block text-sm text-slate-500">
-        {user?.role ? (
-          <span className={`inline-block rounded-md px-2 py-0.5 text-[11px] font-medium capitalize ${roleStyles[user.role] || 'bg-surface text-slate-500'}`}>
-            {user.role} console
-          </span>
-        ) : null}
+        <div className="hidden lg:flex min-w-0 items-center gap-3">
+          {user?.role ? (
+            <span className={`inline-block shrink-0 rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] ${roleStyles[user.role] || 'bg-surface text-slate-500'}`}>
+              {user.role}
+            </span>
+          ) : null}
+          <span className="h-4 w-px bg-border" aria-hidden="true" />
+          <p className="truncate text-sm font-medium text-slate-600">{pageTitle(location.pathname)}</p>
+        </div>
       </div>
 
       <div className="flex items-center gap-2 sm:gap-3">
@@ -183,12 +250,14 @@ export default function Navbar({ onMenuClick }) {
               setShowNotifications((prev) => !prev);
               setShowDropdown(false);
             }}
-            className="relative p-2 text-slate-500 hover:text-slate-900 hover:bg-surface-hover rounded-lg transition-colors"
+            className="relative rounded-xl border border-border bg-surface/60 p-2 text-slate-500 transition-colors hover:border-border-strong hover:text-slate-900 hover:bg-surface-raised"
             aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ''}`}
+            aria-expanded={showNotifications}
+            aria-haspopup="true"
           >
             <BellIcon className="h-5 w-5" aria-hidden="true" />
             {unreadCount > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 min-w-[1.125rem] h-[1.125rem] bg-danger-strong text-white text-[10px] font-semibold rounded-full flex items-center justify-center leading-none px-1 ring-2 ring-base">
+              <span className="absolute -top-1 -right-1 min-w-[1.125rem] h-[1.125rem] bg-brand-500 text-primary-fg text-[10px] font-bold rounded-full flex items-center justify-center leading-none px-1 ring-2 ring-base">
                 {unreadCount > 99 ? '99+' : unreadCount}
               </span>
             )}
@@ -196,7 +265,7 @@ export default function Navbar({ onMenuClick }) {
           {showNotifications && (
             <>
               <div className="fixed inset-0 z-40" onClick={() => setShowNotifications(false)} />
-              <div className="absolute right-0 mt-2 w-80 max-w-[calc(100vw-2rem)] bg-surface-elevated rounded-xl shadow-pop border border-border z-50 max-h-[28rem] flex flex-col anim-pop">
+              <div className="absolute right-0 mt-2 w-80 max-w-[calc(100vw-2rem)] bg-surface-elevated rounded-2xl shadow-pop border border-border z-50 max-h-[28rem] flex flex-col anim-pop overflow-hidden">
                 <div className="flex items-center justify-between px-4 py-3 border-b border-border">
                   <h3 className="text-sm font-semibold text-slate-900">Notifications</h3>
                   {unreadCount > 0 && (
@@ -230,7 +299,7 @@ export default function Navbar({ onMenuClick }) {
                           }
                         }}
                         className={`w-full text-left px-4 py-3 hover:bg-surface-hover transition-colors ${
-                          !n.isRead ? 'bg-brand-50' : ''
+                          !n.isRead ? 'bg-brand-50/50' : ''
                         }`}
                       >
                         <div className="flex items-start gap-2.5">
@@ -268,37 +337,37 @@ export default function Navbar({ onMenuClick }) {
         <span className="hidden sm:block h-6 w-px bg-border" aria-hidden="true" />
 
         {/* User dropdown */}
-        <div className="relative">
+        <div className="relative" ref={profileRef}>
           <button
             onClick={() => {
               setShowDropdown(!showDropdown);
               setShowNotifications(false);
             }}
-            className="flex items-center gap-2.5 px-2 py-1.5 hover:bg-surface-hover rounded-lg transition-colors"
+            className="flex items-center gap-2.5 rounded-xl px-2 py-1.5 transition-colors hover:bg-surface-raised"
             aria-expanded={showDropdown}
             aria-haspopup="menu"
           >
             <Avatar name={user?.name} src={user?.avatar} size="sm" />
             <div className="text-left hidden md:block">
-              <p className="text-sm font-medium text-slate-700 leading-tight">
+              <p className="text-sm font-medium text-slate-800 leading-tight">
                 {user?.name || 'User'}
               </p>
               <span
-                className={`inline-block mt-0.5 text-[11px] px-1.5 py-0.5 rounded-md font-medium capitalize ${roleStyles[user?.role] || 'bg-surface text-slate-500'}`}
+                className={`inline-block mt-0.5 text-[10px] px-1.5 py-0.5 rounded-md font-medium uppercase tracking-wide ${roleStyles[user?.role] || 'bg-surface text-slate-500'}`}
               >
                 {user?.role || 'user'}
               </span>
             </div>
-            <ChevronDownIcon className="h-4 w-4 text-slate-500" aria-hidden="true" />
+            <ChevronDownIcon className={`h-4 w-4 text-slate-500 transition-transform ${showDropdown ? 'rotate-180' : ''}`} aria-hidden="true" />
           </button>
           {showDropdown && (
-            <div className="absolute right-0 mt-2 w-56 bg-surface-elevated rounded-xl shadow-pop border border-border py-1 z-50 anim-pop" role="menu">
+            <div className="absolute right-0 mt-2 w-56 bg-surface-elevated rounded-2xl shadow-pop border border-border py-1 z-50 anim-pop overflow-hidden" role="menu">
               <div className="px-4 py-2.5 border-b border-border">
-                <p className="text-sm font-medium text-slate-700 truncate">{user?.name}</p>
+                <p className="text-sm font-medium text-slate-800 truncate">{user?.name}</p>
                 <p className="text-xs text-slate-500 truncate">{user?.email}</p>
               </div>
               <div className="px-4 py-2.5 border-b border-border flex items-center gap-2">
-                <span className={`rounded-md px-2 py-0.5 text-[11px] font-medium capitalize ${roleStyles[user?.role] || 'bg-surface text-slate-500'}`}>
+                <span className={`rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${roleStyles[user?.role] || 'bg-surface text-slate-500'}`}>
                   {user?.role || 'user'}
                 </span>
               </div>

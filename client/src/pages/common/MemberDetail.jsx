@@ -110,7 +110,7 @@ export default function MemberDetail() {
 
   const section = (title, Icon, children, emptyMsg) => (
     <div className="card flex flex-col overflow-hidden">
-      <div className="flex items-center gap-2 border-b border-slate-100 px-5 py-3.5">
+      <div className="flex items-center gap-2 border-b border-border px-5 py-3.5">
         <Icon className="h-4 w-4 text-brand-500" aria-hidden="true" />
         <h2 className="section-title">{title}</h2>
       </div>
@@ -136,7 +136,7 @@ export default function MemberDetail() {
         <div
           className="absolute inset-0 opacity-10"
           style={{
-            backgroundImage: 'linear-gradient(#78a6d0 1px, transparent 1px), linear-gradient(90deg, #78a6d0 1px, transparent 1px)',
+            backgroundImage: 'linear-gradient(#55e6dc 1px, transparent 1px), linear-gradient(90deg, #55e6dc 1px, transparent 1px)',
             backgroundSize: '32px 32px',
           }}
           aria-hidden="true"
@@ -287,7 +287,7 @@ export default function MemberDetail() {
                     <th className="px-3 py-2">Body Fat</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-border">
                   {(measurements || []).slice(0, 5).map((m) => {
                     const bmi = m.bmi || (m.weight && m.height ? Math.round((m.weight / ((m.height / 100) ** 2)) * 10) / 10 : null);
                     return (
@@ -340,7 +340,7 @@ export default function MemberDetail() {
                     <th className="px-3 py-2">Status</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-border">
                   {(workoutLogs || []).slice(0, 6).map((log) => (
                     <tr key={log._id}>
                       <td className="whitespace-nowrap px-3 py-2 text-slate-600">{fmtDate(log.date || log.createdAt)}</td>
@@ -380,7 +380,7 @@ export default function MemberDetail() {
                       {plan.exercises.slice(0, 6).map((ex, idx) => {
                         const exData = ex.exercise || ex;
                         return (
-                          <span key={idx} className="inline-flex items-center gap-1.5 rounded-full bg-surface-elevated px-2.5 py-1 text-xs text-slate-500 ring-1 ring-inset ring-slate-300/50">
+                          <span key={idx} className="inline-flex items-center gap-1.5 rounded-full bg-surface-elevated px-2.5 py-1 text-xs text-slate-500 ring-1 ring-inset ring-border-strong">
                             <img src={exerciseImage(exData)} alt={exData?.name || 'Exercise'} loading="lazy" className="h-4 w-4 rounded-full bg-surface object-cover" />
                             {exData?.name || 'Exercise'}
                           </span>

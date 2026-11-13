@@ -19,7 +19,7 @@ export function SkeletonCard({ className = '' }) {
 export function SkeletonRow({ rows = 5, className = '' }) {
   return (
     <div className={`card overflow-hidden ${className}`} aria-hidden="true">
-      <div className="divide-y divide-slate-100">
+      <div className="divide-y divide-border">
         {Array.from({ length: rows }).map((_, i) => (
           <div key={i} className="flex items-center gap-4 px-4 py-3">
             <Skeleton width="w-8" height="h-8" rounded className="rounded-full!" />

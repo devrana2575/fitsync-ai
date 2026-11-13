@@ -211,9 +211,9 @@ export default function Attendance() {
                   <th className="px-6 py-3">Method</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-border">
                 {records.map((r, idx) => (
-                  <tr key={r._id || r.id || idx} className="odd:bg-transparent even:bg-surface/60 hover:bg-surface/60 transition-colors">
+                  <tr key={r._id || r.id || idx} className="odd:bg-transparent even:bg-surface/60 hover:bg-surface-raised/60 transition-colors">
                     <td className="px-6 py-4 font-medium text-slate-900 whitespace-nowrap">
                       {fmtDate(r.checkInTime || r.date, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
                     </td>

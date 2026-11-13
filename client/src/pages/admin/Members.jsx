@@ -237,7 +237,7 @@ export default function Members() {
               onClick={() => changeStatus(value)}
               aria-pressed={status === value}
               className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                status === value ? 'bg-brand-600 text-white' : 'text-slate-600 hover:bg-surface-hover'
+                status === value ? 'bg-primary text-primary-fg' : 'text-slate-600 hover:bg-surface-hover'
               }`}
             >
               {label}
@@ -423,7 +423,7 @@ export default function Members() {
                   })}
                   className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
                     form.preferredWorkoutDays.includes(d)
-                      ? 'bg-brand-600 text-white border-brand-600'
+                      ? 'bg-primary text-primary-fg border-primary'
                       : 'bg-surface text-slate-500 border-border hover:bg-surface-hover'
                   }`}
                 >
@@ -466,7 +466,7 @@ export default function Members() {
             </div>
           </div>
           <div className="flex justify-end gap-3 pt-2">
-            <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 rounded-lg border border-border-control text-slate-700 hover:bg-surface font-medium">Cancel</button>
+            <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 rounded-lg border border-border-control text-slate-700 hover:bg-surface-raised font-medium">Cancel</button>
             <button type="submit" disabled={saving} className="btn btn-md btn-primary w-full disabled:opacity-50">
               {saving ? 'Saving...' : editing ? 'Update' : 'Create'}
             </button>

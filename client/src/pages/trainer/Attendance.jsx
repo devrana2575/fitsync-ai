@@ -183,7 +183,7 @@ export default function Attendance() {
                   <th className="px-6 py-3">Method</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-border">
                 {records.map((r, i) => (
                   <tr key={r._id} className={i % 2 === 0 ? 'bg-transparent' : 'bg-surface/60'}>
                     <td className="px-6 py-4">
